@@ -1,0 +1,53 @@
+# publication_spec.R
+#
+# Physical document geometry, document-facing typography, and renderer density.
+# Other styling files derive their sizes from PUB rather than redefining them.
+
+PUB <- list(
+  page = list(
+    width_in  = 8.5,
+    margin_in = 0.5
+  ),
+
+  type = list(
+    title_pt     = 12,
+    subtitle_pt  = 11,
+    caption_pt   = 11,
+    body_pt      = 10,
+    label_pt     = 10,
+    compact_pt   = 9,
+    small_pt     = 8,
+    micro_pt     = 7,
+    milestone_pt = 6.5,
+    source_pt    = 11
+  ),
+
+  spacing = list(
+    edge_pt            = 10.8,
+    title_bottom_pt    = 5,
+    subtitle_bottom_pt = 14,
+    source_top_pt      = 12,
+    axis_title_gap_pt  = 10,
+    axis_text_gap_pt   = 4
+  ),
+
+  render = list(
+    figure_dpi    = 300,
+    table_css_dpi = 96
+  ),
+
+  infographic = list(
+    width_in  = 6.5,
+    height_in = 8.5,
+    css_dpi   = 144
+  )
+)
+
+# Usable publication width is always derived from page width and margins.
+PUB$page$body_in <- PUB$page$width_in - 2 * PUB$page$margin_in
+
+stopifnot(PUB$page$body_in > 0)
+
+pub_pt_to_px <- function(pt, dpi) {
+  pt * dpi / 72
+}

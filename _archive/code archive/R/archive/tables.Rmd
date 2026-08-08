@@ -1,0 +1,858 @@
+title: "GTCI Tables"
+author: "Emerson Johnston"
+---
+
+# Setup
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo      = FALSE,
+  warning   = FALSE,
+  message   = FALSE,
+  fig.width  = 8.0,
+  fig.height = 5.5,
+  dpi       = 300,
+  fig.align = "center",
+  dev       = "ragg_png"
+)
+
+library(tidyverse)
+library(scales)
+library(showtext)
+library(ggtext)
+library(ggrepel)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(gt)
+library(gtExtras)
+library(webshot2)
+library(magick)
+library(pdftools)
+
+source("R/theme.R")
+source("R/helpers.R")
+source("R/tables.R")
+source("R/chart_layers.R")
+source("R/maps.R")
+```
+
+# Chapter 1 
+
+### Chapter 1 - Table 6 - Change (1995-2024) in Int. Share of STEM Degrees Awarded by Field - Bachelors
+```{r table 006}
+# meta_a <- get_meta("tab_006a")
+# meta_b <- get_meta("tab_006b")
+# meta_c <- get_meta("tab_006c")
+meta_d  <- get_meta("tab_006d")
+
+# tab_006a <- build_change_table("tab_006a", meta_a)
+# tab_006b <- build_change_table("tab_006b", meta_b)
+# tab_006c <- build_change_table("tab_006c", meta_c)
+tab_006d <- build_change_table_wide("tab_006d", meta_d)
+
+# save_table(tab_006a, "chapter1_tab_006a")
+# save_table(tab_006b, "chapter1_tab_006b")
+# save_table(tab_006c, "chapter1_tab_006c")
+save_table(tab_006d, "chapter1_tab_006d")
+```
+
+# Chapter 2 
+
+### Chapter 2 - Table 7 - Change (1995-2024) in Int. Share of STEM Degrees Awarded by Field - Bachelors
+```{r table 007}
+meta_007 <- get_meta("tab_007")
+
+tab_007 <- build_region_table(
+  name = "tab_007",
+  meta = meta_007
+)
+
+save_table(tab_007, "chapter2_tab_007")
+```
+
+### Chapter 2 - Table 8 - What Share of Each Country's International Students Are Enrolled in Key STEM Fields?
+```{r table 008}
+meta <- get_meta("tab_008")
+
+field_files <- c(
+  "Engineering"              = "fig_112",
+  "Math & Computer Science"  = "fig_113",
+  "Physical & Life Sciences" = "fig_114"
+)
+
+field_labels <- names(field_files)
+
+read_field_long <- function(name) {
+  read_fig(name) %>%
+    mutate(across(-Year, ~ suppressWarnings(as.numeric(na_if(as.character(.x), "-"))))) %>%
+    pivot_longer(-Year, names_to = "Country", values_to = "Share") %>%
+    filter(!is.na(Share))
+}
+
+long_all <- imap(field_files, ~ read_field_long(.x) %>% mutate(Field = .y)) %>%
+  bind_rows()
+
+summ <- long_all %>%
+  filter(Year %in% c(2009, 2024)) %>%
+  mutate(point = if_else(Year == 2009, "First", "Last")) %>%
+  select(Field, Country, point, Share) %>%
+  pivot_wider(names_from = point, values_from = Share) %>%
+  filter(!is.na(First), !is.na(Last)) %>%
+  mutate(First = First * 100, Last = Last * 100,
+         Change = (Last - First) / First * 100)
+
+# keep only countries with both 2009 and 2024 values in all three fields
+keep_countries <- summ %>% count(Country) %>% filter(n == 3) %>% pull(Country)
+summ <- summ %>% filter(Country %in% keep_countries)
+
+ord_cols <- as.vector(t(outer(field_labels, c("First", "Last", "Change"),
+                              paste, sep = "_")))
+
+country_order <- c(
+  "China",
+  "India",
+  "South Korea",
+  "Canada",
+  "Japan",
+  "Taiwan",
+  "Saudi Arabia",
+  "Mexico",
+  "Vietnam",
+  "Brazil",
+  "Turkey/Türkiye",
+  "Nigeria",
+  "United Kingdom",
+  "Germany",
+  "Hong Kong",
+  "Nepal",
+  "Indonesia",
+  "France",
+  "Colombia",
+  "Pakistan"
+)
+
+df_008 <- summ %>%
+  pivot_wider(
+    names_from  = Field,
+    values_from = c(First, Last, Change),
+    names_glue  = "{Field}_{.value}"
+  ) %>%
+  select(Country, all_of(ord_cols)) %>%
+  arrange(match(Country, country_order)) %>%
+  # ordered by mean field-share change; swap to e.g.
+  # arrange(desc(`Engineering_Last`)) to order by 2024 engineering share
+  mutate(.avg = rowMeans(across(ends_with("_Change")), na.rm = TRUE)) %>%
+  select(-.avg)
+
+tab_008 <- build_field_share_table(df_008, "tab_008", meta, field_labels)
+save_table(tab_008, "chapter2_tab_008")
+```
+
+### Chapter 2 - Table 09 - International Share of U.S. Graduate Enrollment, by Field and Citizenship Status (1980–2024)
+```{r tab_009}
+meta <- get_meta("tab_009")
+
+cite_files <- c(
+  "Science"     = "fig_015",
+  "Engineering" = "fig_016",
+  "Health"      = "fig_017"
+)
+
+read_cite_long <- function(name) {
+  read_fig(name) %>%
+    mutate(across(-Year, ~ suppressWarnings(as.numeric(na_if(as.character(.x), "-"))))) %>%
+    pivot_longer(-Year, names_to = "Group", values_to = "Count") %>%
+    filter(!is.na(Count))
+}
+
+long_all <- imap(cite_files, ~ read_cite_long(.x) %>% mutate(Field = .y)) %>%
+  bind_rows() %>%
+  mutate(Group = recode(Group,
+    "U.S. citizens and permanent residents" = "USC",
+    "Temporary visa holders"                = "TVH"))
+
+first_year <- min(long_all$Year, na.rm = TRUE)
+last_year  <- max(long_all$Year, na.rm = TRUE)
+
+# counts -> within-field citizenship share, per Field × Year
+shares <- long_all %>%
+  filter(Year %in% c(first_year, last_year)) %>%
+  group_by(Field, Year) %>%
+  mutate(Share = Count / sum(Count) * 100) %>%
+  ungroup()
+
+summ <- shares %>%
+  mutate(point = if_else(Year == first_year, "First", "Last")) %>%
+  select(Field, Group, point, Share) %>%
+  pivot_wider(names_from = point, values_from = Share) %>%
+  mutate(Change = (Last - First) / First * 100)   # relative change in share
+
+ord_cols <- as.vector(t(outer(c("USC", "TVH"),
+                              c("First", "Last", "Change"), paste, sep = "_")))
+
+field_order <- c("Science", "Engineering", "Health")
+
+df_009 <- summ %>%
+  pivot_wider(
+    names_from  = Group,
+    values_from = c(First, Last, Change),
+    names_glue  = "{Group}_{.value}"
+  ) %>%
+  select(Field, all_of(ord_cols)) %>%
+  arrange(match(Field, field_order))
+
+tab_009 <- build_citizenship_table(df_009, "tab_009", meta,
+                        first_year = first_year, last_year = last_year,
+                        value_is_share = TRUE,
+                        footnote = paste(
+                          "Within-field citizenship share of U.S. graduate enrollment in",
+                          "science, engineering, and health. Change is the relative change",
+                          "in share between", first_year, "and", last_year, "."))
+
+save_table(tab_009, "chapter2_tab_009")
+```
+
+### Chapter 2 - Table 10 - Research Doctorate Recipients, by Field and Citizenship Status (2014–2024)
+```{r table_010}
+meta <- get_meta("tab_010")
+
+phd_files <- c(
+  "USC" = "fig_018",
+  "TVH" = "fig_019"
+)
+
+read_phd_long <- function(name) {
+  read_fig(name) %>%
+    mutate(across(-Year, ~ suppressWarnings(as.numeric(na_if(as.character(.x), "-"))))) %>%
+    pivot_longer(-Year, names_to = "Field", values_to = "Count") %>%
+    filter(!is.na(Count)) %>%
+    mutate(Field = recode(Field, "Social Science" = "Social Sciences"))
+}
+
+long_all <- imap(phd_files, ~ read_phd_long(.x) %>% mutate(Group = .y)) %>%
+  bind_rows()
+
+first_year <- min(long_all$Year, na.rm = TRUE)
+last_year  <- max(long_all$Year, na.rm = TRUE)
+
+summ <- long_all %>%
+  filter(Year %in% c(first_year, last_year)) %>%
+  mutate(point = if_else(Year == first_year, "First", "Last")) %>%
+  select(Field, Group, point, Count) %>%
+  pivot_wider(names_from = point, values_from = Count) %>%
+  mutate(Change = (Last - First) / First * 100)
+
+# wide counts: USC_First/Last/Change, TVH_First/Last/Change
+counts_wide <- summ %>%
+  pivot_wider(
+    names_from  = Group,
+    values_from = c(First, Last, Change),
+    names_glue  = "{Group}_{.value}"
+  )
+
+# international share = TVH / (TVH + USC), per year, + relative change
+df_010 <- counts_wide %>%
+  mutate(
+    SHR_First  = TVH_First / (TVH_First + USC_First) * 100,
+    SHR_Last   = TVH_Last  / (TVH_Last  + USC_Last)  * 100,
+    SHR_Change = (SHR_Last - SHR_First) / SHR_First * 100
+  ) %>%
+  select(Field,
+         USC_First, USC_Last, USC_Change,
+         TVH_First, TVH_Last, TVH_Change,
+         SHR_First, SHR_Last, SHR_Change) %>%
+  arrange(Field == "Non-sciences", desc(TVH_Last))
+
+tab_010 <- build_citizenship_table(df_010, "tab_010", meta,
+                        first_year = first_year, last_year = last_year,
+                        value_is_share = FALSE,
+                        share_group = TRUE,
+                        footnote = paste(
+                          "Research doctorate recipients by field and citizenship.",
+                          "Change is the percent change between", first_year, "and", last_year, ".",
+                          "International share is temporary visa holders as a percentage of",
+                          "all recipients in the field; its change is relative.",
+                          "Fields ordered by 2024 international count; non-sciences shown for comparison."))
+
+save_table(tab_010, "chapter2_tab_010")
+```
+
+# Chapter 3 
+
+### Chapter 3 - Table 11 - Temporary visa holder share of employment by occupation, 2017 / 2021 / 2023 
+```{r}
+meta <- get_meta("tab_011")
+
+short_names <- c(
+  "Biological, agricultural, and other life scientists" = "Biological scientists",
+  "Computer and mathematical scientists"                = "Computer/math scientists",
+  "Physical and related scientists"                     = "Physical scientists",
+  "Social and related scientists"                        = "Social scientists",
+  "Engineers"                                            = "Engineers",
+  "S&E-related occupations"                               = "S&E-related occupations",
+  "Non-S&E occupations"                                   = "Non-S&E occupations"
+)
+
+row_order <- c("Computer/math scientists", "Engineers", "Biological scientists",
+               "Physical scientists", "Social scientists",
+               "S&E-related occupations", "Non-S&E occupations")
+
+df_011 <- read_fig("tab_011") %>%
+  mutate(across(-Year, as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Occupation", values_to = "Rate") %>%
+  filter(!is.na(Rate), Year %in% c(2017, 2019, 2021, 2023)) %>%
+  mutate(Rate = Rate * 100,
+         Occupation = recode(Occupation, !!!short_names)) %>%
+  pivot_wider(names_from = Year, values_from = Rate, names_prefix = "Y") %>%
+  mutate(
+    Chg2019 = (Y2019 - Y2017) / Y2017 * 100,
+    Chg2021 = (Y2021 - Y2019) / Y2019 * 100,
+    Chg2023 = (Y2023 - Y2021) / Y2021 * 100,
+    Change  = (Y2023 - Y2017) / Y2017 * 100,
+    Occupation = factor(Occupation, levels = row_order)
+  ) %>%
+  arrange(Occupation) %>%
+  select(Occupation, Y2017, Chg2019, Chg2021, Chg2023, Y2023, Change)
+
+tab_011 <- build_occupation_share_table(
+  df_011, "tab_011", meta,
+  level_cols = c("Y2017", "Y2023"),
+  chg_cols   = c("Chg2019", "Chg2021", "Chg2023")
+)
+
+save_table(tab_011, "chapter3_tab_011")
+tab_011
+```
+
+
+### Chapter 3 - Table 12 - Top H1B Visa Employers in 2017 and 2025
+```{r tab_012}
+meta <- get_meta("tab_012")
+
+shares <- fig030_shares()
+
+# union of firms that were top-10 in EITHER year
+union_firms <- shares %>%
+  filter(Year %in% c(2017, 2025)) %>%
+  group_by(Year) %>%
+  slice_max(Count, n = 10) %>%
+  ungroup() %>%
+  distinct(Company) %>%
+  pull(Company)
+
+wide <- shares %>%
+  filter(Year %in% c(2017, 2025), Company %in% union_firms) %>%
+  select(Company, Year, Share) %>%
+  pivot_wider(names_from = Year, values_from = Share, names_prefix = "Y")
+
+df_012 <- wide %>%
+  mutate(
+    Company = recode(Company, !!!short_names),
+    Y1 = Y2017, Y2 = Y2025,
+    Change = if_else(Y2017 > 0, (Y2025 - Y2017) / Y2017 * 100, NA_real_)
+  ) %>%
+  arrange(desc(Change)) %>%          # order by 2025 share (today's leaders first)
+  select(Company, Y1, Y2, Change)
+
+tab_012 <- build_h1b_top10_table(df_012, "tab_012", meta,
+                                 first_year = 2017, last_year = 2025)
+save_table(tab_012, "chapter3_tab_012")
+tab_012
+```
+
+### Chapter 3 - Table 13 - Labor Force Participation Rate of International Students as a Share of All Employed
+```{r tab_013}
+meta <- get_meta("tab_013")
+
+# short row labels -- the raw CSV categories are very long
+short_cats <- c(
+  "Employed in the U.S. Labor Force in a STEM Occupation Directed Related to Science and Engineering"   = "STEM, directly S&E-related",
+  "Employed in the U.S. Labor Force in a STEM Occupation Indirectly Related to Science and Engineering" = "STEM, indirectly S&E-related",
+  "Employed in the U.S. Labor Force in a STEM Occupation with a STEM middle skill"                      = "STEM, middle-skill",
+  "Employed in the U.S. Labor Force in a non-STEM Occupation"                                            = "Non-STEM occupation",
+  "Unemployed in the U.S. Labor Force"                                                                   = "Unemployed",
+  "Not in the U.S. labor force"                                                                          = "Not in labor force",
+  "Total"                                                                                                = "Total"
+)
+
+row_order <- c("STEM, directly S&E-related", "STEM, indirectly S&E-related",
+               "STEM, middle-skill", "Non-STEM occupation",
+               "Unemployed", "Not in labor force", "Total")
+
+df_013 <- read_fig("fig_025") %>%
+  mutate(
+    total_n = US_citizen + TPV,
+    Citizen = US_citizen / total_n * 100,
+    TVH     = TPV / total_n * 100,
+    Category = recode(Category, !!!short_cats),
+    Category = factor(Category, levels = row_order)
+  ) %>%
+  arrange(Category) %>%
+  select(Category, Citizen, TVH)
+
+tab_013 <- build_labor_citizenship_table(df_013, "tab_013", meta)
+
+save_table(tab_013, "chapter3_tab_013")
+tab_013
+```
+
+### Chapter 3 - Table 14 - STEM Degree to STEM Job Converstion Rate
+```{r tab_14}
+meta <- get_meta("tab_014")   # or reuse fig_029's meta
+
+df_029t <- read_fig("fig_029") %>%
+  mutate(across(-Year, as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Level", values_to = "Share") %>%
+  filter(!is.na(Share), Year %in% c(1993, 2003, 2013, 2023)) %>%
+  mutate(
+    Share = Share * 100,
+    Level = case_when(
+      str_detect(Level, regex("bach", ignore_case = TRUE)) ~ "Bachelors",
+      str_detect(Level, regex("mast", ignore_case = TRUE)) ~ "Masters",
+      str_detect(Level, regex("doct", ignore_case = TRUE)) ~ "Doctorate"
+    )
+  ) %>%
+  pivot_wider(names_from = Year, values_from = Share, names_prefix = "Y") %>%
+  mutate(
+    Chg2003 = (Y2003 - Y1993) / Y1993 * 100,
+    Chg2013 = (Y2013 - Y2003) / Y2003 * 100,
+    Chg2023 = (Y2023 - Y2013) / Y2013 * 100,
+    Change  = (Y2023 - Y1993) / Y1993 * 100,
+    Occupation = factor(Level, levels = c("Bachelors", "Masters", "Doctorate"))
+  ) %>%
+  arrange(Occupation) %>%
+  select(Occupation, Y1993, Chg2003, Chg2013, Chg2023, Y2023, Change)
+
+tab_014 <- build_occupation_share_table(
+  df_029t, "tab_014", meta,
+  level_cols    = c("Y1993", "Y2023"),
+  chg_cols      = c("Chg2003", "Chg2013", "Chg2023"),
+  spanner_label = "Share employed in STEM",
+  footnote = paste(
+    "1993 is the share of graduates at each degree level employed in a STEM",
+    "occupation. 2003, 2013, and 2023 show the relative change from the prior",
+    "period shown rather than the share itself. Net Change is the relative",
+    "change in share from 1993 to 2023."
+  )
+)
+
+save_table(tab_014, "chapter3_tab_014")
+tab_014
+```
+
+# Chapter 4 
+
+### Chapter 4 - Table 15 - How Many Times Do STEM Majors Change Majors
+```{r tab_015}
+meta <- get_meta("tab_015")
+tab_015 <- build_bookend_table(
+  "tab_015", meta,
+  first = "2004/2009 Survey", last = "2012/2017 Survey",
+  id_col = "Survey",
+  first_label = "2004/2009", last_label = "2012/2017",
+  spanner_label = "Share of STEM entrants",
+  change_type = "relative",
+  recode_cats = c("Never"          = "Never switched",
+                  "Once"           = "Switched once",
+                  "More than Once" = "Switched 2+ times"),
+  cat_order = c("Never switched", "Switched once", "Switched 2+ times"),
+  footnote = paste(
+    "Share of STEM entrants by number of major switches. Net change is the",
+    "relative change from the 2004/2009 to the 2012/2017 cohort."
+  )
+)
+save_table(tab_015, "chapter4_tab_015")
+tab_015
+```
+
+### Chapter 4 - Table 16 = What Do Americans Study Abroad?
+```{r tab_016}
+meta <- get_meta("tab_016")
+tab_016 <- build_bookend_table(
+  "fig_040", meta,
+  first = 2005, last = 2024,
+  spanner_label = "Share of students",
+  change_type = "relative",
+  sort_by = "change",
+  recode_cats = c("STEM Fields"           = "STEM",
+                  "Business & Management" = "Business & management",
+                  "Social Sciences"       = "Social sciences",
+                  "Fine and Applied Arts" = "Fine & applied arts"),
+  flagged_rows = c("Social sciences", "Humanities", "Other"),
+  flag_note = paste(
+    "Open Doors revised its field taxonomy between 2013 and 2014; shares for",
+    "these categories are not directly comparable across that break, so the",
+    "reported change reflects reclassification as well as any real shift."
+  ),
+  footnote = paste(
+    "Share of U.S. study-abroad students by field of study.",
+    "Net change is the relative change from 2005 to 2024."
+  )
+)
+save_table(tab_016, "chapter4_tab_016")
+tab_016
+```
+
+### Chapter 4 - Table 17 - Where Do American's Study Abroad
+```{r tab_017}
+meta <- get_meta("tab_017")
+tab_017 <- build_bookend_table(
+  "fig_041", meta,
+  first = 2005, last = 2024,
+  spanner_label = "Share of students",
+  change_type = "relative",
+  sort_by = "last",
+  drop_cols = "Antarctica",
+  recode_cats = c("Africa, Sub-Saharan"   = "Sub-Saharan Africa",
+                  "Multiple Destinations" = "Multiple destinations"),
+  footnote = paste(
+    "Share of U.S. study-abroad students by host region. Net change is the",
+    "relative change from 2005 to 2024, which is volatile for small-share",
+    "regions (e.g., the Middle East & North Africa moved 1.0% to 1.6%)."
+  )
+)
+save_table(tab_017, "chapter4_tab_017")
+tab_017
+```
+### Chapter 4 - Table 18 - Where Do American's Study Abroad
+```{r tab_018}
+meta <- get_meta("tab_018")   # or a dedicated tab_038a entry
+
+tab_038a <- build_bookend_table(
+  name          = "fig_038a",
+  meta          = meta,
+  first         = "2003/04",
+  last          = "2011/12",
+  id_col        = "cohort",
+  spanner_label = "Share of STEM entrants",
+  change_type   = "relative",
+  recode_cats = c(
+    stem_bachelors    = "Completed Bachelor's Degree in STEM Field",
+    nonstem_bachelors = "Completed Bachelor's Degree in Another, Non-STEM Field",
+    subbac_credential = "Completed A Subbac Credential",
+    still_enrolled    = "Still Enrolled",
+    left_no_degree    = "Left with No Degree"
+  ),
+  cat_order = c(
+    "Completed Bachelor's Degree in STEM Field",
+    "Completed Bachelor's Degree in Another, Non-STEM Field",
+    "Completed A Subbac Credential",
+    "Still Enrolled",
+    "Left with No Degree"
+  ),
+  footnote = paste(
+    "Values are the share of each entering STEM cohort ending in each outcome;",
+    "each year column sums to 100%. Net change is the relative change from the",
+    "2003/04 cohort to the 2011/12 cohort."
+  )
+)
+save_table(tab_038a, "chapter4_tab_018")
+```
+
+# Chapter 5 
+
+### Chapter 5 - Table 1 - US Universities in the Global Top 100 Over Time
+```{r tab_001}
+meta <- get_meta("tab_001")
+num  <- function(x) parse_number(as.character(x))
+
+field_order <- c("Physical Sciences", "Life Sciences", "Engineering", "Computer Science")
+years_shown <- c(2014, 2018, 2022, 2026)
+
+raw <- read_fig("tab_001") %>%
+  rename(Year = 1) %>%
+  mutate(Year = as.integer(num(Year)))
+
+cs_2017 <- raw %>% filter(Year == 2017) %>% pull(`Computer Science`) %>% num()
+
+df_001 <- raw %>%
+  select(Year, all_of(field_order)) %>%                 # drop precomputed Average
+  filter(Year %in% years_shown) %>%
+  pivot_longer(-Year, names_to = "Field", values_to = "value") %>%
+  mutate(value = num(value)) %>%
+  pivot_wider(names_from = Year, values_from = value, names_prefix = "Y") %>%
+  mutate(
+    # computer science was first ranked in 2017; drop its 2017 count into the
+    # 2014 slot so its change and net columns chain consistently
+    Y2014   = if_else(Field == "Computer Science" & is.na(Y2014), cs_2017, Y2014),
+    Chg2018 = Y2018 - Y2014,
+    Chg2022 = Y2022 - Y2018,
+    Chg2026 = Y2026 - Y2022,
+    Change  = Y2026 - Y2014,
+    Field   = factor(Field, levels = field_order)
+  ) %>%
+  arrange(Field) %>%
+  select(Field, Y2014, Chg2018, Chg2022, Chg2026, Y2026, Change)
+
+tab_001 <- build_ranking_delta_table(
+  df_001, "tab_001", meta,
+  level_cols  = c("Y2014", "Y2026"),
+  chg_cols    = c("Chg2018", "Chg2022", "Chg2026"),
+  change_type = "absolute",
+  footnote = paste(
+    "Counts are U.S. universities in the global top 100 in each field, in 2014 and",
+    "2026. Interior columns show the change in that count from the prior shown year;",
+    "Net Change is the change from 2014 to 2026."
+  ),
+  cell_footnote       = paste(
+    "Computer science was first ranked in 2017; its 2017 count is shown here in the",
+    "2014 column so its change and net columns can be computed."
+  ),
+  cell_footnote_field = "Computer Science",
+  cell_footnote_col   = "Y2014"
+)
+save_table(tab_001, "chapter5_tab_001")
+tab_001
+```
+
+
+### Chapter 5 - Table 19 - By Conference Publication Changes
+```{r table 019}
+conf_names <- c(
+  nips    = "NeurIPS (ML / AI)",      icml   = "ICML (ML)",
+  iclr    = "ICLR (ML)",              aistats = "AISTATS (Stats / ML)",
+  acml    = "ACML (ML)",              colt   = "COLT (Theory)",
+  uai     = "UAI (Probabilistic ML)", cvpr   = "CVPR (Vision)",
+  iccv    = "ICCV (Vision)",          wacv   = "WACV (Vision)",
+  acl     = "ACL (NLP)",              emnlp  = "EMNLP (NLP)",
+  naacl   = "NAACL (NLP)",            coling = "COLING (NLP)",
+  ijcai   = "IJCAI (AI)",             icra   = "ICRA (Robotics)",
+  iros    = "IROS (Robotics)",        corl   = "CoRL (Robotics / ML)",
+  rss     = "RSS (Robotics)",         siggraphasia = "SIGGRAPH Asia (Graphics)"
+)
+
+build_conference_summary_table(
+  name       = "tab_019",     # output id; adjust to the next free table number
+  meta       = get_meta("tab_019"),
+  conf_names = conf_names,
+  data_name  = "fig_048"      # reads fig_048.csv (the long author-share file)
+) %>%
+  save_table("chapter5_tab_019")
+```
+
+### Chapter 5 - Table 20 - Patents By Field, Country
+```{r table 020}
+build_patents_table(
+  name    = "tab_020",     # output id; adjust to next free table number
+  meta    = get_meta("tab_020"),
+  sources = c(
+    "Biotechnology"       = "fig_059",
+    "Semiconductors"      = "fig_060",
+    "Computer technology" = "fig_061"
+  )
+) %>%
+  save_table("chapter5_tab_020")
+```
+
+### Chapter 5 - Table 21 - R&D Investment By Type
+```{r table 020}
+meta <- get_meta("tab_021")
+
+type_labels <- c(
+  "Basic Research"           = "Basic research (for tomorrow)",
+  "Applied Research"          = "Applied research (for today)",
+  "Experimental Development"  = "Experimental development (for today)"
+)
+type_order <- c("Basic research (for tomorrow)",
+                "Applied research (for today)",
+                "Experimental development (for today)")
+
+df_125 <- read_fig("fig_125") %>%
+  rename(Year = 1, Country = 2, Type = 3, value = 4) %>%
+  mutate(Year  = as.numeric(as.character(Year)),
+         value = as.numeric(value)) %>%
+  filter(Year %in% c(1994, 2004, 2014, 2024)) %>%
+  mutate(Type = recode(Type, !!!type_labels)) %>%
+  pivot_wider(names_from = Year, values_from = value, names_prefix = "Y") %>%
+  mutate(
+    Chg2004 = (Y2004 - Y1994) / Y1994 * 100,
+    Chg2014 = (Y2014 - Y2004) / Y2004 * 100,
+    Chg2024 = (Y2024 - Y2014) / Y2014 * 100,
+    Change  = (Y2024 - Y1994) / Y1994 * 100,
+    Country = factor(Country, levels = c("United States", "China")),
+    Type    = factor(Type, levels = type_order)
+  ) %>%
+  arrange(Country, Type) %>%
+  select(Country, Type, Y1994, Chg2004, Chg2014, Chg2024, Y2024, Change)
+
+tab_021 <- build_rd_type_delta_table(
+  df_125, "tab_022", meta,
+  level_cols = c("Y1994", "Y2024"),
+  chg_cols   = c("Chg2004", "Chg2014", "Chg2024")
+)
+save_table(tab_021, "chapter5_tab_021")
+
+```
+
+### Chapter 5 - Table 22 - R&D Spending by Sector, U.S. and China
+```{r tab_022}
+meta <- get_meta("tab_022")
+
+sector_labels <- c(
+  "Business enterprise sector" = "Business enterprise",
+  "Government sector"          = "Government",
+  "Higher education sector"    = "Higher education",
+  "Private non-profit sector"  = "Private non-profit"
+)
+sector_order <- c("Business enterprise", "Government",
+                  "Higher education", "Private non-profit")
+
+df_022 <- read_fig("tab_022") %>%
+  rename(Year = 1, Country = 2, Type = 3, value = 4) %>%
+  mutate(Year  = as.numeric(as.character(Year)),
+         value = as.numeric(value)) %>%
+  filter(Type %in% names(sector_labels),
+         Year %in% c(1994, 2004, 2014, 2024)) %>%
+  mutate(Type = recode(Type, !!!sector_labels)) %>%
+  complete(Country, Type, Year, fill = list(value = 0)) %>%   # China private non-profit -> $0
+  pivot_wider(names_from = Year, values_from = value, names_prefix = "Y") %>%
+  mutate(
+    Chg2004 = (Y2004 - Y1994) / Y1994 * 100,
+    Chg2014 = (Y2014 - Y2004) / Y2004 * 100,
+    Chg2024 = (Y2024 - Y2014) / Y2014 * 100,
+    Change  = (Y2024 - Y1994) / Y1994 * 100,
+    across(c(Chg2004, Chg2014, Chg2024, Change), ~ ifelse(is.finite(.), ., 0)),  # 0/0 -> 0%
+    Country = factor(Country, levels = c("United States", "China")),
+    Type    = factor(Type, levels = sector_order)
+  ) %>%
+  arrange(Country, Type) %>%
+  select(Country, Type, Y1994, Chg2004, Chg2014, Chg2024, Y2024, Change)
+
+tab_022 <- build_rd_type_delta_table(
+  df_022, "tab_022", meta,
+  level_cols = c("Y1994", "Y2024"),
+  chg_cols   = c("Chg2004", "Chg2014", "Chg2024"),
+  footnote = paste(
+    "The first and last columns are spending levels in billions of US dollars (PPP",
+    "converted). The interior columns show the relative change from the prior shown",
+    "year rather than the level. Net Change is the relative change across the full",
+    "window. Sectors denote where R&D is performed. China reports no private non-profit",
+    "R&D; it is shown as $0, and its relative-change cells (change from a zero base is",
+    "undefined) appear as 0%."
+  )
+)
+save_table(tab_022, "chapter5_tab_022")
+tab_022
+```
+
+### Chapter 5 - Table 23 - Patents by Company
+```{r tab_023}
+meta <- get_meta("tab_023")
+num  <- function(x) parse_number(as.character(x))
+
+flag_slug <- c(
+  "United States" = "united-states",
+  "Japan"         = "japan",
+  "Taiwan"        = "taiwan",
+  "South Korea"   = "south-korea",
+  "Germany"       = "germany",
+  "China"         = "china"
+)
+
+df_023 <- read_fig("tab_023") %>%
+  rename(Company = 1, Country = 2, Y2005 = 3, Y2015 = 4, Y2025 = 5) %>%
+  mutate(across(c(Y2005, Y2015, Y2025), num)) %>%
+  mutate(
+    flag    = paste0("flags/", recode(Country, !!!flag_slug), ".png"),
+    Chg2015 = Y2015 - Y2005,
+    Chg2025 = Y2025 - Y2015,
+    Change  = Y2025 - Y2005
+  ) %>%
+  arrange(desc(Change)) %>%
+  select(Company, flag, Y2005, Chg2015, Y2015, Chg2025, Y2025, Change)
+
+tab_023 <- build_patent_company_delta_table(
+  df_023, "tab_023", meta,
+  level_cols  = c("Y2005", "Y2015", "Y2025"),
+  chg_cols    = c("Chg2015", "Chg2025"),
+  change_type = "absolute"
+)
+save_table(tab_023, "chapter5_tab_023")
+```
+
+### Chapter 5 - Table 24 - Count and Share of Top Researchers
+```{r tab_024}
+meta <- get_meta("tab_024")   # add a tab_046 row to titles_and_sources
+
+tab_024 <- build_count_share_bookend_table(
+  name  = "fig_046",          # reads the same CSV as the figure
+  meta  = meta,
+  first = 2014,
+  last  = 2025,
+  entities      = list("United States" = "US", "China" = "CN"),
+  count_spanner = "Researchers in global top 1%",
+  share_spanner = "Share of global top 1%",
+  footnote = paste(
+    "Count is the number of top-1% most-cited researchers with a primary",
+    "affiliation in each country; share is that country's percentage of the",
+    "global top 1%. Change columns are the absolute change in count and the",
+    "percentage-point change in share between 2014 and 2025."
+  )
+)
+
+save_table(tab_024, "chapter5_tab_024")
+```
+
+# Chapter 6
+
+### Chapter 6 - Table 25 - Net Change in Intentions 
+```{r table 025}
+meta <- get_meta("tab_025")
+
+tab_025 <- build_bookend_table(
+  "fig_068", meta,
+  first = 2021, last = 2024,
+  spanner_label = "Share with U.S. plans",
+  sort_by = "change",
+  scale = 100
+)
+
+save_table(tab_025, "chapter6_tab_025")
+```
+
+### Chapter 6 - Table 26 - Employment-Based Visa Processing Wait Times
+```{r table 026}
+meta <- get_meta("tab_026")
+
+tab_026 <- build_eb_combined_table(meta)
+
+save_table(tab_003, "chapter6_tab_026")
+tab_026
+```
+
+### Chapter 6 - Table 27 - Employment-Based Visa Processing Wait Times
+```{r table 027}
+meta <- get_meta("tab_027")
+
+tab_027 <- build_sector_bookend_table(meta)
+
+save_table(tab_027, "chapter6_tab_027")
+tab_027
+```
+
+### Chapter 6 - Table 28 - Share Intending to Stay in the U.S., by World Region
+```{r table 028}
+meta <- get_meta("tab_028")
+
+tab_028 <- build_bookend_table(
+  "fig_066", meta,
+  first = 2002, last = 2024,
+  spanner_label = "Intend to stay",
+  scale = 100,
+  drop_cols = "Region and country or economy unknown",
+  change_type = "ppt"
+)
+
+save_table(tab_066, "chapter6_tab_028")
+tab_028
+```
+
+### Chapter 6 - Table 29 - How Many PERM Certifications Go Unused
+```{r table 029}
+meta <- get_meta("tab_029")
+
+tab_029 <- build_perm_expiry_table(meta)
+
+save_table(tab_029, "chapter6_tab_029")
+tab_029
+```

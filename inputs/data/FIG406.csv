@@ -1,0 +1,25 @@
+cohort,entry_field,degree_field,pct,reliability
+2003/04,Computer & information sciences,Computer & information sciences,49.3,
+2003/04,Computer & information sciences,Engineering,4.0,
+2003/04,Computer & information sciences,"Bio/physical sciences, math & ag",4.2,
+2003/04,Computer & information sciences,Non-STEM field,42.4,
+2003/04,Engineering,Computer & information sciences,4.6,
+2003/04,Engineering,Engineering,62.5,
+2003/04,Engineering,"Bio/physical sciences, math & ag",6.6,
+2003/04,Engineering,Non-STEM field,26.2,
+2003/04,"Bio/physical sciences, math & ag",Computer & information sciences,,not_available
+2003/04,"Bio/physical sciences, math & ag",Engineering,2.2,
+2003/04,"Bio/physical sciences, math & ag","Bio/physical sciences, math & ag",55.3,
+2003/04,"Bio/physical sciences, math & ag",Non-STEM field,42.3,
+2011/12,Computer & information sciences,Computer & information sciences,66.7,
+2011/12,Computer & information sciences,Engineering,1.8,unstable_50plus
+2011/12,Computer & information sciences,"Bio/physical sciences, math & ag",3.5,unstable_30_50
+2011/12,Computer & information sciences,Non-STEM field,27.9,
+2011/12,Engineering,Computer & information sciences,5.8,
+2011/12,Engineering,Engineering,66.5,
+2011/12,Engineering,"Bio/physical sciences, math & ag",4.3,
+2011/12,Engineering,Non-STEM field,23.3,
+2011/12,"Bio/physical sciences, math & ag",Computer & information sciences,1.4,unstable_30_50
+2011/12,"Bio/physical sciences, math & ag",Engineering,2.8,
+2011/12,"Bio/physical sciences, math & ag","Bio/physical sciences, math & ag",47.5,
+2011/12,"Bio/physical sciences, math & ag",Non-STEM field,48.3,

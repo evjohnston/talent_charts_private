@@ -1,0 +1,26 @@
+{
+    "id": "740C49FE",
+    "path": "~/Downloads/_Work/Talent/talent_charts/inputs/scripts/publication_spec.R",
+    "project_path": "inputs/scripts/publication_spec.R",
+    "type": "r_source",
+    "hash": "2727915284",
+    "contents": "",
+    "dirty": false,
+    "created": 1786217555712.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "19,28",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1786222187,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1786222187535,
+    "read_only": false,
+    "read_only_alternatives": []
+}

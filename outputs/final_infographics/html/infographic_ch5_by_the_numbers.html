@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<style>body{background-color:white;}</style>
+
+
+</head>
+<body>
+<div id="chapter5_numbers" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:936px;height:auto;">
+  <style>@import url("https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Chivo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cairo:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+#chapter5_numbers table {
+  font-family: 'Source Sans 3', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Cairo;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#chapter5_numbers thead, #chapter5_numbers tbody, #chapter5_numbers tfoot, #chapter5_numbers tr, #chapter5_numbers td, #chapter5_numbers th {
+  border-style: none;
+}
+
+#chapter5_numbers p {
+  margin: 0;
+  padding: 0;
+}
+
+#chapter5_numbers .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 15.5px;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: 936px;
+  border-top-style: none;
+  border-top-width: 3px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#chapter5_numbers .gt_title {
+  color: #333333;
+  font-size: 25px;
+  font-weight: bold;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#chapter5_numbers .gt_subtitle {
+  color: #333333;
+  font-size: 15px;
+  font-weight: initial;
+  padding-top: 7px;
+  padding-bottom: 9px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#chapter5_numbers .gt_heading {
+  background-color: #FFFFFF;
+  text-align: left;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_bottom_border {
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_col_headings {
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #000000;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 15px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#chapter5_numbers .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 15px;
+  font-weight: bold;
+  text-transform: uppercase;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#chapter5_numbers .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#chapter5_numbers .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#chapter5_numbers .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #000000;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#chapter5_numbers .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#chapter5_numbers .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D8D3CB;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #D8D3CB;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#chapter5_numbers .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: none;
+  border-top-width: 2px;
+  border-top-color: #D8D3CB;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: #D8D3CB;
+  vertical-align: middle;
+}
+
+#chapter5_numbers .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#chapter5_numbers .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#chapter5_numbers .gt_row {
+  padding-top: 2.036px;
+  padding-bottom: 2.036px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D8D3CB;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#chapter5_numbers .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 0px;
+  border-right-color: #FFFFFF;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#chapter5_numbers .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#chapter5_numbers .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#chapter5_numbers .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#chapter5_numbers .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#chapter5_numbers .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#chapter5_numbers .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#chapter5_numbers .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_striped {
+  background-color: #FFFFFF;
+}
+
+#chapter5_numbers .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#chapter5_numbers .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#chapter5_numbers .gt_sourcenote {
+  font-size: 13.5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#chapter5_numbers .gt_left {
+  text-align: left;
+}
+
+#chapter5_numbers .gt_center {
+  text-align: center;
+}
+
+#chapter5_numbers .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#chapter5_numbers .gt_font_normal {
+  font-weight: normal;
+}
+
+#chapter5_numbers .gt_font_bold {
+  font-weight: bold;
+}
+
+#chapter5_numbers .gt_font_italic {
+  font-style: italic;
+}
+
+#chapter5_numbers .gt_super {
+  font-size: 65%;
+}
+
+#chapter5_numbers .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#chapter5_numbers .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#chapter5_numbers .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#chapter5_numbers .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#chapter5_numbers .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#chapter5_numbers .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#chapter5_numbers .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#chapter5_numbers .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#chapter5_numbers div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+
+#chapter5_numbers tbody tr:last-child {
+  border-bottom: 2px solid #ffffff00;
+}
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 720px !important;
+  overflow: visible !important;
+}
+
+.gt_table {
+  width: 720px !important;
+  max-width: 720px !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.gt_table * {
+  box-sizing: border-box !important;
+}
+
+.gt_table td, .gt_table th {
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.gt_table .gt_stub, .gt_table .gt_rowname {
+  width: 210px !important;
+  min-width: 210px !important;
+  max-width: 210px !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_stub *, .gt_table .gt_rowname * {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_row {
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_col_heading {
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_source_notes {
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 936px !important;
+  overflow: visible !important;
+}
+
+.gt_table {
+  width: 936px !important;
+  max-width: 936px !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.gt_table * {
+  box-sizing: border-box !important;
+}
+
+.gt_table td, .gt_table th {
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+.gt_table .gt_stub, .gt_table .gt_rowname {
+  width: 426px !important;
+  min-width: 426px !important;
+  max-width: 426px !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_stub *, .gt_table .gt_rowname * {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_row {
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_col_heading {
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  hyphens: none !important;
+}
+
+.gt_table .gt_source_notes {
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+}
+
+#chapter5_numbers .infographic-kicker {
+  color: #8c1515;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  line-height: 1.0;
+}
+
+#chapter5_numbers .infographic-main-title {
+  color: grey20;
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.04;
+}
+
+#chapter5_numbers .infographic-subtitle {
+  color: grey40;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+#chapter5_numbers .infographic-panel-label {
+  color: #8c1515;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1.5;
+}
+
+#chapter5_numbers .infographic-panel-title {
+  color: grey20;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  line-height: 1.0;
+}
+
+#chapter5_numbers .gt_heading {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+#chapter5_numbers .gt_subtitle {
+  font-size: 15px !important;
+  line-height: 1.1 !important;
+}
+
+#chapter5_numbers .gt_group_heading {
+  font-size: 15px !important;
+  line-height: 1.05 !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+  white-space: normal !important;
+}
+
+#chapter5_numbers .gt_row {
+  line-height: 1.03 !important;
+}
+
+#chapter5_numbers .gt_stub, #chapter5_numbers .gt_rowname {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+#chapter5_numbers .gt_source_notes {
+  line-height: 1.08 !important;
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+#chapter5_numbers .gt_col_heading {
+  line-height: 1.05 !important;
+}
+</style>
+  <table class="gt_table" style="table-layout:fixed;width:936px;" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+  <colgroup>
+    <col style="width:426px;"/>
+    <col style="width:145px;"/>
+    <col style="width:220px;"/>
+    <col style="width:145px;"/>
+  </colgroup>
+  <thead>
+    <tr class="gt_heading">
+      <td colspan="4" class="gt_heading gt_title gt_font_normal" style="font-family: Chivo; font-weight: 700;"><span class='infographic-kicker'>CHAPTER 5</span><br><span class='infographic-main-title'>THE TALENT MAGNET</span></td>
+    </tr>
+    <tr class="gt_heading">
+      <td colspan="4" class="gt_heading gt_subtitle gt_font_normal gt_bottom_border" style="font-family: Chivo; font-weight: 300;"><span class='infographic-subtitle'>America’s Narrowing Research Advantage</span><br><span class='infographic-panel-label'>BY THE NUMBERS</span></td>
+    </tr>
+    <tr class="gt_col_headings">
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" style="border-top-width: 0px; border-top-style: solid; border-top-color: black; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: 200; text-transform: uppercase;" scope="col" id="a::stub">Measure</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="border-top-width: 3px; border-top-style: solid; border-top-color: #8c1515; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: bold; text-transform: uppercase; color: #FFFFFF; background-color: #887E6F;" scope="col" id="Earlier">Earlier</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="border-top-width: 3px; border-top-style: solid; border-top-color: #8c1515; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: bold; text-transform: uppercase; color: #FFFFFF; background-color: #887E6F;" scope="col" id="Latest">Latest</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_center" rowspan="1" colspan="1" style="border-top-width: 3px; border-top-style: solid; border-top-color: #8c1515; font-family: Chivo; font-size: 14px; vertical-align: bottom; font-weight: bold; text-transform: uppercase; color: #FFFFFF; background-color: #887E6F;" scope="col" id="Change">Change</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr class="gt_group_heading_row">
+      <th colspan="4" class="gt_group_heading" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: black; background-color: #F7F4EF; color: #8C1515; font-weight: bold; text-transform: uppercase;" scope="colgroup" id="The research frontier is converging">The research frontier is converging</th>
+    </tr>
+    <tr class="gt_row_group_first"><th id="stub_1_1" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S. share of NeurIPS oral presentations</th>
+<td headers="The research frontier is converging stub_1_1 Earlier" class="gt_row gt_center" style="font-weight: bold;">69.1% (2013)</td>
+<td headers="The research frontier is converging stub_1_1 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">34.0% (2025)</td>
+<td headers="The research frontier is converging stub_1_1 Change" class="gt_row gt_center" style="font-weight: bold;">-35.1 pp</td></tr>
+    <tr><th id="stub_1_2" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">China share of NeurIPS oral presentations</th>
+<td headers="The research frontier is converging stub_1_2 Earlier" class="gt_row gt_center" style="font-weight: bold;">1.8% (2013)</td>
+<td headers="The research frontier is converging stub_1_2 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">33.6% (2025)</td>
+<td headers="The research frontier is converging stub_1_2 Change" class="gt_row gt_center" style="font-weight: bold;">+31.8 pp</td></tr>
+    <tr><th id="stub_1_3" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap in NeurIPS oral presentations</th>
+<td headers="The research frontier is converging stub_1_3 Earlier" class="gt_row gt_center" style="font-weight: bold;">+67.3% (2013)</td>
+<td headers="The research frontier is converging stub_1_3 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">+0.4% (2025)</td>
+<td headers="The research frontier is converging stub_1_3 Change" class="gt_row gt_center" style="font-weight: bold;">-66.9 pp</td></tr>
+    <tr><th id="stub_1_4" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">Median U.S. share across 20 AI conferences</th>
+<td headers="The research frontier is converging stub_1_4 Earlier" class="gt_row gt_center">38.4% (first obs.)</td>
+<td headers="The research frontier is converging stub_1_4 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">25.7% (latest obs.)</td>
+<td headers="The research frontier is converging stub_1_4 Change" class="gt_row gt_center">-12.7 pp</td></tr>
+    <tr><th id="stub_1_5" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Median China share across 20 AI conferences</th>
+<td headers="The research frontier is converging stub_1_5 Earlier" class="gt_row gt_center" style="font-weight: bold;">4.5% (first obs.)</td>
+<td headers="The research frontier is converging stub_1_5 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">19.8% (latest obs.)</td>
+<td headers="The research frontier is converging stub_1_5 Change" class="gt_row gt_center" style="font-weight: bold;">+15.3 pp</td></tr>
+    <tr><th id="stub_1_6" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">AI conferences where China leads the United States</th>
+<td headers="The research frontier is converging stub_1_6 Earlier" class="gt_row gt_center" style="font-weight: bold;">4 of 20 (first obs.)</td>
+<td headers="The research frontier is converging stub_1_6 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">8 of 20 (latest obs.)</td>
+<td headers="The research frontier is converging stub_1_6 Change" class="gt_row gt_center" style="font-weight: bold;">+4 venues</td></tr>
+    <tr><th id="stub_1_7" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S. share of top-cited emerging-technology publications</th>
+<td headers="The research frontier is converging stub_1_7 Earlier" class="gt_row gt_center">14.2% (2015)</td>
+<td headers="The research frontier is converging stub_1_7 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">8.4% (2025)</td>
+<td headers="The research frontier is converging stub_1_7 Change" class="gt_row gt_center">-5.8 pp</td></tr>
+    <tr><th id="stub_1_8" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">China share of top-cited emerging-technology publications</th>
+<td headers="The research frontier is converging stub_1_8 Earlier" class="gt_row gt_center" style="font-weight: bold;">11.5% (2015)</td>
+<td headers="The research frontier is converging stub_1_8 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">20.8% (2025)</td>
+<td headers="The research frontier is converging stub_1_8 Change" class="gt_row gt_center" style="font-weight: bold;">+9.4 pp</td></tr>
+    <tr><th id="stub_1_9" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap in top-cited publication share</th>
+<td headers="The research frontier is converging stub_1_9 Earlier" class="gt_row gt_center" style="font-weight: bold;">+2.7% (2015)</td>
+<td headers="The research frontier is converging stub_1_9 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">-12.4% (2025)</td>
+<td headers="The research frontier is converging stub_1_9 Change" class="gt_row gt_center" style="font-weight: bold;">-15.1 pp</td></tr>
+    <tr><th id="stub_1_10" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">Top STEM papers with at least one U.S.-affiliated author</th>
+<td headers="The research frontier is converging stub_1_10 Earlier" class="gt_row gt_center">22.3% (2015)</td>
+<td headers="The research frontier is converging stub_1_10 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">16.2% (2025)</td>
+<td headers="The research frontier is converging stub_1_10 Change" class="gt_row gt_center">-6.1 pp</td></tr>
+    <tr><th id="stub_1_11" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Top STEM papers with at least one China-affiliated author</th>
+<td headers="The research frontier is converging stub_1_11 Earlier" class="gt_row gt_center" style="font-weight: bold;">17.1% (2015)</td>
+<td headers="The research frontier is converging stub_1_11 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">32.8% (2025)</td>
+<td headers="The research frontier is converging stub_1_11 Change" class="gt_row gt_center" style="font-weight: bold;">+15.7 pp</td></tr>
+    <tr><th id="stub_1_12" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap in participation on top STEM papers</th>
+<td headers="The research frontier is converging stub_1_12 Earlier" class="gt_row gt_center" style="font-weight: bold;">+5.2% (2015)</td>
+<td headers="The research frontier is converging stub_1_12 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">-16.6% (2025)</td>
+<td headers="The research frontier is converging stub_1_12 Change" class="gt_row gt_center" style="font-weight: bold;">-21.8 pp</td></tr>
+    <tr><th id="stub_1_13" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">Highly cited researchers at U.S. institutions</th>
+<td headers="The research frontier is converging stub_1_13 Earlier" class="gt_row gt_center">1,701 (2014)</td>
+<td headers="The research frontier is converging stub_1_13 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">2,670 (2025)</td>
+<td headers="The research frontier is converging stub_1_13 Change" class="gt_row gt_center">1.6×</td></tr>
+    <tr><th id="stub_1_14" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Highly cited researchers at Chinese institutions</th>
+<td headers="The research frontier is converging stub_1_14 Earlier" class="gt_row gt_center" style="font-weight: bold;">156 (2014)</td>
+<td headers="The research frontier is converging stub_1_14 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">1,566 (2025)</td>
+<td headers="The research frontier is converging stub_1_14 Change" class="gt_row gt_center" style="font-weight: bold;">10.0×</td></tr>
+    <tr><th id="stub_1_15" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S. share of the world's highly cited researchers</th>
+<td headers="The research frontier is converging stub_1_15 Earlier" class="gt_row gt_center">52.9% (2014)</td>
+<td headers="The research frontier is converging stub_1_15 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">37.4% (2025)</td>
+<td headers="The research frontier is converging stub_1_15 Change" class="gt_row gt_center">-15.5 pp</td></tr>
+    <tr><th id="stub_1_16" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">China share of the world's highly cited researchers</th>
+<td headers="The research frontier is converging stub_1_16 Earlier" class="gt_row gt_center" style="font-weight: bold;">4.9% (2014)</td>
+<td headers="The research frontier is converging stub_1_16 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">22.0% (2025)</td>
+<td headers="The research frontier is converging stub_1_16 Change" class="gt_row gt_center" style="font-weight: bold;">+17.1 pp</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="4" class="gt_group_heading" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: black; background-color: #F7F4EF; color: #8C1515; font-weight: bold; text-transform: uppercase;" scope="colgroup" id="The institutional bench is thinning">The institutional bench is thinning</th>
+    </tr>
+    <tr class="gt_row_group_first"><th id="stub_1_17" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S. universities in the global top 100: physical sciences</th>
+<td headers="The institutional bench is thinning stub_1_17 Earlier" class="gt_row gt_center" style="font-weight: bold;">44 (2014)</td>
+<td headers="The institutional bench is thinning stub_1_17 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">38 (2026)</td>
+<td headers="The institutional bench is thinning stub_1_17 Change" class="gt_row gt_center" style="font-weight: bold;">-6</td></tr>
+    <tr><th id="stub_1_18" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S. universities in the global top 100: life sciences</th>
+<td headers="The institutional bench is thinning stub_1_18 Earlier" class="gt_row gt_center" style="font-weight: bold;">40 (2014)</td>
+<td headers="The institutional bench is thinning stub_1_18 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">34 (2026)</td>
+<td headers="The institutional bench is thinning stub_1_18 Change" class="gt_row gt_center" style="font-weight: bold;">-6</td></tr>
+    <tr><th id="stub_1_19" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S. universities in the global top 100: engineering</th>
+<td headers="The institutional bench is thinning stub_1_19 Earlier" class="gt_row gt_center" style="font-weight: bold;">36 (2014)</td>
+<td headers="The institutional bench is thinning stub_1_19 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">32 (2026)</td>
+<td headers="The institutional bench is thinning stub_1_19 Change" class="gt_row gt_center" style="font-weight: bold;">-4</td></tr>
+    <tr><th id="stub_1_20" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S. universities in the global top 100: computer science</th>
+<td headers="The institutional bench is thinning stub_1_20 Earlier" class="gt_row gt_center">25 (2017)</td>
+<td headers="The institutional bench is thinning stub_1_20 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">33 (2026)</td>
+<td headers="The institutional bench is thinning stub_1_20 Change" class="gt_row gt_center">+8</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="4" class="gt_group_heading" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: black; background-color: #F7F4EF; color: #8C1515; font-weight: bold; text-transform: uppercase;" scope="colgroup" id="China closes the R&amp;amp;D resource gap">China closes the R&amp;D resource gap</th>
+    </tr>
+    <tr class="gt_row_group_first"><th id="stub_1_21" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">Total U.S. R&amp;D spending</th>
+<td headers="China closes the R&D resource gap stub_1_21 Earlier" class="gt_row gt_center">$277.4B (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_21 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$847.9B (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_21 Change" class="gt_row gt_center">3.1×</td></tr>
+    <tr><th id="stub_1_22" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Total China R&amp;D spending</th>
+<td headers="China closes the R&D resource gap stub_1_22 Earlier" class="gt_row gt_center" style="font-weight: bold;">$14.3B (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_22 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$859.3B (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_22 Change" class="gt_row gt_center" style="font-weight: bold;">60.1×</td></tr>
+    <tr><th id="stub_1_23" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap in total R&amp;D spending</th>
+<td headers="China closes the R&D resource gap stub_1_23 Earlier" class="gt_row gt_center" style="font-weight: bold;">+$263.1B (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_23 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$11.4B (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_23 Change" class="gt_row gt_center" style="font-weight: bold;">$274.5B</td></tr>
+    <tr><th id="stub_1_24" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S. R&amp;D intensity as a share of GDP</th>
+<td headers="China closes the R&D resource gap stub_1_24 Earlier" class="gt_row gt_center">2.6% (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_24 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">3.4% (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_24 Change" class="gt_row gt_center">+0.8 pp</td></tr>
+    <tr><th id="stub_1_25" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">China R&amp;D intensity as a share of GDP</th>
+<td headers="China closes the R&D resource gap stub_1_25 Earlier" class="gt_row gt_center" style="font-weight: bold;">0.7% (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_25 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">2.7% (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_25 Change" class="gt_row gt_center" style="font-weight: bold;">+2.0 pp</td></tr>
+    <tr><th id="stub_1_26" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap in R&amp;D intensity</th>
+<td headers="China closes the R&D resource gap stub_1_26 Earlier" class="gt_row gt_center" style="font-weight: bold;">+1.9% (1991)</td>
+<td headers="China closes the R&D resource gap stub_1_26 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">+0.8% (2024)</td>
+<td headers="China closes the R&D resource gap stub_1_26 Change" class="gt_row gt_center" style="font-weight: bold;">-1.1 pp</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="4" class="gt_group_heading" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: black; background-color: #F7F4EF; color: #8C1515; font-weight: bold; text-transform: uppercase;" scope="colgroup" id="The two systems invest differently">The two systems invest differently</th>
+    </tr>
+    <tr class="gt_row_group_first"><th id="stub_1_27" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China spending gap: basic research</th>
+<td headers="The two systems invest differently stub_1_27 Earlier" class="gt_row gt_center" style="font-weight: bold;">+$46.0B (1991)</td>
+<td headers="The two systems invest differently stub_1_27 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">+$63.1B (2024)</td>
+<td headers="The two systems invest differently stub_1_27 Change" class="gt_row gt_center" style="font-weight: bold;">+$17.1B</td></tr>
+    <tr><th id="stub_1_28" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S.–China spending gap: applied research</th>
+<td headers="The two systems invest differently stub_1_28 Earlier" class="gt_row gt_center">+$62.9B (1991)</td>
+<td headers="The two systems invest differently stub_1_28 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">+$51.0B (2024)</td>
+<td headers="The two systems invest differently stub_1_28 Change" class="gt_row gt_center">$11.9B</td></tr>
+    <tr><th id="stub_1_29" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China spending gap: experimental development</th>
+<td headers="The two systems invest differently stub_1_29 Earlier" class="gt_row gt_center" style="font-weight: bold;">+$153.3B (1991)</td>
+<td headers="The two systems invest differently stub_1_29 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$128.2B (2024)</td>
+<td headers="The two systems invest differently stub_1_29 Change" class="gt_row gt_center" style="font-weight: bold;">$281.5B</td></tr>
+    <tr><th id="stub_1_30" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap: business-performed R&amp;D</th>
+<td headers="The two systems invest differently stub_1_30 Earlier" class="gt_row gt_center" style="font-weight: bold;">+$191.4B (1991)</td>
+<td headers="The two systems invest differently stub_1_30 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$10.7B (2024)</td>
+<td headers="The two systems invest differently stub_1_30 Change" class="gt_row gt_center" style="font-weight: bold;">$202.1B</td></tr>
+    <tr><th id="stub_1_31" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China gap: government-performed R&amp;D</th>
+<td headers="The two systems invest differently stub_1_31 Earlier" class="gt_row gt_center" style="font-weight: bold;">+$33.9B (1991)</td>
+<td headers="The two systems invest differently stub_1_31 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">$49.6B (2024)</td>
+<td headers="The two systems invest differently stub_1_31 Change" class="gt_row gt_center" style="font-weight: bold;">$83.5B</td></tr>
+    <tr><th id="stub_1_32" scope="row" class="gt_row gt_left gt_stub" style="text-align: left;">U.S.–China gap: university-performed R&amp;D</th>
+<td headers="The two systems invest differently stub_1_32 Earlier" class="gt_row gt_center">+$30.1B (1991)</td>
+<td headers="The two systems invest differently stub_1_32 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">+$20.2B (2024)</td>
+<td headers="The two systems invest differently stub_1_32 Change" class="gt_row gt_center">$9.9B</td></tr>
+    <tr class="gt_group_heading_row">
+      <th colspan="4" class="gt_group_heading" style="border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: black; background-color: #F7F4EF; color: #8C1515; font-weight: bold; text-transform: uppercase;" scope="colgroup" id="Patent leadership is shifting">Patent leadership is shifting</th>
+    </tr>
+    <tr class="gt_row_group_first"><th id="stub_1_33" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China patent-grant gap: biotechnology</th>
+<td headers="Patent leadership is shifting stub_1_33 Earlier" class="gt_row gt_center" style="font-weight: bold;">+1,558 (1990)</td>
+<td headers="Patent leadership is shifting stub_1_33 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">-8,037 (2024)</td>
+<td headers="Patent leadership is shifting stub_1_33 Change" class="gt_row gt_center" style="font-weight: bold;">-9,595</td></tr>
+    <tr><th id="stub_1_34" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China patent-grant gap: semiconductors</th>
+<td headers="Patent leadership is shifting stub_1_34 Earlier" class="gt_row gt_center" style="font-weight: bold;">+1,661 (1990)</td>
+<td headers="Patent leadership is shifting stub_1_34 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">-10,159 (2024)</td>
+<td headers="Patent leadership is shifting stub_1_34 Change" class="gt_row gt_center" style="font-weight: bold;">-11,820</td></tr>
+    <tr><th id="stub_1_35" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">U.S.–China patent-grant gap: computer technology</th>
+<td headers="Patent leadership is shifting stub_1_35 Earlier" class="gt_row gt_center" style="font-weight: bold;">+2,642 (1990)</td>
+<td headers="Patent leadership is shifting stub_1_35 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">-131,174 (2024)</td>
+<td headers="Patent leadership is shifting stub_1_35 Change" class="gt_row gt_center" style="font-weight: bold;">-133,816</td></tr>
+    <tr><th id="stub_1_36" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Samsung Electronics U.S. patent grants</th>
+<td headers="Patent leadership is shifting stub_1_36 Earlier" class="gt_row gt_center" style="font-weight: bold;">1,641 (2005)</td>
+<td headers="Patent leadership is shifting stub_1_36 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">7,526 (2025)</td>
+<td headers="Patent leadership is shifting stub_1_36 Change" class="gt_row gt_center" style="font-weight: bold;">+5,885</td></tr>
+    <tr><th id="stub_1_37" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Taiwan Semiconductor U.S. patent grants</th>
+<td headers="Patent leadership is shifting stub_1_37 Earlier" class="gt_row gt_center" style="font-weight: bold;">441 (2005)</td>
+<td headers="Patent leadership is shifting stub_1_37 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">4,233 (2025)</td>
+<td headers="Patent leadership is shifting stub_1_37 Change" class="gt_row gt_center" style="font-weight: bold;">+3,792</td></tr>
+    <tr><th id="stub_1_38" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Huawei U.S. patent grants</th>
+<td headers="Patent leadership is shifting stub_1_38 Earlier" class="gt_row gt_center" style="font-weight: bold;">34 (2005)</td>
+<td headers="Patent leadership is shifting stub_1_38 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">3,482 (2025)</td>
+<td headers="Patent leadership is shifting stub_1_38 Change" class="gt_row gt_center" style="font-weight: bold;">+3,448</td></tr>
+    <tr><th id="stub_1_39" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">IBM U.S. patent grants</th>
+<td headers="Patent leadership is shifting stub_1_39 Earlier" class="gt_row gt_center" style="font-weight: bold;">2,941 (2005)</td>
+<td headers="Patent leadership is shifting stub_1_39 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">2,467 (2025)</td>
+<td headers="Patent leadership is shifting stub_1_39 Change" class="gt_row gt_center" style="font-weight: bold;">-474</td></tr>
+    <tr><th id="stub_1_40" scope="row" class="gt_row gt_left gt_stub" style="text-align: left; font-weight: bold;">Hewlett-Packard U.S. patent grants</th>
+<td headers="Patent leadership is shifting stub_1_40 Earlier" class="gt_row gt_center" style="font-weight: bold;">1,808 (2005)</td>
+<td headers="Patent leadership is shifting stub_1_40 Latest" class="gt_row gt_center" style="background-color: #F4D6D6; color: #8C1515; font-weight: bold;">322 (2025)</td>
+<td headers="Patent leadership is shifting stub_1_40 Change" class="gt_row gt_center" style="font-weight: bold;">-1,486</td></tr>
+  </tbody>
+  <tfoot>
+    <tr class="gt_sourcenotes">
+      <td class="gt_sourcenote" style="color: #666666;" colspan="4"><span class='gt_from_md'><strong>Note:</strong> Conference medians compare each venue’s first and latest common U.S.–China observation; coverage windows therefore differ. U.S.–China gaps equal U.S. values minus China values. R&amp;D spending is shown in current purchasing-power-parity dollars. Patent measures count grants.</span></td>
+    </tr>
+    <tr class="gt_sourcenotes">
+      <td class="gt_sourcenote" style="color: #666666;" colspan="4"><span class='gt_from_md'><strong>Source:</strong> See the Chapter 5 figures and tables for full citations. Data sources include Paper Copilot, OpenAlex, Clarivate, Times Higher Education, OECD, WIPO, IPO Association, Harrity &amp; Harrity, and USPTO PatentsView.</span></td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+</body>
+</html>

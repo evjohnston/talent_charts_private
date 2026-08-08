@@ -1,0 +1,26 @@
+{
+    "id": "8EA3F18B",
+    "path": "~/Downloads/_Work/Talent/talent_charts/inputs/titles_and_sources.csv",
+    "project_path": "inputs/titles_and_sources.csv",
+    "type": "text",
+    "hash": "4005468727",
+    "contents": "",
+    "dirty": false,
+    "created": 1786223972178.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "63,97",
+        "scrollLine": "38"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1786231399,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1786231399620,
+    "read_only": false,
+    "read_only_alternatives": []
+}

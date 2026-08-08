@@ -1,0 +1,5 @@
+"0","meta <- get_meta(""TAB605"")"
+"0",""
+"0","TAB605 <- build_eb_combined_table(meta)"
+"0",""
+"0","save_table(TAB605, ""tab_6_05"")"

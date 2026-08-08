@@ -1,0 +1,205 @@
+---
+title: "export"
+output: html_document
+---
+
+# Export to PDF 
+```{r export_pdf, include=FALSE}
+library(magick)
+library(pdftools)
+
+# ---- Page dimensions ----------------------------------------
+page_w_px  <- round(8.5  * 300)
+page_h_px  <- round(11.0 * 300)
+margin_px  <- round(0.20 * 300)
+content_h  <- page_h_px - (margin_px * 2)
+
+# ---- Chart and table manifests ------------------------------
+chart_files <- c(
+  "fig_001", "fig_002", "fig_003", "fig_004", "fig_005",
+  "fig_006", "fig_007", "fig_008", "fig_009", "fig_010",
+  "fig_011", "fig_012", "fig_013", "fig_014", "fig_015",
+  "fig_016", "fig_017", "fig_018", "fig_019", "fig_020",
+  "fig_021", "fig_022", "fig_023", "fig_024", "fig_025",
+  "fig_026", "fig_027", "fig_028", "fig_029", "fig_030",
+  "fig_031", "fig_032", "fig_033", "fig_034", "fig_035",
+  "fig_036", "fig_037",
+  "fig_038a", "fig_038b", "fig_038c", "fig_038d",
+  "fig_039", "fig_040", "fig_041", "fig_042", "fig_043",
+  "fig_044", "fig_045", "fig_046", "fig_047",
+  "fig_048",
+  "fig_048_acl", "fig_048_acml", "fig_048_aistats", "fig_048_coling",
+  "fig_048_colt", "fig_048_corl", "fig_048_cvpr", "fig_048_emnlp",
+  "fig_048_iccv", "fig_048_iclr", "fig_048_icml", "fig_048_icra",
+  "fig_048_ijcai", "fig_048_iros", "fig_048_naacl", "fig_048_nips",
+  "fig_048_rss", "fig_048_siggraphasia", "fig_048_uai", "fig_048_wacv",
+  "fig_049", "fig_050", "fig_051", "fig_052", "fig_053",
+  "fig_054", "fig_055", "fig_056", "fig_057", "fig_058",
+  "fig_059", "fig_060", "fig_061", "fig_062", "fig_063",
+  "fig_064", "fig_065", "fig_066", "fig_067", "fig_068",
+  "fig_069", "fig_070", "fig_071", "fig_072", "fig_073",
+  "fig_074", "fig_075", "fig_076", "fig_077", "fig_078",
+  "fig_079", "fig_080", "fig_081", "fig_082", "fig_083",
+  "fig_084", "fig_085", "fig_086", "fig_087", "fig_088",
+  "fig_089", "fig_090", "fig_091", "fig_092", "fig_093",
+  "fig_094", "fig_095", "fig_096", "fig_097", "fig_098",
+  "fig_099", "fig_100", "fig_101", "fig_102", "fig_103"
+)
+
+table_files <- c(
+  "tab_001", "tab_002", "tab_003", "tab_004", "tab_005", "tab_006a", "tab_006b", "tab_006c", "tab_006d"
+)
+
+# ---- TOC page count -----------------------------------------
+# Calculate upfront so content page numbers are correct from the start
+toc_per_page <- 30
+n_toc_pages  <- ceiling((length(chart_files) + length(table_files)) / toc_per_page)
+
+# ---- Helper: stamp page number on an image ------------------
+stamp_page_number <- function(img, page_num) {
+  image_annotate(
+    img,
+    text     = as.character(page_num),
+    gravity  = "South",
+    location = "+0+40",
+    size     = 36,
+    font     = "Source Sans 3",
+    color    = "grey50"
+  )
+}
+
+# ---- Helper: png → list of magick images (one per page) -----
+png_to_pages <- function(name, folder) {
+  path <- file.path(folder, paste0(name, ".png"))
+  if (!file.exists(path)) {
+    message("Skipping missing file: ", path)
+    return(NULL)
+  }
+
+  img  <- image_read(path)
+  info <- image_info(img)
+
+  if (info$height > content_h) {
+    n_pages <- ceiling(info$height / content_h)
+    lapply(seq_len(n_pages), function(i) {
+      y_start <- (i - 1) * content_h
+      h       <- min(content_h, info$height - y_start)
+      slice   <- image_crop(img, paste0(info$width, "x", h, "+0+", y_start))
+      page    <- image_blank(page_w_px, page_h_px, color = "white")
+      image_composite(page, slice, offset = paste0("+", margin_px, "+", margin_px))
+    })
+  } else {
+    page <- image_blank(page_w_px, page_h_px, color = "white")
+    page <- image_composite(page, img, offset = paste0("+", margin_px, "+", margin_px))
+    list(page)
+  }
+}
+
+# ---- Build content pages and collect TOC entries ------------
+all_items <- list(
+  list(files = chart_files, folder = "final_charts"),
+  list(files = table_files, folder = "final_tables")
+)
+
+content_pages <- list()
+toc_entries   <- list()
+page_counter  <- n_toc_pages + 1L
+
+for (group in all_items) {
+  for (name in group$files) {
+    pages <- png_to_pages(name, group$folder)
+    if (is.null(pages)) next
+
+    toc_entries[[length(toc_entries) + 1]] <- list(
+      name  = name,
+      page  = page_counter,
+      title = tryCatch(get_meta(name)$title, error = function(e) name)
+    )
+
+    content_pages <- c(content_pages, pages)
+    page_counter  <- page_counter + length(pages)
+  }
+}
+
+# ---- Build TOC as ggplot ------------------------------------
+toc_df <- data.frame(
+  id    = sapply(toc_entries, `[[`, "name"),
+  page  = sapply(toc_entries, `[[`, "page"),
+  title = sapply(toc_entries, `[[`, "title"),
+  stringsAsFactors = FALSE
+)
+
+toc_chunks <- split(toc_df, ceiling(seq_len(nrow(toc_df)) / toc_per_page))
+
+toc_pages <- lapply(seq_along(toc_chunks), function(i) {
+  chunk      <- toc_chunks[[i]]
+  max_id_len <- max(nchar(chunk$id))
+
+  rows <- mapply(function(id, pg, title) {
+    id_pad <- formatC(id,            width = max_id_len, flag = "-")
+    pg_str <- formatC(paste0("p.", pg), width = 6,      flag = "-")
+    title  <- if (nchar(title) > 60) paste0(substr(title, 1, 57), "...") else title
+    paste0(id_pad, "   ", pg_str, "   ", title)
+  }, chunk$id, chunk$page, chunk$title)
+
+  heading <- if (i == 1) "Table of Contents" else "Table of Contents (continued)"
+
+  p <- ggplot() +
+    annotate("text",
+             x = 0.05, y = 0.97,
+             label    = heading,
+             hjust    = 0, vjust = 1,
+             family   = FONT_FAMILY,
+             fontface = "bold",
+             size     = 7,
+             color    = tpa_colors[1]) +
+    annotate("segment",
+             x = 0.05, xend = 0.95,
+             y = 0.955, yend = 0.955,
+             color = tpa_colors[1], linewidth = 0.5) +
+    annotate("text",
+             x = 0.05, y = 0.93,
+             label      = paste(rows, collapse = "\n"),
+             hjust      = 0, vjust = 1,
+             family     = "mono",
+             size       = 3.2,
+             color      = "grey20",
+             lineheight = 1.4) +
+    scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+    theme_void() +
+    theme(plot.background = element_rect(fill = "white", color = NA))
+
+  tmp <- tempfile(fileext = ".png")
+  ggsave(tmp, p, width = 8.5, height = 11, dpi = 300, bg = "white")
+  image_read(tmp)
+})
+
+# ---- Stamp page numbers -------------------------------------
+toc_pages_numbered <- lapply(seq_along(toc_pages), function(i) {
+  stamp_page_number(toc_pages[[i]], i)
+})
+
+content_pages_numbered <- lapply(seq_along(content_pages), function(i) {
+  stamp_page_number(content_pages[[i]], i + n_toc_pages)
+})
+
+# ---- Write single-page PDFs then combine --------------------
+dir.create("final_charts/tmp_pages", showWarnings = FALSE)
+
+all_pages <- c(toc_pages_numbered, content_pages_numbered)
+
+pdf_paths <- mapply(function(img, i) {
+  path <- file.path("final_charts/tmp_pages", sprintf("page_%04d.pdf", i))
+  image_write(img, path = path, format = "pdf", density = 300)
+  path
+}, all_pages, seq_along(all_pages))
+
+pdftools::pdf_combine(unlist(pdf_paths), output = "report.pdf")
+
+# ---- Clean up -----------------------------------------------
+file.remove(unlist(pdf_paths))
+unlink("final_charts/tmp_pages", recursive = TRUE)
+
+message("Done — ", length(all_pages), " pages written as report.pdf to the project directory")
+```
