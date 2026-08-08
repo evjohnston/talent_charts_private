@@ -2006,7 +2006,7 @@ fig <- plot_country_lines(df, meta, "R&D intensity (% of GDP)",
                           color_scale = scale_color_china_us(),
                           y_args      = list(
                             labels = label_number(suffix = "%"),
-                            limits = c(0, ),
+                            limits = c(0, 6),
                             breaks = seq(0, 6, 1),
                             expand = EXPAND_BAR_TIGHT
                           ))

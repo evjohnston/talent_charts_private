@@ -3,7 +3,7 @@
     "path": "~/Downloads/_Work/Talent/talent_charts/figures.Rmd",
     "project_path": "figures.Rmd",
     "type": "r_markdown",
-    "hash": "374727962",
+    "hash": "3129450923",
     "contents": "",
     "dirty": false,
     "created": 1785453413487.0,
@@ -12,18 +12,18 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "2402,13",
-        "scrollLine": "2400",
+        "cursorPosition": "2008,43",
+        "scrollLine": "1991",
         "last_setup_crc32": "99c55c29b519a4df",
         "docOutlineVisible": "1",
         "docOutlineSize": "105"
     },
     "folds": "",
-    "lastKnownWriteTime": 1786230055,
+    "lastKnownWriteTime": 1786232680,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1786230055446,
+    "last_content_update": 1786232680500,
     "read_only": false,
     "read_only_alternatives": []
 }
