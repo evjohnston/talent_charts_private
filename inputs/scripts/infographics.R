@@ -32,14 +32,15 @@ INFOGRAPHIC_SPEC$output_height_px <- round(
 )
 INFOGRAPHIC_SPEC$zoom <- INFOGRAPHIC_SPEC$dpi / INFOGRAPHIC_SPEC$css_dpi
 
-# All infographic pages use the same four physical column proportions.
+# All infographic pages use the same five physical column proportions.
 # The stub gets half the width so descriptive measures can remain on one line.
 # These proportions automatically follow INFOGRAPHIC_SPEC$width_in.
 INFOGRAPHIC_COLUMN_SHARES <- c(
   measure = 0.50,
   earlier = 0.16,
-  latest  = 0.22,
-  change  = 0.12
+  latest  = 0.20,
+  change  = 0.115,
+  trend   = 0.025
 )
 
 INFOGRAPHIC_COLUMNS <- round(
@@ -745,8 +746,8 @@ infographic_pt_to_px <- function(pt) {
 
 # Data cells, column headers, and section headers share one reduced body size.
 # This scale is global: it does NOT change by chapter, page, or row count.
-# With a 90% publication font scale, 78% here yields ~7 pt infographic body type.
-INFOGRAPHIC_BODY_SCALE_PERCENT <- 78
+# This fixed scale is shared by every chapter and does not change with row count.
+INFOGRAPHIC_BODY_SCALE_PERCENT <- 94
 INFOGRAPHIC_BODY_SCALE <- INFOGRAPHIC_BODY_SCALE_PERCENT / 100
 
 INFOGRAPHIC_BODY_PT <- PUB$type$body_pt * INFOGRAPHIC_BODY_SCALE
@@ -763,7 +764,7 @@ INFOGRAPHIC_FIXED_LAYOUT <- list(
   # Match the source/caption size used by figures and revised tables.
   source_font_px = infographic_pt_to_px(PUB$type$caption_pt),
 
-  row_padding_px = infographic_pt_to_px(PUB$spacing$infographic_row_pad_pt)
+  row_padding_px = infographic_pt_to_px(2.4)
 )
 
 # One uniform data-row height for every chapter/page.
@@ -772,6 +773,14 @@ INFOGRAPHIC_FIXED_LAYOUT$row_height_px <- ceiling(
     PUB$type_metrics$infographic_row_lineheight +
     2 * INFOGRAPHIC_FIXED_LAYOUT$row_padding_px
 )
+
+
+# Fixed editorial pagination.
+#
+# Every infographic uses the same maximum number of body rows per page.
+# Pages are never resized and typography is never reduced to squeeze in more
+# rows. A final page may contain fewer rows simply because the chapter ends.
+INFOGRAPHIC_ROWS_PER_PAGE <- 30L
 
 # Retained as a compatibility alias. It is deliberately independent of n_rows.
 layout_for_rows <- function(n_rows = NULL) {
@@ -835,6 +844,74 @@ capitalize_source_terms <- function(x) {
   )
 }
 
+
+# Add a small directional indicator beside the displayed Change value.
+#
+# This is intentionally based on the formatted Change cell so every chapter
+# receives the same treatment without requiring chapter-specific code.
+#
+#   ▴ green = numeric increase
+#   ▾ red   = numeric decrease
+#   blank   = no numeric direction / no comparison / no change
+#
+# Colors indicate direction only, not whether the change is normatively good
+# or bad.
+infographic_trend_arrow <- function(change) {
+  x <- trimws(as.character(change))
+
+  value <- suppressWarnings(
+    readr::parse_number(x)
+  )
+
+  is_blank <- is.na(x) |
+    !nzchar(x) |
+    x %in% c("—", "–")
+
+  is_multiple <- grepl(
+    "×\\s*$",
+    x,
+    perl = TRUE
+  )
+
+  signed_up <- grepl(
+    "^\\s*\\+",
+    x,
+    perl = TRUE
+  ) &
+    is.finite(value) &
+    value > 0
+
+  signed_down <- grepl(
+    "^\\s*[-−]",
+    x,
+    perl = TRUE
+  ) &
+    is.finite(value) &
+    value < 0
+
+  multiple_up <- is_multiple &
+    is.finite(value) &
+    value > 1
+
+  multiple_down <- is_multiple &
+    is.finite(value) &
+    value < 1
+
+  out <- rep("", length(x))
+
+  out[
+    !is_blank &
+      (signed_up | multiple_up)
+  ] <- "\u25B2"  # ▲
+
+  out[
+    !is_blank &
+      (signed_down | multiple_down)
+  ] <- "\u25BC"  # ▼
+
+  out
+}
+
 build_infographic_table <- function(
     data,
     id,
@@ -861,7 +938,8 @@ build_infographic_table <- function(
       dplyr::across(
         tidyselect::any_of(c("Section", "Measure", "Earlier", "Latest", "Change")),
         smart_display_text
-      )
+      ),
+      Trend = infographic_trend_arrow(.data$Change)
     )
   
   title <- smart_display_text(title)
@@ -877,7 +955,15 @@ build_infographic_table <- function(
   column_labels[["Latest"]] <- "Latest or<br>Projected Value"
   
   hidden_columns <- intersect(
-    c("StatID", "SectionID", "Emphasis", "RowOrder", "SnapshotOrder"),
+    c(
+      "StatID",
+      "SectionID",
+      "Emphasis",
+      "RowOrder",
+      "SnapshotOrder",
+      "DisplayOrder",
+      "PageOrder"
+    ),
     names(data)
   )
   
@@ -908,11 +994,12 @@ build_infographic_table <- function(
     gt::cols_label(
       Earlier = gt::html(unname(column_labels[["Earlier"]])),
       Latest = gt::html(unname(column_labels[["Latest"]])),
-      Change = gt::html(unname(column_labels[["Change"]]))
+      Change = gt::html(unname(column_labels[["Change"]])),
+      Trend = gt::html("")
     ) %>%
     gt::cols_align(
       align = "center",
-      columns = c(Earlier, Latest, Change)
+      columns = c(Earlier, Latest, Change, Trend)
     ) %>%
     gt::cols_hide(columns = tidyselect::any_of(hidden_columns)) %>%
     theme_gt_tpa() %>%
@@ -968,6 +1055,26 @@ build_infographic_table <- function(
       locations = gt::cells_body(columns = Latest)
     ) %>%
     gt::tab_style(
+      style = gt::cell_text(
+        color = "#3B7A57",
+        weight = "bold"
+      ),
+      locations = gt::cells_body(
+        columns = Trend,
+        rows = Trend == "▲"
+      )
+    ) %>%
+    gt::tab_style(
+      style = gt::cell_text(
+        color = "#8C1515",
+        weight = "bold"
+      ),
+      locations = gt::cells_body(
+        columns = Trend,
+        rows = Trend == "▼"
+      )
+    ) %>%
+    gt::tab_style(
       style = gt::cell_text(color = INFOGRAPHIC_PALETTE$muted),
       locations = gt::cells_source_notes()
     ) %>%
@@ -1003,7 +1110,8 @@ build_infographic_table <- function(
       gt::stub() ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["measure"]])),
       Earlier ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["earlier"]])),
       Latest ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["latest"]])),
-      Change ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["change"]]))
+      Change ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["change"]])),
+      Trend ~ gt::px(unname(INFOGRAPHIC_COLUMNS[["trend"]]))
     )
   
   css <- paste0(
@@ -1057,6 +1165,11 @@ build_infographic_table <- function(
     "font-weight:400 !important;}",
     "#", id, " tbody td {font-weight:400 !important;}",
     "#", id, " tbody td:nth-child(3) {font-weight:700 !important;}",
+    "#", id, " td[data-column-id='Trend'] {",
+    "padding-left:0 !important;padding-right:0 !important;",
+    "text-align:center !important;",
+    "font-size:", sizes$data * 0.82, "px !important;",
+    "line-height:1 !important;}",
     "#", id, " .gt_source_notes {line-height:", PUB$type_metrics$infographic_source_lineheight, " !important;",
     "padding-left:", infographic_pt_to_px(PUB$spacing$infographic_side_pad_pt), "px !important;",
     "padding-right:", infographic_pt_to_px(PUB$spacing$infographic_side_pad_pt), "px !important;}",
@@ -1115,88 +1228,74 @@ page_fits_infographic <- function(table, trial_path, tolerance_px = 4) {
 
 paginate_infographic_data <- function(
     data,
-    build_page,
-    name,
-    output_dir = PATHS$final_infographics
+    build_page = NULL,
+    name = NULL,
+    output_dir = PATHS$final_infographics,
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
 ) {
-  if (!requireNamespace("magick", quietly = TRUE)) {
-    stop("The magick package is required for infographic pagination.")
-  }
-  if (!is.function(build_page)) {
-    stop("`build_page` must be a function.")
-  }
   if (nrow(data) < 1) {
     stop("The infographic contains no data rows.")
   }
-  
-  trial_dir <- file.path(output_dir, "trials")
-  dir.create(trial_dir, recursive = TRUE, showWarnings = FALSE)
-  trial_path <- file.path(trial_dir, paste0(name, "_trial.png"))
-  
-  pages <- list()
-  remaining <- data
-  page_number <- 1L
-  
-  while (nrow(remaining) > 0) {
-    n_remaining <- nrow(remaining)
-    
-    full_table <- build_page(
-      page_data = remaining,
-      page_number = page_number,
-      total_pages = NA_integer_,
-      is_last_page = TRUE
-    )
-    
-    if (page_fits_infographic(full_table, trial_path)) {
-      pages[[length(pages) + 1L]] <- remaining
-      break
-    }
-    
-    if (n_remaining == 1L) {
-      stop(
-        "A single row plus the fixed title, headers, and notes does not fit on ",
-        "the fixed infographic page. Shorten that row or its notes; typography and ",
-        "row spacing were not changed."
-      )
-    }
-    
-    low <- 1L
-    high <- n_remaining - 1L
-    best <- 0L
-    
-    while (low <= high) {
-      middle <- floor((low + high) / 2)
-      candidate <- remaining[seq_len(middle), , drop = FALSE]
-      candidate_table <- build_page(
-        page_data = candidate,
-        page_number = page_number,
-        total_pages = NA_integer_,
-        is_last_page = FALSE
-      )
-      
-      if (page_fits_infographic(candidate_table, trial_path)) {
-        best <- middle
-        low <- middle + 1L
-      } else {
-        high <- middle - 1L
-      }
-    }
-    
-    if (best < 1L) {
-      stop(
-        "The first row on page ", page_number,
-        " does not fit with the fixed infographic typography."
-      )
-    }
-    
-    pages[[length(pages) + 1L]] <- remaining[seq_len(best), , drop = FALSE]
-    remaining <- remaining[-seq_len(best), , drop = FALSE]
-    page_number <- page_number + 1L
+
+  rows_per_page <- as.integer(rows_per_page)
+
+  if (
+    length(rows_per_page) != 1L ||
+    !is.finite(rows_per_page) ||
+    rows_per_page < 1L
+  ) {
+    stop("`rows_per_page` must be one positive integer.")
   }
-  
-  if (file.exists(trial_path)) unlink(trial_path)
-  pages
+
+  page_id <- ceiling(seq_len(nrow(data)) / rows_per_page)
+
+  split(
+    data,
+    page_id
+  )
 }
+
+
+mark_infographic_continuation <- function(
+    page_data,
+    previous_page_data = NULL
+) {
+  page_data <- page_data %>%
+    dplyr::mutate(
+      Section = as.character(.data$Section)
+    )
+
+  if (
+    is.null(previous_page_data) ||
+    nrow(previous_page_data) == 0L ||
+    nrow(page_data) == 0L
+  ) {
+    return(page_data)
+  }
+
+  previous_section <- as.character(
+    previous_page_data$Section[[nrow(previous_page_data)]]
+  )
+
+  first_section <- as.character(
+    page_data$Section[[1]]
+  )
+
+  if (
+    !is.na(previous_section) &&
+    !is.na(first_section) &&
+    identical(previous_section, first_section)
+  ) {
+    continued_label <- paste0(first_section, " (cont.)")
+
+    page_data$Section[
+      page_data$Section == first_section
+    ] <- continued_label
+  }
+
+  page_data
+}
+
 
 export_infographic_page <- function(
     table,
@@ -1271,42 +1370,59 @@ export_paginated_infographic <- function(
     data,
     build_page,
     name,
-    output_dir = PATHS$final_infographics
+    output_dir = PATHS$final_infographics,
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
 ) {
   pages <- paginate_infographic_data(
     data = data,
     build_page = build_page,
     name = name,
-    output_dir = output_dir
+    output_dir = output_dir,
+    rows_per_page = rows_per_page
   )
-  
+
   total_pages <- length(pages)
-  
+
   exports <- lapply(seq_along(pages), function(page_number) {
     page_name <- if (total_pages == 1L) {
       name
     } else {
       paste0(name, "_page_", sprintf("%02d", page_number))
     }
-    
-    table <- build_page(
+
+    previous_page <- if (page_number == 1L) {
+      NULL
+    } else {
+      pages[[page_number - 1L]]
+    }
+
+    display_data <- mark_infographic_continuation(
       page_data = pages[[page_number]],
+      previous_page_data = previous_page
+    )
+
+    table <- build_page(
+      page_data = display_data,
       page_number = page_number,
       total_pages = total_pages,
       is_last_page = page_number == total_pages
     )
-    
+
     export_infographic_page(
       table = table,
       name = page_name,
       output_dir = output_dir
     )
   })
-  
+
   message(
-    "Saved ", total_pages, " fixed-format page", if (total_pages == 1L) "" else "s",
-    " for ", name, ". Body text is ", PUB$type$body_pt, " pt at print size; row padding is fixed."
+    "Saved ", total_pages,
+    " fixed-format page", if (total_pages == 1L) "" else "s",
+    " for ", name,
+    ". Up to ", rows_per_page,
+    " body rows are used per page; type size, row height, columns, and PNG dimensions remain fixed."
   )
-  
+
   invisible(exports)
 }
+

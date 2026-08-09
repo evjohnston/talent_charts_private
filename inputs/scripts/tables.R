@@ -1226,99 +1226,333 @@ build_bookend_table <- function(name, meta,
     with_size("standard")
 }
 
-# ---- Combined share-change table (all degrees) --------------
-# Used by tab 006d.
-# Expects Field plus {Degree}_FirstYear / _LastYear / _PctChangeInShare
-# columns for Bachelors, Masters, Doctorate. Row filtering and any
-# field merges are done upstream in the calculation chunk, not here.
+# ---- Combined share-change table (all degrees) ------------------------------
+#
+# Expects:
+#   Field
+#   Bachelors_2015
+#   Bachelors_2025
+#   Bachelors_PctChangeInShare
+#   Masters_2015
+#   Masters_2025
+#   Masters_PctChangeInShare
+#   Doctorate_2015
+#   Doctorate_2025
+#   Doctorate_PctChangeInShare
+#
+# The *_PctChangeInShare columns are recalculated here from the two displayed
+# endpoint columns so the table cannot drift from the underlying values.
+#
+# Row filtering and field merges should be done upstream.
 
-build_change_table_wide <- function(name, meta,
-                                    change_type = c("relative", "ppt")) {
-  change_type <- resolve_change_type(change_type)
-  df <- read_fig(name) %>%
-    mutate(across(-Field, ~ suppressWarnings(as.numeric(.))))
+build_change_table_wide <- function(
+    name,
+    meta,
+    change_type = c("relative", "ppt")
+) {
   
-  degrees     <- c("Bachelors", "Masters", "Doctorate")
-  change_cols <- paste0(degrees, "_PctChangeInShare")
-  year_cols   <- c(paste0(degrees, "_FirstYear"),
-                   paste0(degrees, "_LastYear"))
+  change_type <- resolve_change_type(change_type)
+  
+  degrees <- c(
+    "Bachelors",
+    "Masters",
+    "Doctorate"
+  )
+  
+  earlier_year <- 2015L
+  latest_year  <- 2025L
+  
+  earlier_cols <- paste0(
+    degrees,
+    "_",
+    earlier_year
+  )
+  
+  latest_cols <- paste0(
+    degrees,
+    "_",
+    latest_year
+  )
+  
+  change_cols <- paste0(
+    degrees,
+    "_PctChangeInShare"
+  )
+  
+  year_cols <- c(
+    earlier_cols,
+    latest_cols
+  )
+  
+  required_cols <- c(
+    "Field",
+    earlier_cols,
+    latest_cols,
+    change_cols
+  )
+  
+  df <- read_fig(name)
+  
+  missing_cols <- setdiff(
+    required_cols,
+    names(df)
+  )
+  
+  if (length(missing_cols) > 0) {
+    stop(
+      "Missing required columns in ",
+      name,
+      ": ",
+      paste(
+        missing_cols,
+        collapse = ", "
+      ),
+      call. = FALSE
+    )
+  }
+  
+  df <- df %>%
+    mutate(
+      across(
+        -Field,
+        ~ suppressWarnings(
+          as.numeric(.x)
+        )
+      )
+    )
+  
+  # --------------------------------------------------------------------------
+  # Recalculate change from the displayed 2015 and 2025 values
+  # --------------------------------------------------------------------------
   
   for (deg in degrees) {
-    df[[paste0(deg, "_PctChangeInShare")]] <- table_change(
-      df[[paste0(deg, "_FirstYear")]],
-      df[[paste0(deg, "_LastYear")]],
+    
+    col_2015 <- paste0(
+      deg,
+      "_",
+      earlier_year
+    )
+    
+    col_2025 <- paste0(
+      deg,
+      "_",
+      latest_year
+    )
+    
+    change_col <- paste0(
+      deg,
+      "_PctChangeInShare"
+    )
+    
+    df[[change_col]] <- table_change(
+      df[[col_2015]],
+      df[[col_2025]],
       change_type
     )
   }
   
-  # rank by mean change across the three degrees, then drop the helper col
-  df <- df %>%
-    mutate(.avg = rowMeans(across(all_of(change_cols)), na.rm = TRUE)) %>%
-    arrange(desc(.avg)) %>%
-    select(-.avg)
+  # --------------------------------------------------------------------------
+  # Rank fields by average movement across the three degree levels
+  # --------------------------------------------------------------------------
   
-  # symmetric domain so 0 is the color midpoint for the change columns
-  lim <- max(abs(df[change_cols]), na.rm = TRUE)
+  df <- df %>%
+    mutate(
+      .avg = rowMeans(
+        across(
+          all_of(change_cols)
+        ),
+        na.rm = TRUE
+      )
+    ) %>%
+    arrange(
+      desc(.avg)
+    ) %>%
+    select(
+      -.avg
+    )
+  
+  # Symmetric domain keeps zero at the visual midpoint.
+  lim <- max(
+    abs(
+      as.matrix(
+        df[change_cols]
+      )
+    ),
+    na.rm = TRUE
+  )
+  
+  if (
+    !is.finite(lim) ||
+    lim == 0
+  ) {
+    lim <- 1
+  }
+  
+  # --------------------------------------------------------------------------
+  # Build table
+  # --------------------------------------------------------------------------
   
   tbl <- df %>%
-    gt(rowname_col = "Field", id = name) %>%
-    fmt_number(columns = ends_with("FirstYear"), decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = ends_with("LastYear"),  decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = ends_with("PctChangeInShare"),
-               decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp")
+    gt(
+      rowname_col = "Field",
+      id = name
+    ) %>%
+    
+    fmt_number(
+      columns = all_of(earlier_cols),
+      decimals = 1,
+      pattern = "{x}%"
+    ) %>%
+    
+    fmt_number(
+      columns = all_of(latest_cols),
+      decimals = 1,
+      pattern = "{x}%"
+    ) %>%
+    
+    fmt_number(
+      columns = all_of(change_cols),
+      decimals = 1,
+      force_sign = TRUE,
+      pattern = if (
+        change_type == "relative"
+      ) {
+        "{x}%"
+      } else {
+        "{x} pp"
+      }
+    )
   
+  # Degree spanners.
   for (deg in degrees) {
+    
     tbl <- tbl %>%
-      tab_spanner(label = deg, columns = starts_with(paste0(deg, "_")))
+      tab_spanner(
+        label = deg,
+        columns = all_of(
+          c(
+            paste0(
+              deg,
+              "_",
+              earlier_year
+            ),
+            paste0(
+              deg,
+              "_",
+              latest_year
+            ),
+            paste0(
+              deg,
+              "_PctChangeInShare"
+            )
+          )
+        )
+      )
   }
+  
+  # --------------------------------------------------------------------------
+  # Column labels
+  # --------------------------------------------------------------------------
   
   tbl <- tbl %>%
     cols_label(
-      ends_with("FirstYear")        ~ "1995",
-      ends_with("LastYear")         ~ "2025",
-      ends_with("PctChangeInShare") ~ "Change"
+      ends_with("_2015") ~ "2015",
+      ends_with("_2025") ~ "2025",
+      ends_with("_PctChangeInShare") ~ "Change"
     ) %>%
-    # red/blue diverging gradient on the change columns
+    
+    # Diverging gradient on change columns.
     data_color(
       columns = all_of(change_cols),
       fn = scales::col_numeric(
-        palette = c(tpa_colors[2], "white", tpa_colors[1]),
-        domain  = c(-lim, lim)
+        palette = c(
+          tpa_colors[2],
+          "white",
+          tpa_colors[1]
+        ),
+        domain = c(
+          -lim,
+          lim
+        )
       )
     ) %>%
-    # white background on the year columns
+    
+    # Endpoint-year columns remain white.
     tab_style(
-      style     = cell_fill(color = "white"),
-      locations = cells_body(columns = all_of(year_cols))
+      style = cell_fill(
+        color = "white"
+      ),
+      locations = cells_body(
+        columns = all_of(year_cols)
+      )
     ) %>%
-    cols_align(align = "right", columns = -Field)
+    
+    cols_align(
+      align = "right",
+      columns = -Field
+    )
   
-  # bold year-column values above 50
+  # --------------------------------------------------------------------------
+  # Bold endpoint shares above 50%
+  # --------------------------------------------------------------------------
+  
   for (col in year_cols) {
+    
     tbl <- tbl %>%
       tab_style(
-        style     = cell_text(weight = "bold"),
-        locations = cells_body(columns = all_of(col),
-                               rows = .data[[col]] > 50)
+        style = cell_text(
+          weight = "bold"
+        ),
+        locations = cells_body(
+          columns = all_of(col),
+          rows = .data[[col]] > 50
+        )
       )
   }
   
+  # --------------------------------------------------------------------------
+  # Footnote + shared publication styling
+  # --------------------------------------------------------------------------
+  
   tbl %>%
     tab_footnote(
-      footnote  = paste("Values are the percent of degree completions awarded to",
-                        "international (nonresident) students. Change is the",
-                        if (change_type == "relative") "relative change" else "percentage-point change",
-                        "in that share from 1995 to 2024."),
-      locations = cells_column_spanners(spanners = degrees)
+      footnote = paste(
+        "Values are the percent of degree completions awarded to",
+        "international (nonresident) students.",
+        "Change is the",
+        if (
+          change_type == "relative"
+        ) {
+          "relative change"
+        } else {
+          "percentage-point change"
+        },
+        "in that share from 2015 to 2025."
+      ),
+      locations = cells_column_spanners(
+        spanners = degrees
+      )
     ) %>%
-    theme_gt_tpa(meta = meta) %>%
-    opt_css(css = sprintf(
-      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
-      name, tpa_colors[1]
-    )) %>%
-    with_table_profile("wide") %>%
-    with_size("long")
+    
+    theme_gt_tpa(
+      meta = meta
+    ) %>%
+    
+    opt_css(
+      css = sprintf(
+        "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+        name,
+        tpa_colors[1]
+      )
+    ) %>%
+    
+    with_table_profile(
+      "wide"
+    ) %>%
+    
+    with_size(
+      "long"
+    )
 }
 
 # ---- Field share-change table -------------------------------

@@ -1,4 +1,4 @@
-Field,Bachelors_FirstYear,Bachelors_LastYear,Bachelors_PctChangeInShare,Masters_FirstYear,Masters_LastYear,Masters_PctChangeInShare,Doctorate_FirstYear,Doctorate_LastYear,Doctorate_PctChangeInShare
+Field,Bachelors_2015,Bachelors_2025,Bachelors_PctChangeInShare,Masters_2015,Masters_2025,Masters_PctChangeInShare,Doctorate_2015,Doctorate_2025,Doctorate_PctChangeInShare
 Architecture and Related Services,5.06,7.24,0.4308300395,18.08,28.4,0.5707964602,39.72,51.94,0.307653575
 Biological and Biomedical Sciences,2.25,3.31,0.4711111111,16.23,22.64,0.3949476278,25.03,23.23,-0.07191370356
 Computer and Information Sciences,9.28,8.51,-0.08297413793,37.5,64.89,0.7304,42.06,54.85,0.3040893961
