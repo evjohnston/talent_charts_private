@@ -105,8 +105,8 @@ blocks <- tibble::tribble(
   "Temporary\nvisa holders", "~3.5M",   0.00,  0.60,  0.25,  0.50,  RED_FILL,  "white",
   "Green card\nholders",     "12.8M",   0.60,  0.94,  0.00,  0.50,  GREY_FILL, "grey20",
   "Unauthorized\n& other",   "~11M",    0.94,  1.20,  0.00,  0.50,  GREY_FILL, "grey20",
-  "International\nstudents",  "~1.1M",   0.00,  0.20,  0.00,  0.25,  RED_FILL,  "white",
-  "International\nworkers",   "~1.4M",   0.20,  0.40,  0.00,  0.25,  RED_FILL,  "white",
+  "Int.\nstudents",  "~1.1M",   0.00,  0.20,  0.00,  0.25,  RED_FILL,  "white",
+  "Int.\nworkers",   "~1.4M",   0.20,  0.40,  0.00,  0.25,  RED_FILL,  "white",
   "Exchange\n& other",       "~1M",     0.40,  0.60,  0.00,  0.25,  GREY_FILL, "grey20"
 ) |>
   dplyr::mutate(
@@ -225,7 +225,7 @@ FIG102 <- ggplot(df_098, aes(Year, Count, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_098$Year, pad_left = 0.05, pad_right = 0) +
+  scale_x_years(df_098$Year, pad_left = 0.05, right_labels = last_098) +
   scale_y_continuous(labels = m1, expand = EXPAND_LINE) +
   scale_color_levels() +
   guides(color = "none") +
@@ -333,7 +333,7 @@ FIG105 <- ggplot(df_099, aes(Year, Share, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_099$Year, pad_left = 0.05, pad_right = 0) +
+  scale_x_years(df_099$Year, pad_left = 0.05, right_labels = last_099) +
   scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
   scale_color_levels() +
   guides(color = "none") +
@@ -384,7 +384,7 @@ FIG108 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_005$Year, pad_left = 0.05, pad_right = 0) +
+  scale_x_years(df_005$Year, pad_left = 0.05, right_labels = last_005) +
   scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
   scale_color_levels() +
   guides(color = "none") +
@@ -433,7 +433,7 @@ FIG109 <- ggplot(df_008, aes(Year, value, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_008$Year, pad_right = 0) +
+  scale_x_years(df_008$Year, right_labels = labels_008) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -474,7 +474,7 @@ FIG110 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_007$Year, pad_right = 0) +
+  scale_x_years(df_007$Year, right_labels = labels_007) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -523,7 +523,7 @@ FIG203 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_109$Year, pad_right = 0) +
+  scale_x_years(df_109$Year, right_labels = labels_109) +
   scale_y_continuous(labels = label_percent(accuracy = 1),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -570,7 +570,7 @@ FIG204 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_111$Year, pad_right = 0) +
+  scale_x_years(df_111$Year, right_labels = labels_111) +
   scale_y_continuous(labels = label_percent(accuracy = 1),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -609,7 +609,7 @@ FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_014$Year, pad_right = 0) +
+  scale_x_years(df_014$Year, right_labels = labels_014) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -657,7 +657,7 @@ FIG206 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_013$Year, pad_right = 0) +
+  scale_x_years(df_013$Year, right_labels = labels_013) +
   scale_y_log10(labels = label_comma(),
                 breaks = c(0, 1000, 5000, 10000, 50000, 100000, 250000),
                 expand = EXPAND_LINE) +
@@ -844,7 +844,7 @@ FIG201 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_102$Year, pad_right = 0) +
+  scale_x_years(df_102$Year, right_labels = labels_102) +
   scale_y_continuous(labels = label_comma(),
                      expand = expansion(mult = c(0.02, 0.05))) +
   scale_color_manual(values = acad_level_colors) +
@@ -886,7 +886,7 @@ FIG207 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_020$Year, pad_right = 0) +
+  scale_x_years(df_020$Year, right_labels = labels_020) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 80),
                      breaks = seq(0, 80, 10),
@@ -1173,7 +1173,7 @@ FIG304 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Compositi
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_031$Year, pad_right = 0) +
+  scale_x_years(df_031$Year, right_labels = labels_031) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(20, 45),
                      breaks = seq(0, 45, 5),
@@ -1379,7 +1379,7 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
   annotate("text", x = min(df_035$Year), y = 1.6, label = "OECD average",
            hjust = 0, vjust = 0, color = "grey50",
            size = SMALL_LABEL_SIZE / .pt, family = FONT_FAMILY) +
-  scale_x_years(df_035$Year, pad_left = 0.03, pad_right = 0) +
+  scale_x_years(df_035$Year, pad_left = 0.03, right_labels = end_labels) +
   scale_y_continuous(limits = c(-20, 32), breaks = seq(-20, 30, 5),
                      expand = expansion(mult = c(0.02, 0.05))) +
   scale_color_manual(values = palette_035) +
@@ -1858,7 +1858,7 @@ FIG411 <- ggplot() +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_042$Year, pad_right = 0) +
+  scale_x_years(df_042$Year, right_labels = labels_042) +
   scale_y_continuous(labels = function(x) paste0(sprintf("%.1f", x), "M"),
                      expand = expansion(mult = c(0.05, 0.05))) +
   scale_color_manual(values = c("United States of America" = tpa_colors[2],
@@ -1911,7 +1911,7 @@ fig_047 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_047$Year, pad_right = 0) +
+  scale_x_years(df_047$Year, right_labels = labels_047) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 90),
                      breaks = seq(0, 90, 10),
@@ -2031,7 +2031,7 @@ FIG503 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_046$Year, pad_right = 0) +
+  scale_x_years(df_046$Year, right_labels = labels_046) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 60),
                      breaks = seq(0, 60, 15),
@@ -2437,7 +2437,7 @@ FIG607 <- ggplot() +
   annotate("text", x = 2020.2, y = 7.0, label = "Other top-five countries",
            hjust = 0, color = "grey55",
            family = FONT_FAMILY, size = SMALL_LABEL_SIZE / .pt) +
-  scale_x_years(df_078$Year, pad_right = 0) +
+  scale_x_years(df_078$Year, right_labels = china_last) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 12), breaks = seq(0, 12, 2),
                      expand = EXPAND_BAR_TIGHT) +

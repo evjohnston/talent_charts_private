@@ -10,7 +10,7 @@ geom_label_repel_tpa <- function(
     ...
 ) {
   dots <- list(...)
-  
+
   # Prepared right-edge labels carry their own per-row horizontal nudge.
   # Applying it here keeps older helper functions compatible: they can map
   # x = .label_x (the true endpoint) and the layer automatically moves every
@@ -18,14 +18,14 @@ geom_label_repel_tpa <- function(
   if (".label_nudge_x" %in% names(data) && is.null(dots$nudge_x)) {
     dots$nudge_x <- data$.label_nudge_x
   }
-  
+
   # ggrepel otherwise treats the panel boundary as a wall and can push labels
   # back over the plotted lines. Prepared right-edge labels are intentionally
   # allowed to occupy the measured plot margin to the right.
   if (".label_target_x" %in% names(data) && is.null(dots$xlim)) {
     dots$xlim <- c(NA, Inf)
   }
-  
+
   args <- c(
     list(
       data               = data,
@@ -44,7 +44,7 @@ geom_label_repel_tpa <- function(
     ),
     dots
   )
-  
+
   do.call(ggrepel::geom_text_repel, args)
 }
 
@@ -55,14 +55,14 @@ geom_label_repel_tpa <- function(
 
 single_line_label <- function(x) {
   x <- as.character(x)
-  
+
   # Replace actual carriage-return/newline characters only.
   # Do NOT use "[\\r\\n]+" with base R's default regex engine:
   # inside that character class it can be interpreted as the literal
   # letters r and n, which deletes those letters from labels.
   x <- gsub("\r", " ", x, fixed = TRUE)
   x <- gsub("\n", " ", x, fixed = TRUE)
-  
+
   x
 }
 
@@ -71,14 +71,22 @@ label_width_pt <- function(
     labels,
     size_pt = DATA_LABEL_SIZE,
     family = FONT_FAMILY,
-    face = "bold"
+    face = "bold",
+    single_line = TRUE
 ) {
   labels <- as.character(labels)
-  labels <- single_line_label(labels)
+
+  # Default behavior stays one-line for publication endpoint labels.
+  # Set single_line = FALSE only for deliberate chart-specific multiline
+  # labels (e.g. Figure 2.03).
+  if (single_line) {
+    labels <- single_line_label(labels)
+  }
+
   labels <- labels[!is.na(labels) & nzchar(labels)]
-  
+
   if (!length(labels)) return(0)
-  
+
   widths <- vapply(
     labels,
     function(label) {
@@ -90,7 +98,7 @@ label_width_pt <- function(
           fontface   = face
         )
       )
-      
+
       grid::convertWidth(
         grid::grobWidth(grob),
         unitTo    = "pt",
@@ -99,89 +107,118 @@ label_width_pt <- function(
     },
     numeric(1)
   )
-  
+
   max(widths, na.rm = TRUE)
 }
+
 
 prepare_right_labels <- function(
     labels_df,
     years,
     x_col = "Year",
     label_col = ".label",
-    gap_frac = 0.018,
-    min_gap_years = 0.30
+    gap_pt = PUB$spacing$axis_label_right_gap_pt,
+    outer_pt = PUB$spacing$edge_pt,
+    allow_multiline = FALSE
 ) {
   years <- as.numeric(years)
   years <- years[is.finite(years)]
-  
+
   if (!length(years)) {
     stop("`years` contains no finite values.")
   }
-  
+
   if (!label_col %in% names(labels_df)) {
     stop("`", label_col, "` is missing from the label data.")
   }
-  
+
   if (!x_col %in% names(labels_df)) {
     stop("`", x_col, "` is missing from the label data.")
   }
-  
+
   yr_min <- min(years)
   yr_max <- max(years)
-  span   <- yr_max - yr_min
-  
-  if (!is.finite(span) || span <= 0) span <- 1
-  
-  # Small common gap between the final plotting boundary and the label column.
-  # The labels themselves live in the right plot margin, not in an artificially
-  # widened x scale.
-  gap <- max(min_gap_years, span * gap_frac)
-  target_x <- yr_max + gap
-  
-  # Right-edge labels should never wrap. Any deliberate/newline text is
-  # normalized to a single line before width measurement and rendering.
-  labels_df[[label_col]] <- single_line_label(
-    labels_df[[label_col]]
-  )
-  
+  data_span <- yr_max - yr_min
+
+  if (!is.finite(data_span) || data_span <= 0) {
+    data_span <- 1
+  }
+
+  # Most endpoint labels should remain on one line. Charts with unusually
+  # long category names can deliberately preserve embedded \n line breaks by
+  # setting allow_multiline = TRUE.
+  if (!allow_multiline) {
+    labels_df[[label_col]] <- single_line_label(
+      labels_df[[label_col]]
+    )
+  } else {
+    labels_df[[label_col]] <- as.character(
+      labels_df[[label_col]]
+    )
+  }
+
   point_x <- as.numeric(labels_df[[x_col]])
-  
+
   if (any(!is.finite(point_x))) {
     stop("`", x_col, "` contains non-finite endpoint values.")
   }
-  
-  # .label_x remains the TRUE endpoint so connector segments originate at the
-  # data. Every row is nudged to exactly the same target x-coordinate.
-  labels_df$.label_x       <- point_x
+
+  # Measure the rendered width that actually determines the right-hand label
+  # gutter. For multiline labels, grid::grobWidth() measures the widest line,
+  # not the full unwrapped string.
+  longest_label_pt <- label_width_pt(
+    labels_df[[label_col]],
+    single_line = !allow_multiline
+  )
+
+  # Convert the physical label requirement into x-axis space instead of a
+  # large plot.margin. This allows the title, source, and x-axis line to span
+  # the full publication width.
+  canvas_pt <- CHART_WIDTH_IN * 72
+  usable_pt <- canvas_pt - (2 * PUB$spacing$edge_pt)
+
+  if (!is.finite(usable_pt) || usable_pt <= 0) {
+    stop("Chart width is too small for the configured publication margins.")
+  }
+
+  gutter_pt <- gap_pt + longest_label_pt + outer_pt
+  gutter_fraction <- gutter_pt / usable_pt
+
+  # Safety guard for unusually long labels.
+  gutter_fraction <- min(max(gutter_fraction, 0), 0.45)
+
+  gutter_data <- data_span *
+    gutter_fraction /
+    (1 - gutter_fraction)
+
+  final_span <- data_span + gutter_data
+
+  gap_data <- final_span *
+    (gap_pt / usable_pt)
+
+  target_x    <- yr_max + gap_data
+  right_limit <- yr_max + gutter_data
+
+  # Keep x at the true endpoint so connector segments originate at the data.
+  # ggrepel then nudges every label to the same target x position.
+  labels_df$.label_x        <- point_x
   labels_df$.label_target_x <- target_x
-  labels_df$.label_nudge_x <- target_x - point_x
-  
-  # Reserve only enough physical canvas for the longest one-line label plus
-  # the standard label-to-panel gap and outer publication edge.
-  attr(labels_df, "tpa_right_margin_pt") <-
-    label_width_pt(labels_df[[label_col]]) +
-    PUB$spacing$axis_label_right_gap_pt +
-    PUB$spacing$edge_pt
-  
+  labels_df$.label_nudge_x  <- target_x - point_x
+
+  # scale_x_years(..., right_labels = labels_df) reads this attribute.
+  attr(labels_df, "tpa_right_limit") <- right_limit
+
   labels_df
 }
 
-theme_right_labels <- function(
-    labels_df,
-    minimum_right = PUB$spacing$edge_pt
-) {
-  right_margin <- attr(labels_df, "tpa_right_margin_pt")
-  
-  if (is.null(right_margin) || !is.finite(right_margin)) {
-    right_margin <- minimum_right
-  }
-  
-  theme(
-    plot.margin = publication_margin(
-      right = max(minimum_right, right_margin)
-    )
-  )
+
+theme_right_labels <- function(labels_df = NULL) {
+  # No additional right plot margin is needed. The label gutter is now inside
+  # the x scale, so titles/captions remain full-width and the x-axis line runs
+  # underneath the label area.
+  theme()
 }
+
 
 geom_right_label_connector_tpa <- function(data, mapping, ...) {
   geom_segment(
@@ -216,9 +253,9 @@ geom_text_tpa <- function(data, mapping, color = NULL, ...) {
 smart_year_interval <- function(years) {
   years <- years[is.finite(years)]
   if (!length(years)) stop("`years` contains no finite values.")
-  
+
   span <- max(years) - min(years)
-  
+
   if (span > 140) 20
   else if (span > 60) 10
   else if (span > 25) 5
@@ -229,15 +266,15 @@ smart_year_interval <- function(years) {
 year_breaks_latest <- function(years, by = NULL) {
   years <- years[is.finite(years)]
   if (!length(years)) stop("`years` contains no finite values.")
-  
+
   yr_min <- min(years)
   yr_max <- max(years)
   by <- by %||% smart_year_interval(years)
-  
+
   if (!is.numeric(by) || length(by) != 1 || !is.finite(by) || by <= 0) {
     stop("`by` must be one positive finite number.")
   }
-  
+
   # Anchor the sequence to the latest observed year rather than to round
   # calendar multiples. Example: a 10-year interval ending in 2024 produces
   # 2024, 2014, 2004, 1994, ... .
@@ -250,17 +287,56 @@ scale_x_years <- function(
     by = NULL,
     pad_right = 0.01,
     pad_left = 0.01,
-    check_overlap = FALSE
+    check_overlap = FALSE,
+    right_labels = NULL
 ) {
+  years <- as.numeric(years)
   years <- years[is.finite(years)]
-  if (!length(years)) stop("`years` contains no finite values.")
-  
+
+  if (!length(years)) {
+    stop("`years` contains no finite values.")
+  }
+
+  # Standard charts keep the existing proportional expansion behavior.
+  if (is.null(right_labels)) {
+    return(
+      scale_x_continuous(
+        breaks = year_breaks_latest(years, by = by),
+        expand = expansion(mult = c(pad_left, pad_right)),
+        guide = guide_axis(check.overlap = check_overlap)
+      )
+    )
+  }
+
+  # Right-labeled line charts use the exact panel limit calculated by
+  # prepare_right_labels() from the longest rendered label.
+  right_limit <- attr(right_labels, "tpa_right_limit")
+
+  if (
+    is.null(right_limit) ||
+    length(right_limit) != 1 ||
+    !is.finite(right_limit)
+  ) {
+    stop(
+      "`right_labels` must first be passed through ",
+      "`prepare_right_labels()`.",
+      call. = FALSE
+    )
+  }
+
   scale_x_continuous(
+    limits = c(
+      min(years),
+      right_limit
+    ),
+    # Show ticks only for actual years. The label gutter itself has no ticks,
+    # although the x-axis line continues through the full panel.
     breaks = year_breaks_latest(years, by = by),
-    expand = expansion(mult = c(pad_left, pad_right)),
+    expand = expansion(mult = c(pad_left, 0)),
     guide = guide_axis(check.overlap = check_overlap)
   )
 }
+
 
 # ---- Observed / projected lines -----------------------------
 
