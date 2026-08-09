@@ -1,6 +1,0 @@
-"0","meta_007 <- get_meta(""TAB201"")"
-"0","TAB201 <- build_region_table("
-"0","  name = ""TAB201"","
-"0","  meta = meta_007"
-"0",")"
-"0","save_table(TAB201, ""tab_2_01"", profile = ""ultrawide"", stub_width_px = 260)"

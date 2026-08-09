@@ -273,7 +273,7 @@ MICRO_LABEL_SIZE     <- PUB$type$micro_pt
 MILESTONE_LABEL_SIZE <- PUB$type$milestone_pt
 BASE_SIZE            <- DOC_BODY_PT
 
-CHART_LINE <- "  "
+# CHART_LINE <- "  "
 
 # ---- Theme helpers ------------------------------------------
 base_text <- function(size = AXIS_SIZE, color = "grey25", face = NULL) {

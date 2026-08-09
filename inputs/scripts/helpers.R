@@ -515,13 +515,19 @@ plot_nonresident_field <- function(df, meta, y_label) {
 # ---- Title / source metadata --------------------------------
 
 format_source <- function(src) {
-  src %>%
+  
+  src_clean <- src %>%
     gsub("<[^>]+>", "", .) %>%
-    gsub("https?://\\S+", "", .) %>%
-    gsub("www\\.\\S+", "", .) %>%
-    gsub("\\s+", " ", .) %>%
-    trimws() %>%
-    paste0("*Data from ", ., "* Chart by Emerson Johnston and Amy Zegart, Stanford University")
+    gsub("https?://\\S+", "", ., perl = TRUE) %>%
+    gsub("www\\.\\S+", "", ., perl = TRUE) %>%
+    gsub("[[:space:]]+", " ", .) %>%
+    trimws()
+  
+  paste0(
+    "<i>Data from ", src_clean, "</i>",
+    "<br>",
+    "Chart by Emerson Johnston and Amy Zegart, Stanford University"
+  )
 }
 
 titles_and_sources <- read_csv(PATHS$titles_and_sources, show_col_types = FALSE)
@@ -564,7 +570,7 @@ get_meta <- function(id) {
   list(
     title      = full_title,
     title_long = m$title_long[1],
-    subtitle   = CHART_LINE,
+#   subtitle   = CHART_LINE,
     caption    = format_source(short),
     csv        = m$csv[1]
   )

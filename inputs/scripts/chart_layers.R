@@ -53,6 +53,20 @@ geom_label_repel_tpa <- function(
 # of the final observation. Labels are kept on one line, share one x anchor,
 # and reserve only the physical right margin required by the longest label.
 
+single_line_label <- function(x) {
+  x <- as.character(x)
+  
+  # Replace actual carriage-return/newline characters only.
+  # Do NOT use "[\\r\\n]+" with base R's default regex engine:
+  # inside that character class it can be interpreted as the literal
+  # letters r and n, which deletes those letters from labels.
+  x <- gsub("\r", " ", x, fixed = TRUE)
+  x <- gsub("\n", " ", x, fixed = TRUE)
+  
+  x
+}
+
+
 label_width_pt <- function(
     labels,
     size_pt = DATA_LABEL_SIZE,
@@ -60,7 +74,7 @@ label_width_pt <- function(
     face = "bold"
 ) {
   labels <- as.character(labels)
-  labels <- gsub("[\\r\\n]+", " ", labels)
+  labels <- single_line_label(labels)
   labels <- labels[!is.na(labels) & nzchar(labels)]
   
   if (!length(labels)) return(0)
@@ -126,10 +140,8 @@ prepare_right_labels <- function(
   
   # Right-edge labels should never wrap. Any deliberate/newline text is
   # normalized to a single line before width measurement and rendering.
-  labels_df[[label_col]] <- gsub(
-    "[\\r\\n]+",
-    " ",
-    as.character(labels_df[[label_col]])
+  labels_df[[label_col]] <- single_line_label(
+    labels_df[[label_col]]
   )
   
   point_x <- as.numeric(labels_df[[x_col]])

@@ -257,14 +257,6 @@ fig108 <- read_infographic_source(
   "FIG108"
 )
 
-fig109 <- read_infographic_source(
-  "FIG109"
-)
-
-fig110 <- read_infographic_source(
-  "FIG110"
-)
-
 tab101 <- read_infographic_source(
   "TAB101"
 )
@@ -834,7 +826,7 @@ metric_rows <- list(
     section_id = "projections",
     section_label = "Global STEM PhD projections",
     measure = "US: annual STEM PhDs",
-    df = fig109,
+    df = fig107,
     observed_column = "United States",
     projected_column = "United States (projected)",
     value_type = "count",
@@ -846,7 +838,7 @@ metric_rows <- list(
     section_id = "projections",
     section_label = "Global STEM PhD projections",
     measure = "CN: annual STEM PhDs",
-    df = fig109,
+    df = fig107,
     observed_column = "China",
     projected_column = "China (projected)",
     value_type = "count",
@@ -858,7 +850,7 @@ metric_rows <- list(
     section_id = "projections",
     section_label = "Global STEM PhD projections",
     measure = "India: annual STEM PhDs",
-    df = fig109,
+    df = fig108,
     observed_column = "India",
     projected_column = "India (projected)",
     value_type = "count",
@@ -2362,7 +2354,6 @@ knitr::include_graphics(
 ```
 
 # Chapter 4
-
 ```{r infographic_ch4_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 # ============================================================================
 # CHAPTER 4: BY THE NUMBERS

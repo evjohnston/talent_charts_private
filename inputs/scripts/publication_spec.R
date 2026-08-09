@@ -150,7 +150,7 @@ PUB <- list(
   page = list(
     width_in  = 8.5,
     height_in = 11,
-    margin_in = 1
+    margin_in = .75
   ),
   
   # All document-facing font sizes are defined at 100% here, then passed
@@ -158,14 +158,14 @@ PUB <- list(
   type = list(
     title_pt     = font_pt(11),
     subtitle_pt  = font_pt(10),
-    caption_pt   = font_pt(10),
+    caption_pt   = font_pt(8),
     body_pt      = font_pt(10),
     label_pt     = font_pt(10),
     compact_pt   = font_pt(10),
     small_pt     = font_pt(9),
     micro_pt     = font_pt(8),
     milestone_pt = font_pt(7.5),
-    source_pt    = font_pt(11)
+    source_pt    = font_pt(8)
   ),
   
   # Physical spacing values are in points unless the name says otherwise.

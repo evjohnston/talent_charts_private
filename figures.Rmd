@@ -210,26 +210,29 @@ df_098 <- read_levels("FIG102", value_col = "Count",
                             "Bachelor's" = "Bachelors",
                             "Master's"   = "Masters"))
 
-last_098 <- last_by_group(df_098, Year, Level)
+last_098 <- last_by_group(df_098, Year, Level) %>%
+  mutate(
+    .label = paste0(Level, ": ", fmt_start(Count))
+  ) %>%
+  prepare_right_labels(df_098$Year)
 
 FIG102 <- ggplot(df_098, aes(Year, Count, color = Level, group = Level)) +
   geom_line(linewidth = LINE_WIDTH) +
-  geom_text(
-    data     = last_098,
-    mapping  = aes(label = paste0(Level, ": ", fmt_start(Count))),
-    size     = DATA_LABEL_SIZE / .pt,
-    fontface = "bold",
-    family   = FONT_FAMILY,
-    hjust    = 0,
-    vjust    = 0.5,
-    nudge_x  = 1
+  geom_label_repel_tpa(
+    data    = last_098,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
   ) +
-  scale_x_years(df_098$Year, pad_left = 0.05, pad_right = .3) +
+  scale_x_years(df_098$Year, pad_left = 0.05, pad_right = 0) +
   scale_y_continuous(labels = m1, expand = EXPAND_LINE) +
   scale_color_levels() +
   guides(color = "none") +
   labs_meta(meta, y = "Degrees awarded") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(last_098)
 
 save_chart(FIG102, "fig_1_02")
 ```
@@ -306,15 +309,18 @@ df_099 <- read_levels(
   mutate(Level = fct_recode(Level,
                             "Bachelor's" = "Bachelors",
                             "Master's"   = "Masters"))
-last_099  <- last_by_group(df_099, Year, Level)
+last_099 <- last_by_group(df_099, Year, Level) %>%
+  mutate(
+    .label = paste0(pct(Share), " - ", Level)
+  ) %>%
+  prepare_right_labels(df_099$Year)
 first_099 <- df_099 %>% group_by(Level) %>% slice_min(Year, n = 1) %>% ungroup()
 
 FIG105 <- ggplot(df_099, aes(Year, Share, color = Level, group = Level)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = last_099,
-    mapping      = aes(label = paste0(pct(Share), " - ", Level)),
-    nudge_x      = 0.5,
+    data    = last_099,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
@@ -327,12 +333,14 @@ FIG105 <- ggplot(df_099, aes(Year, Share, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_099$Year, pad_left = 0.05, pad_right = .3) +
+  scale_x_years(df_099$Year, pad_left = 0.05, pad_right = 0) +
   scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
   scale_color_levels() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of completions") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(last_099)
 save_chart(FIG105, "fig_1_05")
 ```
 
@@ -352,15 +360,18 @@ df_005 <- read_levels(
                             "Bachelor's" = "Bachelors",
                             "Master's"   = "Masters"))
 
-last_005  <- last_by_group(df_005, Year, Level)
+last_005 <- last_by_group(df_005, Year, Level) %>%
+  mutate(
+    .label = paste0(pct(Share), ": ", Level)
+  ) %>%
+  prepare_right_labels(df_005$Year)
 first_005 <- df_005 %>% group_by(Level) %>% slice_min(Year, n = 1) %>% ungroup()
 
 FIG108 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = last_005,
-    mapping      = aes(label = paste0(pct(Share), ": ", Level)),
-    nudge_x      = 0.5,
+    data    = last_005,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
@@ -373,12 +384,14 @@ FIG108 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_005$Year, pad_left = 0.05, pad_right = .25) +
+  scale_x_years(df_005$Year, pad_left = 0.05, pad_right = 0) +
   scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
   scale_color_levels() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of completions") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(last_005)
 save_chart(FIG108, "fig_1_06")
 ```
 
@@ -391,7 +404,9 @@ df_008 <- read_fig("FIG107") %>%
   pivot_observed_projected() %>%
   order_by_latest(Country, value)
 
-labels_008 <- last_by_group(df_008, Year, Country)
+labels_008 <- last_by_group(df_008, Year, Country) %>%
+  mutate(.label = as.character(Country)) %>%
+  prepare_right_labels(df_008$Year)
 proj_start <- proj_start_year(df_008)
 y_top      <- y_top_round(df_008$value, 50000)
 
@@ -412,19 +427,21 @@ FIG109 <- ggplot(df_008, aes(Year, value, color = Country, group = Country)) +
     bg_for = \(year) if_else(year >= proj_start, "grey94", "white")
   ) +
   geom_label_repel_tpa(
-    data         = labels_008,
-    mapping      = aes(label = Country),
-    nudge_x      = 2,
+    data    = labels_008,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
+    direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_008$Year, pad_right = .3) +
+  scale_x_years(df_008$Year, pad_right = 0) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "STEM PhDs per year") +
-  theme_op()
+  coord_cartesian(clip = "off") +
+  theme_op() +
+  theme_right_labels(labels_008)
 
 save_chart(FIG109, "fig_1_07")
 ```
@@ -438,7 +455,11 @@ df_007 <- read_fig("FIG108") %>%
   pivot_observed_projected() %>%
   order_by_latest(Country, value)
 
-labels_007 <- last_by_group(df_007, Year, Country)
+labels_007 <- last_by_group(df_007, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", round(value))
+  ) %>%
+  prepare_right_labels(df_007$Year)
 proj_start <- proj_start_year(df_007)
 y_max      <- max(df_007$value)
 
@@ -448,22 +469,20 @@ FIG110 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
   geom_op_lines(df_007) +
   geom_label_repel_tpa(
     data    = labels_007,
-    mapping = aes(label = paste0(
-      if_else(Country == "United Kingdom", "United\nKingdom", as.character(Country)),
-      ": ", round(value)
-    )),
-    nudge_x    = 2,
-    hjust      = 0,
-    lineheight = 0.85,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_007$Year, pad_right = .3) +
+  scale_x_years(df_007$Year, pad_right = 0) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "STEM PhDs per year") +
-  theme_op()
+  coord_cartesian(clip = "off") +
+  theme_op() +
+  theme_right_labels(labels_007)
 
 save_chart(FIG110, "fig_1_08")
 ```
@@ -489,25 +508,30 @@ df_109 <- df_109 %>%
   filter(Country %in% top_countries) %>%
   order_by_latest(Country, Count)
 
-labels_109 <- last_by_group(df_109, Year, Country)
+labels_109 <- last_by_group(df_109, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", label_percent(accuracy = 0.1)(Count))
+  ) %>%
+  prepare_right_labels(df_109$Year)
 
 FIG203 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = labels_109,
-    mapping      = aes(label = paste0(Country, ": ", label_percent(accuracy = 0.1)(Count))),
-    nudge_x      = 0.5,
+    data    = labels_109,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_109$Year, pad_right = .3) +
+  scale_x_years(df_109$Year, pad_right = 0) +
   scale_y_continuous(labels = label_percent(accuracy = 1),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of Enrolled International Students") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_109)
 
 save_chart(FIG203, "fig_2_01")
 ```
@@ -531,25 +555,30 @@ df_111 <- df_111 %>%
   filter(Country %in% top_countries) %>%
   order_by_latest(Country, Count)
 
-labels_111 <- last_by_group(df_111, Year, Country)
+labels_111 <- last_by_group(df_111, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", label_percent(accuracy = 0.1)(Count))
+  ) %>%
+  prepare_right_labels(df_111$Year)
 
 FIG204 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = labels_111,
-    mapping      = aes(label = paste0(Country, ": ", label_percent(accuracy = 0.1)(Count))),
-    nudge_x      = 0.5,
+    data    = labels_111,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_111$Year, pad_right = .4) +
+  scale_x_years(df_111$Year, pad_right = 0) +
   scale_y_continuous(labels = label_percent(accuracy = 1),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of Enrolled International Students") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_111)
 
 save_chart(FIG204, "fig_2_02")
 ```
@@ -565,25 +594,30 @@ df_014 <- read_fig("FIG203") %>%
   filter(!is.na(Count)) %>%
   order_by_latest(Field, Count)
 
-labels_014 <- last_by_group(df_014, Year, Field)
+labels_014 <- last_by_group(df_014, Year, Field) %>%
+  mutate(
+    .label = paste0(Field, ": ", label_comma()(Count))
+  ) %>%
+  prepare_right_labels(df_014$Year)
 
 FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = labels_014,
-    mapping      = aes(label = paste0(Field, ": ", label_comma()(Count))),
-    nudge_x      = 1,
+    data    = labels_014,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_014$Year) +
+  scale_x_years(df_014$Year, pad_right = 0) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Enrolled students") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_014)
 
 save_chart(FIG205, "fig_2_03")
 ```
@@ -608,26 +642,31 @@ df_013 <- df_013 %>%
   filter(Country %in% top_countries) %>%
   order_by_latest(Country, Count)
 
-labels_013 <- last_by_group(df_013, Year, Country)
+labels_013 <- last_by_group(df_013, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", label_comma()(Count))
+  ) %>%
+  prepare_right_labels(df_013$Year)
 
 FIG206 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = labels_013,
-    mapping      = aes(label = paste0(Country, ": ", label_comma()(Count))),
-    nudge_x      = 0.5,
+    data    = labels_013,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_013$Year, pad_right = .3) +
+  scale_x_years(df_013$Year, pad_right = 0) +
   scale_y_log10(labels = label_comma(),
                 breaks = c(0, 1000, 5000, 10000, 50000, 100000, 250000),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Enrolled students (log scale)") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_013)
 
 save_chart(FIG206, "fig_2_04")
 ```
@@ -752,7 +791,7 @@ labels_106 <- df_106 %>%
   ungroup()
 
 FIG212 <- ggplot(df_106, aes(Share, Reason, color = Cohort)) +
-  geom_point(size = 2.5) +
+  geom_point(size = 3.5) +
   geom_text(
     data = labels_106,
     aes(x = label_x, label = paste0(Share, "%")),
@@ -790,25 +829,30 @@ df_102 <- read_fig("FIG301") %>%
   pivot_longer(-Year, names_to = "Level", values_to = "Count") %>%
   order_by_latest(Level, Count)
 
-labels_102 <- last_by_group(df_102, Year, Level)
+labels_102 <- last_by_group(df_102, Year, Level) %>%
+  mutate(
+    .label = paste0(Level, ": ", label_comma()(Count))
+  ) %>%
+  prepare_right_labels(df_102$Year)
 
 FIG201 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
   geom_line(linewidth = 1) +
   geom_label_repel_tpa(
-    data = labels_102,
-    mapping = aes(label = paste0(Level, ": ", label_comma()(Count))),
-    nudge_x = 0.5,
-    hjust = 0,
-    direction = "y",
+    data    = labels_102,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_102$Year, pad_right = 0.50) +
+  scale_x_years(df_102$Year, pad_right = 0) +
   scale_y_continuous(labels = label_comma(),
                      expand = expansion(mult = c(0.02, 0.05))) +
   scale_color_manual(values = acad_level_colors) +
   guides(color = "none") +
   labs_meta(meta, y = "International students enrolled") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_102)
 
 save_chart(FIG201, "fig_3_01")
 ```
@@ -827,19 +871,22 @@ df_020 <- read_fig("FIG302") %>%
   filter(!is.na(Share)) %>%
   order_by_latest(Field, Share)
 
-labels_020 <- last_by_group(df_020, Year, Field)
+labels_020 <- last_by_group(df_020, Year, Field) %>%
+  mutate(
+    .label = paste0(Field, ": ", sprintf("%.1f%%", Share))
+  ) %>%
+  prepare_right_labels(df_020$Year)
 
 FIG207 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
-    data         = labels_020,
-    mapping      = aes(label = paste0(Field, ": ", sprintf("%.1f%%", Share))),
-    nudge_x      = 0.9,
+    data    = labels_020,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_020$Year, pad_right = .25) +
+  scale_x_years(df_020$Year, pad_right = 0) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 80),
                      breaks = seq(0, 80, 10),
@@ -847,7 +894,9 @@ FIG207 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "International share of postdocs") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_020)
 
 save_chart(FIG207, "fig_3_02")
 ```
@@ -1108,20 +1157,23 @@ palette_031 <- c(
   "Some Foreign Born" = tpa_colors[4]
 )
 
-labels_031 <- last_by_group(df_031, Year, Composition)
+labels_031 <- last_by_group(df_031, Year, Composition) %>%
+  mutate(
+    .label = paste0(Composition, ": ", fmt_pct_1(Share))
+  ) %>%
+  prepare_right_labels(df_031$Year)
 
 FIG304 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Composition)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = POINT_SIZE) +
   geom_label_repel_tpa(
-    data         = labels_031,
-    mapping      = aes(label = paste0(Composition, ": ", fmt_pct_1(Share))),
-    nudge_x      = 0.5,
+    data    = labels_031,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_031$Year, pad_right = .3) +
+  scale_x_years(df_031$Year, pad_right = 0) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(20, 45),
                      breaks = seq(0, 45, 5),
@@ -1129,7 +1181,9 @@ FIG304 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Compositi
   scale_color_manual(values = palette_031) +
   guides(color = "none") +
   labs_meta(meta, y = "Share of Forbes AI 50") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_031)
 
 save_chart(FIG304, "fig_3_07")
 ```
@@ -1299,7 +1353,9 @@ math_labels  <- df_math
 muted_labels <- df_muted %>% filter(Year %in% range(Year))
 
 # right-edge series labels replacing the legend
-end_labels <- last_by_group(df_035, Year, Subject)
+end_labels <- last_by_group(df_035, Year, Subject) %>%
+  mutate(.label = as.character(Subject)) %>%
+  prepare_right_labels(df_035$Year)
 
 FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
   geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
@@ -1315,19 +1371,23 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
             fontface = "bold", family = FONT_FAMILY, show.legend = FALSE) +
   geom_label_repel_tpa(
     data    = end_labels,
-    mapping = aes(label = Subject),
-    nudge_x = 0.4, hjust = 0, direction = "y"
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
   ) +
   annotate("text", x = min(df_035$Year), y = 1.6, label = "OECD average",
            hjust = 0, vjust = 0, color = "grey50",
            size = SMALL_LABEL_SIZE / .pt, family = FONT_FAMILY) +
-  scale_x_years(df_035$Year, pad_left = 0.03, pad_right = 0.12) +
+  scale_x_years(df_035$Year, pad_left = 0.03, pad_right = 0) +
   scale_y_continuous(limits = c(-20, 32), breaks = seq(-20, 30, 5),
                      expand = expansion(mult = c(0.02, 0.05))) +
   scale_color_manual(values = palette_035) +
   guides(color = "none") +
   labs_meta(meta, y = "Points above or below OECD average") +
+  coord_cartesian(clip = "off") +
   theme_tpa() +
+  theme_right_labels(end_labels) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
 save_chart(FIG401, "fig_4_01")
@@ -1774,9 +1834,14 @@ df_042 <- df_042 %>% mutate(is_hi = Country %in% highlighted)
 labels_042 <- df_042 %>%
   filter(!is.na(Flow), Country %in% highlighted) %>%
   group_by(Country) %>% slice_max(Year, n = 1) %>% ungroup() %>%
-  mutate(label = paste0(if_else(Country == "United States of America",
-                                "United States", Country),
-                        ": ", sprintf("%.2fM", Flow)))
+  mutate(
+    .label = paste0(
+      if_else(Country == "United States of America", "United States", Country),
+      ": ",
+      sprintf("%.2fM", Flow)
+    )
+  ) %>%
+  prepare_right_labels(df_042$Year)
 
 FIG411 <- ggplot() +
   geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
@@ -1786,16 +1851,23 @@ FIG411 <- ggplot() +
   geom_line(data = filter(df_042, is_hi),
             aes(Year, Flow, color = Country, group = Country),
             linewidth = LINE_WIDTH_DENSE, na.rm = FALSE) +
-  geom_label_repel_tpa(data = labels_042, aes(Year, Flow, label = label, color = Country),
-                       nudge_x = 0.5, hjust = 0, direction = "y", with_segment = TRUE) +
-  scale_x_years(df_042$Year, pad_right = .3) +
+  geom_label_repel_tpa(
+    data = labels_042,
+    aes(x = .label_x, y = Flow, label = .label, color = Country),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_042$Year, pad_right = 0) +
   scale_y_continuous(labels = function(x) paste0(sprintf("%.1f", x), "M"),
                      expand = expansion(mult = c(0.05, 0.05))) +
   scale_color_manual(values = c("United States of America" = tpa_colors[2],
                                 "China" = tpa_colors[1])) +
   guides(color = "none") +
   labs_meta(meta, y = "Net flow (millions of students)") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_042)
 
 save_chart(FIG411, "fig_4_10")
 ```
@@ -1823,20 +1895,23 @@ palette_047 <- c(
   "Rest of the World" = "grey55"
 )
 
-labels_047 <- last_by_group(df_047, Year, Region)
+labels_047 <- last_by_group(df_047, Year, Region) %>%
+  mutate(
+    .label = paste0(Region, ": ", fmt_pct_1(Share))
+  ) %>%
+  prepare_right_labels(df_047$Year)
 
 fig_047 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
   geom_label_repel_tpa(
-    data         = labels_047,
-    mapping      = aes(label = paste0(Region, ": ", fmt_pct_1(Share))),
-    nudge_x      = 0.5,
+    data    = labels_047,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_047$Year, pad_right = PAD_RIGHT_XWIDE) +
+  scale_x_years(df_047$Year, pad_right = 0) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 90),
                      breaks = seq(0, 90, 10),
@@ -1844,7 +1919,9 @@ fig_047 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
   scale_color_manual(values = palette_047) +
   guides(color = "none") +
   labs_meta(meta, y = "Share of NeurIPS oral presentations") +
+  coord_cartesian(clip = "off") +
   theme_tpa() +
+  theme_right_labels(labels_047) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
 save_chart(fig_047, "fig_5_01")
@@ -1938,20 +2015,23 @@ df_046 <- read_fig("FIG504") %>%
             `United States` = US_Share * 100) %>%
   pivot_longer(-Year, names_to = "Country", values_to = "Share")
 
-labels_046 <- last_by_group(df_046, Year, Country)
+labels_046 <- last_by_group(df_046, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", fmt_pct_0(Share))
+  ) %>%
+  prepare_right_labels(df_046$Year)
 
 FIG503 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = POINT_SIZE) +
   geom_label_repel_tpa(
-    data         = labels_046,
-    mapping      = aes(label = paste0(Country, ": ", fmt_pct_0(Share))),
-    nudge_x      = 0.5,
+    data    = labels_046,
+    mapping = aes(x = .label_x, label = .label),
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_046$Year, pad_right = PAD_RIGHT_WIDE) +
+  scale_x_years(df_046$Year, pad_right = 0) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 60),
                      breaks = seq(0, 60, 15),
@@ -1959,7 +2039,9 @@ FIG503 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
   scale_color_china_us() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of global top 1% most-cited researchers") +
+  coord_cartesian(clip = "off") +
   theme_tpa() +
+  theme_right_labels(labels_046) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
 save_chart(FIG503, "fig_5_04")
@@ -1977,7 +2059,6 @@ fig <- plot_country_lines(df, meta, "GERD (billions of constant 2020 PPP dollars
                           group_col   = "Region",
                           value_col   = "Value",
                           label_fmt   = function(x) paste0("$", sprintf("%.0f", x), "B"),
-                          pad_right   = .3,
                           highlight   = c("United States", "China"),
                           color_scale = scale_color_china_us(),
                           y_args      = list(
@@ -2001,7 +2082,6 @@ df   <- read_country_lines("FIG506", group_col = "Country", value_col = "Share")
 fig <- plot_country_lines(df, meta, "R&D intensity (% of GDP)",
                           value_col   = "Share",
                           label_fmt   = fmt_pct_1,
-                          pad_right   = PAD_RIGHT_WIDE,
                           highlight   = c("United States", "China"),
                           color_scale = scale_color_china_us(),
                           y_args      = list(
@@ -2330,7 +2410,10 @@ df_078 <- read_fig("FIG607") %>%
 
 china_078 <- filter(df_078, is_china)
 other_078 <- filter(df_078, !is_china)
-china_last <- china_078 %>% filter(Year == max(Year))
+china_last <- china_078 %>%
+  filter(Year == max(Year)) %>%
+  mutate(.label = paste0("China: ", fmt_pct_1(Share))) %>%
+  prepare_right_labels(df_078$Year)
 
 FIG607 <- ggplot() +
   geom_line(data = other_078,
@@ -2343,8 +2426,10 @@ FIG607 <- ggplot() +
              aes(Year, Share), color = tpa_colors[1], size = 2.5) +
   geom_label_repel_tpa(
     data    = china_last,
-    mapping = aes(Year, Share, label = paste0("China: ", fmt_pct_1(Share))),
-    nudge_x = 0.4, hjust = 0, direction = "y", with_segment = TRUE
+    mapping = aes(x = .label_x, y = Share, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
   ) +
   annotate("text", x = 2015, y = 11.6, label = "China", hjust = 0,
            color = tpa_colors[1], fontface = "bold",
@@ -2352,12 +2437,14 @@ FIG607 <- ggplot() +
   annotate("text", x = 2020.2, y = 7.0, label = "Other top-five countries",
            hjust = 0, color = "grey55",
            family = FONT_FAMILY, size = SMALL_LABEL_SIZE / .pt) +
-  scale_x_years(df_078$Year, pad_right = PAD_RIGHT_STANDARD) +
+  scale_x_years(df_078$Year, pad_right = 0) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 12), breaks = seq(0, 12, 2),
                      expand = EXPAND_BAR_TIGHT) +
   labs_meta(meta, y = "Share of J-1 participants") +
-  theme_tpa()
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(china_last)
 
 save_chart(FIG607, "fig_6_07")
 ```
