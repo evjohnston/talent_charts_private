@@ -9210,7 +9210,7 @@ audit_endpoint_rule <- function(
     chapter == "Chapter 6" &
       (
         stat_id ==
-          "trained_total" ||
+          "trained_total" |
         stringr::str_starts(
           stat_id,
           "loss_"
@@ -9254,7 +9254,7 @@ audit_years_expected <- function(
       chapter == "Chapter 6" &
         (
           stat_id ==
-            "trained_total" ||
+            "trained_total" |
           stringr::str_starts(
             stat_id,
             "loss_"
