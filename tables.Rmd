@@ -32,6 +32,12 @@ if (is.na(setup_path)) {
 }
 
 source(setup_path)
+
+# Start a fresh table-export audit for this knit. save_table() appends one row
+# per exported table and the final audit chunk verifies width + typography.
+if (exists("reset_table_export_audit")) {
+  reset_table_export_audit()
+}
 ```
 
 # Chapter 1 
@@ -88,6 +94,22 @@ field_files <- c(
   "Fine/Applied Arts"        = "TAB202f",
   "Health Professions"       = "TAB202g",
   "Social Sciences"          = "TAB202h"
+)
+
+# Short column headers. The data columns are named by the long field labels
+# above; these map each to a compact header whose longest single word fits one
+# column at this width, so no header word overflows its cell. Field ordering,
+# formatting, and color all key off the long names via field_order and are
+# unaffected.
+field_header_short <- c(
+  "Engineering"              = "Engineering",
+  "Math & Computer Science"  = "Math/Computer",
+  "Physical & Life Sciences" = "Phys./Life Sci.",
+  "Business and Management"  = "Business/Mgmt",
+  "Education"                = "Education",
+  "Fine/Applied Arts"        = "Fine/Applied Arts",
+  "Health Professions"       = "Health Prof.",
+  "Social Sciences"          = "Social Sci."
 )
 
 # Rows shown, in order. Sorted by total enrollment, largest first.
@@ -148,6 +170,11 @@ tab_202 <- mat %>%
     )
   ) %>%
   cols_align(align = "right", columns = all_of(field_order)) %>%
+  cols_label(.list = {
+    lbl <- field_header_short[field_order]
+    lbl[is.na(lbl)] <- field_order[is.na(lbl)]   # fall back to full name if unmapped
+    setNames(as.list(lbl), field_order)
+  }) %>%
   style_stub_left() %>%
   tab_spanner(
     label   = "Change in share of the country's U.S.-bound students (pct. points)",
@@ -414,7 +441,7 @@ TAB402 <- build_bookend_table(
     "from the 2004/2009 to the 2012/2017 cohort."
   )
 )
-save_table(TAB402, "tab_4_02")
+save_table(TAB402, "tab_4_02", profile = "standard")
 ```
 
 ### Table 4.03 - What Do Americans Study Abroad?
@@ -570,7 +597,7 @@ TAB502 <- build_ranking_delta_table(
   cell_footnote_field = "Computer Science",
   cell_footnote_col   = "Y2014"
 )
-save_table(TAB502, "tab_5_02")
+save_table(TAB502, "tab_5_02", profile = "standard")
 ```
 
 ### Table 5.03 - Is R&D Spending Aimed at Today or Tomorrow? 
@@ -699,7 +726,7 @@ build_patents_table(
   ),
   change_type = change_type
 ) %>%
-  save_table("tab_5_05")
+  save_table("tab_5_05", profile = "ultrawide")
 ```
 
 ### Table 5.06 - Patent Leadership Shifted From U.S. and Japanese Incumbents to Asian Challengers
@@ -783,7 +810,7 @@ tab_028 <- build_bookend_table(
   change_type = change_type
 )
 
-save_table(tab_028, "tab_6_01")
+save_table(tab_028, "tab_6_01", profile = "standard")
 ```
 
 
@@ -801,7 +828,7 @@ tab_025 <- build_bookend_table(
   change_type = change_type
 )
 
-save_table(tab_025, "tab_6_02")
+save_table(tab_025, "tab_6_02", profile = "standard")
 ```
 
 ### Table 6.03 - Where U.S. Awarded PhDs Work After Graduation
@@ -811,7 +838,7 @@ change_type <- "ppt"  # choose "relative" or "ppt"
 
 TAB603 <- build_sector_bookend_table(meta, change_type = change_type)
 
-save_table(TAB603, "tab_6_03")
+save_table(TAB603, "tab_6_03", profile = "standard")
 TAB603
 ```
 
@@ -822,7 +849,7 @@ change_type <- "ppt"  # choose "relative" or "ppt"
 
 TAB604 <- build_perm_expiry_table(meta, change_type = change_type)
 
-save_table(TAB604, "tab_6_04")
+save_table(TAB604, "tab_6_04", profile = "standard")
 ```
 
 ### Table 6.05 - Employment-Based Green Card Wait Times by Nationality
@@ -831,8 +858,45 @@ meta <- get_meta("TAB605")
 
 TAB605 <- build_eb_combined_table(meta)
 
-save_table(TAB605, "tab_6_05")
+save_table(TAB605, "tab_6_05", profile = "standard")
 TAB605
 ```
 
 
+# Table publication audit
+```{r table-publication-audit, include=FALSE}
+EXPECTED_TABLE_EXPORTS <- c(
+  "tab_1_01",
+  "tab_2_01", "tab_2_02",
+  "tab_3_01", "tab_3_02", "tab_3_03",
+  "tab_4_01", "tab_4_02", "tab_4_03", "tab_4_04",
+  "tab_5_01", "tab_5_02", "tab_5_03", "tab_5_04", "tab_5_05", "tab_5_06",
+  "tab_6_01", "tab_6_02", "tab_6_03", "tab_6_04", "tab_6_05"
+)
+
+table_layout_audit <- write_table_export_audit(
+  path = file.path(PATHS$final_tables, "table_layout_audit_ch1_ch6.csv"),
+  expected_names = EXPECTED_TABLE_EXPORTS
+)
+
+# A second, compact console check makes the publication contract visible during
+# knitting without adding anything to the rendered document.
+message(
+  "TABLE AUDIT PASS: ",
+  nrow(table_layout_audit),
+  " tables; common width = ",
+  unique(table_layout_audit$expected_width_px),
+  " px; body/column/spanner/title/source = ",
+  paste(
+    unique(table_layout_audit$body_font_pt),
+    unique(table_layout_audit$column_label_font_pt),
+    unique(table_layout_audit$spanner_font_pt),
+    unique(table_layout_audit$title_font_pt),
+    unique(table_layout_audit$source_font_pt),
+    sep = "/"
+  ),
+  " pt; row padding = ",
+  unique(table_layout_audit$row_padding_pt),
+  " pt."
+)
+```

@@ -34,7 +34,7 @@ if (!exists("PUB")) {
 # This scale multiplies the global FONT_SCALE_PERCENT already applied in
 # publication_spec.R. Physical table width and padding are not changed.
 
-TABLE_FONT_SCALE_PERCENT <- 75
+TABLE_FONT_SCALE_PERCENT <- 90
 
 TABLE_FONT_SCALE <- TABLE_FONT_SCALE_PERCENT / 100
 
@@ -50,7 +50,8 @@ WORD_TABLE_WIDTH_IN <- PUB$page$body_in
 TABLE_CSS_DPI <- PUB$render$table_css_dpi
 
 # Final PNGs use the SAME physical width and raster density as figures.
-# With a 6.5-inch body width and 300 dpi, every final table PNG is 1950 px wide.
+# The pixel width is always derived from the active publication body width, so
+# changing page margins in publication_spec.R updates every table automatically.
 TABLE_EXPORT_DPI <- PUB$render$figure_dpi
 TABLE_EXPORT_PX  <- round(WORD_TABLE_WIDTH_IN * TABLE_EXPORT_DPI)
 
@@ -72,23 +73,90 @@ table_pt_to_px <- function(pt, dpi = TABLE_CSS_DPI) pub_pt_to_px(pt, dpi)
 # ---------------------------------------------------------------------------
 # Publication-facing table typography
 # ---------------------------------------------------------------------------
-# Body/header/footnote text can be reduced for dense tables.
-TABLE_DATA_FONT_PT       <- table_font_pt(PUB$type$body_pt)
-TABLE_HEADER_FONT_PT     <- table_font_pt(PUB$type$body_pt)
-TABLE_FOOTNOTE_FONT_PT   <- table_font_pt(PUB$type$small_pt)
+# These are the ONLY table type-size controls. Builders should never introduce
+# local font-size overrides. Standard/wide/ultrawide profiles change only the
+# internal CSS canvas used to lay out dense columns; final physical type size is
+# held constant by apply_table_profile() + save_table().
+TABLE_DATA_FONT_PT          <- table_font_pt(PUB$type$body_pt)
+TABLE_COLUMN_LABEL_FONT_PT  <- table_font_pt(PUB$type$body_pt)
+TABLE_SPANNER_FONT_PT       <- table_font_pt(PUB$type$body_pt)
+TABLE_HEADER_FONT_PT        <- TABLE_COLUMN_LABEL_FONT_PT  # compatibility alias
+TABLE_FOOTNOTE_FONT_PT      <- table_font_pt(PUB$type$small_pt)
 
-# Title and source/caption sizes stay locked to the publication system.
+# Publication-facing elements remain tied directly to the global publication
+# spec so table titles and sources match the figure/infographic caption system.
 TABLE_TITLE_FONT_PT      <- PUB$type$title_pt
 TABLE_SUBTITLE_FONT_PT   <- PUB$type$subtitle_pt
 TABLE_SOURCE_FONT_PT     <- PUB$type$caption_pt
 
+# One vertical-rhythm system for every table.
+TABLE_BODY_LINEHEIGHT   <- 1.15
+TABLE_HEADER_LINEHEIGHT <- 1.10
+TABLE_TITLE_LINEHEIGHT <- if (!is.null(PUB$type_metrics$title_lineheight)) {
+  PUB$type_metrics$title_lineheight
+} else {
+  1.15
+}
+TABLE_SUBTITLE_LINEHEIGHT <- if (!is.null(PUB$type_metrics$subtitle_lineheight)) {
+  PUB$type_metrics$subtitle_lineheight
+} else {
+  1.30
+}
+TABLE_SOURCE_LINEHEIGHT <- if (!is.null(PUB$type_metrics$infographic_source_lineheight)) {
+  PUB$type_metrics$infographic_source_lineheight
+} else {
+  1.15
+}
+
 TABLE_FONT_PX          <- table_pt_to_px(TABLE_DATA_FONT_PT)
-TABLE_HEADER_FONT_PX   <- table_pt_to_px(TABLE_HEADER_FONT_PT)
+TABLE_HEADER_FONT_PX   <- table_pt_to_px(TABLE_COLUMN_LABEL_FONT_PT)
+TABLE_SPANNER_FONT_PX  <- table_pt_to_px(TABLE_SPANNER_FONT_PT)
 TABLE_FOOTNOTE_FONT_PX <- table_pt_to_px(TABLE_FOOTNOTE_FONT_PT)
 TABLE_TITLE_FONT_PX    <- table_pt_to_px(TABLE_TITLE_FONT_PT)
 TABLE_SUBTITLE_FONT_PX <- table_pt_to_px(TABLE_SUBTITLE_FONT_PT)
 TABLE_NOTE_FONT_PX     <- table_pt_to_px(TABLE_SOURCE_FONT_PT)
 TABLE_STUB_WIDTH_PX    <- 210
+
+# Every exported table is publication-width at figure DPI. Height is allowed to
+# vary with row count/content; width, DPI, typography, padding, and line-height
+# are invariant across the full table set.
+TABLE_EXPORT_WIDTH_TOLERANCE_PX <- 2L
+
+# Export audit registry populated by save_table().
+TABLE_EXPORT_AUDIT <- tibble::tibble(
+  name = character(),
+  profile = character(),
+  size = character(),
+  css_width_px = integer(),
+  export_zoom = double(),
+  expected_width_px = integer(),
+  actual_width_px = integer(),
+  actual_height_px = integer(),
+  body_font_pt = double(),
+  header_font_pt = double(),
+  column_label_font_pt = double(),
+  spanner_font_pt = double(),
+  title_font_pt = double(),
+  source_font_pt = double(),
+  row_padding_pt = double(),
+  column_padding_pt = double(),
+  heading_padding_pt = double(),
+  source_padding_pt = double(),
+  body_lineheight = double(),
+  header_lineheight = double(),
+  title_lineheight = double(),
+  source_lineheight = double(),
+  status = character()
+)
+
+reset_table_export_audit <- function() {
+  TABLE_EXPORT_AUDIT <<- TABLE_EXPORT_AUDIT[0, ]
+  invisible(TABLE_EXPORT_AUDIT)
+}
+
+get_table_export_audit <- function() {
+  TABLE_EXPORT_AUDIT
+}
 
 # Canvas geometry only. CSS density is derived from pixel width / physical width,
 # so every profile inserts at WORD_TABLE_WIDTH_IN with the same printed type size.
@@ -155,6 +223,109 @@ get_gt_data_col_count <- function(gt_tbl) {
   max(1, length(get_gt_data_cols(gt_tbl)))
 }
 
+# ---------------------------------------------------------------------------
+# Content-aware column sizing
+# ---------------------------------------------------------------------------
+# Layout wrapping and dead whitespace both come from splitting the data area
+# EVENLY across columns: a "2015" column and a "+27.0 pp" column then get the
+# same width, so the wide one wraps while the narrow one wastes space. These
+# helpers measure each column's natural single-line width from its own header,
+# spanner share, and formatted cell text, then hand that to
+# scale_columns_to_width(), which gives every column at least what it needs and
+# distributes the remaining slack proportionally. Total width still lands on
+# p$width_px exactly, so the export-width contract and the layout audit are
+# unaffected; row height and every point size are untouched.
+
+# Average glyph advance as a fraction of font size, by character class. Gotham
+# is a fairly wide humanist sans; these are deliberate slight over-estimates so
+# text gets a hair more room than the strict minimum rather than a hair less.
+.tpa_char_em <- function(ch) {
+  if (grepl("[MW@]", ch))                 return(0.92)
+  if (grepl("[mw]", ch))                  return(0.82)
+  if (grepl("[A-Z0-9]", ch))              return(0.62)
+  if (grepl("[%+\u2212\u2013\u2014]", ch)) return(0.60)  # % + minus en/em dash
+  if (grepl("[ ]", ch))                    return(0.30)
+  if (grepl("[.,'\u2019:;|!]", ch))        return(0.28)
+  if (grepl("[ijltfIr()\\[\\]]", ch))      return(0.34)
+  0.55                                                   # ordinary lowercase
+}
+
+# Width in px of a single line of text at a given point size and CSS density.
+tpa_text_width_px <- function(text, pt, css_dpi, bold = FALSE) {
+  text <- as.character(text)
+  text[is.na(text)] <- ""
+  if (length(text) == 0) return(0)
+  px_per_pt <- css_dpi / 72
+  bold_factor <- if (bold) 1.06 else 1.0
+  vapply(text, function(s) {
+    if (!nzchar(s)) return(0)
+    # Strip any HTML/markdown the stub may carry (flag <img>, rank <span>);
+    # image width is handled separately by the caller.
+    s <- gsub("<[^>]*>", "", s)
+    chars <- strsplit(s, "", fixed = TRUE)[[1]]
+    ems <- sum(vapply(chars, .tpa_char_em, numeric(1)))
+    ems * pt * px_per_pt * bold_factor
+  }, numeric(1), USE.NAMES = FALSE)
+}
+
+# gt stores the display label per column in _boxhead$column_label (a list).
+.tpa_col_label <- function(gt_tbl, var) {
+  bh <- gt_tbl[["_boxhead"]]
+  if (!is.data.frame(bh) || !"var" %in% names(bh)) return(var)
+  i <- match(var, bh$var)
+  if (is.na(i)) return(var)
+  lbl <- bh$column_label[[i]]
+  if (is.null(lbl) || length(lbl) == 0) return(var)
+  as.character(lbl)[1]
+}
+
+# Natural single-line width (px) that a data column needs: the wider of its
+# header label (headers render uppercase) and its widest formatted cell.
+# Spanner labels are intentionally NOT forced onto one column, because a spanner
+# sits above a GROUP of columns and its width is shared; forcing it per-column
+# would blow narrow year columns up. A modest share is added so a long spanner
+# over a single column (rare) still gets some help.
+.tpa_col_natural_px <- function(gt_tbl, var, header_pt, body_pt, css_dpi,
+                                pad_px, body_bold = FALSE) {
+  data <- gt_tbl[["_data"]]
+  vals <- if (is.data.frame(data) && var %in% names(data)) data[[var]] else character(0)
+  
+  # The real formatted strings live in gt's render layer, but the columns here
+  # are short and predictable (shares, pp, signed integers, $B). Estimate the
+  # DISPLAYED width, not the raw value: a numeric gains a sign, thousands
+  # separators, a decimal, and a suffix. Measuring the bare number under-sizes
+  # change columns and re-introduces the "+27.0 pp" wrap; assuming " pp" for
+  # every column over-sizes plain share columns and starves everyone. So infer
+  # the suffix and sign from the column's own label and magnitude.
+  label_raw <- .tpa_col_label(gt_tbl, var)
+  is_change <- grepl("change|net|\u0394", label_raw, ignore.case = TRUE)
+  if (is.numeric(vals) && length(vals)) {
+    mx <- suppressWarnings(max(abs(vals), na.rm = TRUE))
+    if (!is.finite(mx)) mx <- 0
+    signed   <- is_change || any(vals < 0, na.rm = TRUE)
+    frac     <- any(abs(vals - round(vals)) > 1e-9, na.rm = TRUE)  # has decimals
+    digits   <- max(1, floor(log10(max(mx, 1))) + 1)
+    seps     <- (digits - 1) %/% 3
+    suffix   <- if (is_change && frac) " pp" else if (frac) "%" else ""
+    # a signed integer count column ($B, patents) keeps its sign but no suffix
+    token <- paste0(
+      if (signed) "+" else "",
+      strrep("0", digits), strrep(",", seps),
+      if (frac) ".0" else "",
+      suffix
+    )
+    body_w <- tpa_text_width_px(token, body_pt, css_dpi, body_bold)
+  } else {
+    vals_chr <- format(vals, trim = TRUE, justify = "none")
+    body_w <- if (length(vals_chr)) max(tpa_text_width_px(vals_chr, body_pt, css_dpi, body_bold)) else 0
+  }
+  
+  label <- toupper(.tpa_col_label(gt_tbl, var))   # gt uppercases column labels
+  head_w <- tpa_text_width_px(label, header_pt, css_dpi, bold = TRUE)
+  
+  max(body_w, head_w) + pad_px
+}
+
 scale_columns_to_width <- function(gt_tbl,
                                    profile = "standard",
                                    stub_width_px = NULL,
@@ -164,33 +335,122 @@ scale_columns_to_width <- function(gt_tbl,
   
   data_cols <- get_gt_data_cols(gt_tbl)
   n_data_cols <- max(1, length(data_cols))
+  total_px <- p$width_px
   
-  # A requested stub cannot be wider than the table minus the minimum required
-  # data-column space. If it is too large, clamp it instead of letting gt/browser
-  # layout ignore the requested width or overflow unpredictably.
-  max_stub_width_px <- p$width_px - (n_data_cols * min_data_col_px)
-  max_stub_width_px <- max(60, max_stub_width_px)
-  stub_width_px <- min(requested_stub_width_px, max_stub_width_px)
+  # Physical padding (both sides) converted to this profile's CSS density, so
+  # the natural-width estimate includes the same cell padding gt will add.
+  col_pad_pt <- tryCatch(PUB$spacing$table_col_pad_pt, error = function(e) 4)
+  pad_px <- 2 * pub_pt_to_px(col_pad_pt, p$css_dpi) + 6  # +6px safety for borders
   
-  data_width_px <- floor((p$width_px - stub_width_px) / n_data_cols)
+  # ---- Natural widths --------------------------------------------------------
+  header_pt <- TABLE_COLUMN_LABEL_FONT_PT
+  body_pt   <- TABLE_DATA_FONT_PT
   
+  natural <- vapply(
+    data_cols,
+    function(v) .tpa_col_natural_px(gt_tbl, v, header_pt, body_pt, p$css_dpi, pad_px),
+    numeric(1)
+  )
+  natural <- pmax(natural, min_data_col_px)
+  
+  # Stub natural width from its own longest label. gt does NOT uppercase stub
+  # cells, so measure them as-is; ignore embedded images/markup (measured as
+  # text-only) and add a flat allowance when the stub clearly carries a flag.
+  data <- gt_tbl[["_data"]]
+  stub_var <- {
+    bh <- gt_tbl[["_boxhead"]]
+    sv <- if (is.data.frame(bh) && "type" %in% names(bh)) bh$var[bh$type == "stub"] else character(0)
+    sv <- sv[!is.na(sv)]
+    if (length(sv)) sv[1] else NA_character_
+  }
+  stub_natural <- NA_real_
+  if (!is.na(stub_var) && is.data.frame(data) && stub_var %in% names(data)) {
+    stub_vals <- as.character(data[[stub_var]])
+    has_img <- any(grepl("<img", stub_vals, fixed = TRUE))
+    sw <- max(tpa_text_width_px(stub_vals, body_pt, p$css_dpi), 0)
+    if (has_img) sw <- sw + pub_pt_to_px(16, p$css_dpi)  # flag/icon allowance
+    stub_natural <- sw + pad_px
+  }
+  
+  # ---- Choose the stub width -------------------------------------------------
+  # If the caller pinned a stub width, honor it as an UPPER bound but let it
+  # shrink toward its natural size when data columns want the room. If not
+  # pinned, use the natural width. Always clamp so data columns keep their floor.
+  max_stub_width_px <- max(60, total_px - (n_data_cols * min_data_col_px))
+  stub_target <- if (!is.null(stub_width_px) || !is.null(attr(gt_tbl, "tpa_stub_width_px"))) {
+    # explicit request present: cap by request, but never exceed natural need
+    if (is.finite(stub_natural)) min(requested_stub_width_px, max(stub_natural, min_data_col_px))
+    else requested_stub_width_px
+  } else if (is.finite(stub_natural)) {
+    stub_natural
+  } else {
+    requested_stub_width_px
+  }
+  stub_w <- min(stub_target, max_stub_width_px)
+  stub_w <- max(stub_w, 60)
+  
+  # ---- Distribute the data area proportionally -------------------------------
+  avail <- total_px - stub_w
+  # Guarantee every column its natural single-line width if they fit; if the
+  # naturals overflow the available area (very dense tables), scale them down
+  # proportionally but never below the floor.
+  nat_sum <- sum(natural)
+  if (nat_sum <= avail) {
+    slack <- avail - nat_sum
+    # give slack in proportion to natural width so wide columns breathe a bit
+    # more than narrow ones, which reads more evenly than a flat top-up
+    widths <- natural + slack * (natural / nat_sum)
+  } else {
+    scaled <- natural / nat_sum * avail
+    widths <- pmax(scaled, min_data_col_px)
+    # if flooring pushed us over, trim from the widest columns
+    over <- sum(widths) - avail
+    if (over > 0) {
+      ord <- order(widths, decreasing = TRUE)
+      k <- 1
+      while (over > 0.5 && k <= length(ord)) {
+        give <- min(over, widths[ord[k]] - min_data_col_px)
+        widths[ord[k]] <- widths[ord[k]] - give
+        over <- over - give
+        k <- k + 1
+        if (k > length(ord)) k <- 1
+      }
+    }
+  }
+  
+  # Integer widths reconciled so the row sums EXACTLY to total_px (stub + data),
+  # keeping the fixed-layout table on its publication width with no drift.
+  widths <- floor(widths)
+  deficit <- (total_px - stub_w) - sum(widths)
+  if (deficit != 0 && length(widths) > 0) {
+    ord <- order(widths, decreasing = TRUE)
+    i <- 1
+    step <- sign(deficit)
+    while (deficit != 0) {
+      widths[ord[i]] <- widths[ord[i]] + step
+      deficit <- deficit - step
+      i <- i + 1
+      if (i > length(ord)) i <- 1
+    }
+  }
+  names(widths) <- data_cols
+  
+  # ---- Apply -----------------------------------------------------------------
   out <- tryCatch(
-    gt_tbl %>% cols_width(stub() ~ px(stub_width_px)),
+    gt_tbl %>% cols_width(stub() ~ px(stub_w)),
     error = function(e) gt_tbl
   )
-  
-  # Target only true data columns. Using everything() can interact oddly with
-  # stubs/spanners in some gt tables and make it look like the stub width did
-  # not change.
   for (col in data_cols) {
+    w <- widths[[col]]
     out <- tryCatch(
-      out %>% cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!data_width_px)))),
+      out %>% cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!w)))),
       error = function(e) out
     )
   }
   
-  attr(out, "tpa_actual_stub_width_px") <- stub_width_px
-  attr(out, "tpa_actual_data_width_px") <- data_width_px
+  attr(out, "tpa_actual_stub_width_px") <- stub_w
+  attr(out, "tpa_actual_data_width_px") <- if (length(widths)) stats::median(widths) else NA_real_
+  attr(out, "tpa_actual_col_widths_px") <- widths
   out
 }
 
@@ -276,6 +536,65 @@ style_change_color <- function(gt_tbl, columns, domain, na_color = "white") {
     )
 }
 
+table_publication_css <- function(profile = "standard") {
+  p <- table_profile(profile)
+  pt_to_px_profile <- function(pt) pub_pt_to_px(pt, p$css_dpi)
+  
+  data_px    <- pt_to_px_profile(TABLE_DATA_FONT_PT)
+  column_px  <- pt_to_px_profile(TABLE_COLUMN_LABEL_FONT_PT)
+  spanner_px <- pt_to_px_profile(TABLE_SPANNER_FONT_PT)
+  
+  sprintf(
+    paste0(
+      ".gt_table { line-height: %.3f !important; }\n",
+      
+      # BODY / DATA VALUES / STUB LABELS
+      # Explicit CSS here is intentional: it prevents gt themes or individual
+      # builders from making the visible data values smaller than the shared
+      # publication setting.
+      ".gt_table tbody td, .gt_table .gt_stub, .gt_table .gt_rowname { ",
+      "font-size: %spx !important; line-height: %.3f !important; ",
+      "vertical-align: middle !important; }\n",
+      
+      # COLUMN NAMES
+      # All ordinary column headings get exactly one physical size regardless
+      # of standard/wide/ultrawide profile.
+      ".gt_table .gt_col_heading { font-size: %spx !important; ",
+      "line-height: %.3f !important; }\n",
+      
+      # SPANNERS
+      # Spanners use the same point size as column names. Weight may differ,
+      # but size does not.
+      ".gt_table .gt_column_spanner, .gt_table .gt_column_spanner_outer { ",
+      "font-size: %spx !important; line-height: %.3f !important; ",
+      "font-weight: 700 !important; }\n",
+      
+      # Make ordinary wrapper spans inherit the forced heading size while
+      # preserving semantic <sup>/<sub> sizing for footnote markers.
+      ".gt_table .gt_col_heading span:not(.gt_footnote_marks), ",
+      ".gt_table .gt_column_spanner span:not(.gt_footnote_marks) { ",
+      "font-size: inherit !important; }\n",
+      
+      ".gt_table .gt_heading .gt_title { line-height: %.3f !important; margin: 0 !important; }\n",
+      ".gt_table .gt_heading .gt_subtitle { line-height: %.3f !important; margin: 0 !important; }\n",
+      ".gt_table .gt_source_notes, .gt_table .gt_footnote { line-height: %.3f !important; }\n",
+      ".gt_table .gt_stub, .gt_table .gt_rowname, .gt_table .gt_col_heading, ",
+      ".gt_table .gt_column_spanner, .gt_table .gt_source_notes, .gt_table .gt_footnote { ",
+      "letter-spacing: normal !important; }"
+    ),
+    TABLE_BODY_LINEHEIGHT,
+    data_px,
+    TABLE_BODY_LINEHEIGHT,
+    column_px,
+    TABLE_HEADER_LINEHEIGHT,
+    spanner_px,
+    TABLE_HEADER_LINEHEIGHT,
+    TABLE_TITLE_LINEHEIGHT,
+    TABLE_SUBTITLE_LINEHEIGHT,
+    TABLE_SOURCE_LINEHEIGHT
+  )
+}
+
 fixed_table_width <- function(gt_tbl, profile = NULL, width_px = NULL, stub_width_px = NULL) {
   p <- table_profile(profile)
   width_px <- width_px %||% p$width_px
@@ -311,20 +630,23 @@ apply_table_profile <- function(gt_tbl, profile = "standard", stub_width_px = NU
   p <- table_profile(profile)
   
   # Convert publication point sizes to CSS pixels at this profile's internal
-  # density. Final export zoom compensates for profile density, so the same
-  # point size becomes the same physical size in every final PNG.
+  # density. save_table() applies the reciprocal export zoom, so the same point
+  # size becomes the same physical size in every final PNG.
   pt_to_px_profile <- function(pt) pub_pt_to_px(pt, p$css_dpi)
+  
+  requested_stub_width_px <-
+    stub_width_px %||%
+    attr(gt_tbl, "tpa_stub_width_px") %||%
+    p$stub_px
   
   gt_tbl %>%
     tab_options(
-      # Dense table content: independently scalable.
       table.font.size =
         px(pt_to_px_profile(TABLE_DATA_FONT_PT)),
       
       column_labels.font.size =
-        px(pt_to_px_profile(TABLE_HEADER_FONT_PT)),
+        px(pt_to_px_profile(TABLE_COLUMN_LABEL_FONT_PT)),
       
-      # Publication-facing elements: locked to PUB sizes.
       heading.title.font.size =
         px(pt_to_px_profile(TABLE_TITLE_FONT_PT)),
       
@@ -334,7 +656,6 @@ apply_table_profile <- function(gt_tbl, profile = "standard", stub_width_px = NU
       source_notes.font.size =
         px(pt_to_px_profile(TABLE_SOURCE_FONT_PT)),
       
-      # Footnotes stay slightly smaller than body text.
       footnotes.font.size =
         px(pt_to_px_profile(TABLE_FOOTNOTE_FONT_PT)),
       
@@ -356,16 +677,14 @@ apply_table_profile <- function(gt_tbl, profile = "standard", stub_width_px = NU
       footnotes.padding =
         px(pt_to_px_profile(PUB$spacing$table_source_pad_pt))
     ) %>%
+    opt_css(css = table_publication_css(profile)) %>%
     fixed_table_width(
       profile = profile,
-      stub_width_px =
-        stub_width_px %||%
-        attr(gt_tbl, "tpa_stub_width_px") %||%
-        p$stub_px
+      stub_width_px = requested_stub_width_px
     ) %>%
     scale_columns_to_width(
       profile = profile,
-      stub_width_px = stub_width_px
+      stub_width_px = requested_stub_width_px
     ) %>%
     with_table_profile(profile)
 }
@@ -406,8 +725,6 @@ theme_gt_tpa <- function(gt_tbl, meta = NULL) {
       table.font.size        = px(TABLE_FONT_PX),
       table.font.color       = TABLE_TEXT_COLOR,
       table.background.color = "white",
-      table.width            = px(TABLE_CSS_WIDTH_PX),
-      container.width        = px(TABLE_CSS_WIDTH_PX),
       
       column_labels.font.weight    = "bold",
       column_labels.font.size      = px(TABLE_HEADER_FONT_PX),
@@ -429,9 +746,7 @@ theme_gt_tpa <- function(gt_tbl, meta = NULL) {
       footnotes.font.size = px(TABLE_FOOTNOTE_FONT_PX),
       footnotes.padding   = px(table_pt_to_px(PUB$spacing$table_source_pad_pt))
     ) %>%
-    opt_align_table_header(align = "left") %>%
-    fixed_table_width() %>%
-    set_default_stub_width()
+    opt_align_table_header(align = "left")
   
   if (!is.null(meta)) {
     tbl <- tbl %>%
@@ -2747,23 +3062,20 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
   png_path  <- file.path(png_dir,  paste0(name, ".png"))
   html_path <- file.path(html_dir, paste0(name, ".html"))
   
+  # Builders own content; save_table() owns final geometry.
   gt_tbl <- apply_table_profile(
     gt_tbl,
     profile = profile,
     stub_width_px = stub_width_px
   )
   
-  # CSS viewport height scales with the profile's internal canvas width.
+  # Browser headroom only. The PNG is cropped to the rendered table.
   height_scale <- p$width_px / TABLE_CSS_WIDTH_PX
   vheight <- ceiling(
     unname(TABLE_EXPORT_HEIGHTS_PX[[size]]) * height_scale
   )
   
-  # Every final PNG is exported to exactly the same publication raster width.
-  # Example at 6.5 in and 300 dpi:
-  #   standard 624 px CSS  -> zoom 3.125 -> 1950 px PNG
-  #   wide     900 px CSS  -> zoom 2.167 -> 1950 px PNG
-  #   ultrawide1080 px CSS -> zoom 1.806 -> 1950 px PNG
+  # All profiles land at exactly the same publication raster width.
   export_zoom <- TABLE_EXPORT_PX / p$width_px
   
   gtsave(gt_tbl, html_path)
@@ -2777,9 +3089,36 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
     expand  = 0
   )
   
-  # Stamp the same 300-dpi density used by figure PNGs.
+  actual_width_px  <- NA_integer_
+  actual_height_px <- NA_integer_
+  
   if (requireNamespace("magick", quietly = TRUE)) {
-    img <- magick::image_read(png_path)
+    img  <- magick::image_read(png_path)
+    info <- magick::image_info(img)
+    
+    actual_width_px  <- as.integer(info$width[1])
+    actual_height_px <- as.integer(info$height[1])
+    width_delta <- abs(actual_width_px - TABLE_EXPORT_PX)
+    
+    if (width_delta > TABLE_EXPORT_WIDTH_TOLERANCE_PX) {
+      stop(
+        "Table ", name, " exported at ", actual_width_px, " px wide; expected ",
+        TABLE_EXPORT_PX, " px (", WORD_TABLE_WIDTH_IN, " in at ",
+        TABLE_EXPORT_DPI, " dpi). Profile: ", profile, ".",
+        call. = FALSE
+      )
+    }
+    
+    # Normalize a rare browser rounding difference of one or two pixels.
+    if (actual_width_px != TABLE_EXPORT_PX) {
+      img <- magick::image_resize(
+        img,
+        geometry = paste0(TABLE_EXPORT_PX, "x")
+      )
+      info <- magick::image_info(img)
+      actual_width_px  <- as.integer(info$width[1])
+      actual_height_px <- as.integer(info$height[1])
+    }
     
     magick::image_write(
       img,
@@ -2788,5 +3127,115 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
     )
   }
   
+  status <- if (is.na(actual_width_px)) {
+    "not checked (magick unavailable)"
+  } else if (actual_width_px == TABLE_EXPORT_PX) {
+    "PASS"
+  } else {
+    "FAIL"
+  }
+  
+  TABLE_EXPORT_AUDIT <<- dplyr::bind_rows(
+    TABLE_EXPORT_AUDIT,
+    tibble::tibble(
+      name = name,
+      profile = profile,
+      size = size,
+      css_width_px = as.integer(p$width_px),
+      export_zoom = export_zoom,
+      expected_width_px = as.integer(TABLE_EXPORT_PX),
+      actual_width_px = actual_width_px,
+      actual_height_px = actual_height_px,
+      body_font_pt = TABLE_DATA_FONT_PT,
+      header_font_pt = TABLE_COLUMN_LABEL_FONT_PT,
+      column_label_font_pt = TABLE_COLUMN_LABEL_FONT_PT,
+      spanner_font_pt = TABLE_SPANNER_FONT_PT,
+      title_font_pt = TABLE_TITLE_FONT_PT,
+      source_font_pt = TABLE_SOURCE_FONT_PT,
+      row_padding_pt = PUB$spacing$table_row_pad_pt,
+      column_padding_pt = PUB$spacing$table_col_pad_pt,
+      heading_padding_pt = PUB$spacing$table_heading_pad_pt,
+      source_padding_pt = PUB$spacing$table_source_pad_pt,
+      body_lineheight = TABLE_BODY_LINEHEIGHT,
+      header_lineheight = TABLE_HEADER_LINEHEIGHT,
+      title_lineheight = TABLE_TITLE_LINEHEIGHT,
+      source_lineheight = TABLE_SOURCE_LINEHEIGHT,
+      status = status
+    )
+  )
+  
   gt_tbl
+}
+
+write_table_export_audit <- function(
+    path = file.path(PATHS$final_tables, "table_layout_audit.csv"),
+    expected_names = NULL
+) {
+  audit <- get_table_export_audit()
+  
+  if (!is.null(expected_names)) {
+    missing <- setdiff(expected_names, audit$name)
+    extra   <- setdiff(audit$name, expected_names)
+    
+    if (length(missing) > 0) {
+      stop(
+        "Table audit is missing expected exports: ",
+        paste(missing, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    
+    if (length(extra) > 0) {
+      warning(
+        "Table audit contains additional exports: ",
+        paste(extra, collapse = ", "),
+        call. = FALSE
+      )
+    }
+  }
+  
+  checked <- audit %>% dplyr::filter(!is.na(actual_width_px))
+  if (nrow(checked) > 0 && any(checked$actual_width_px != checked$expected_width_px)) {
+    bad <- checked %>%
+      dplyr::filter(actual_width_px != expected_width_px) %>%
+      dplyr::pull(name)
+    stop(
+      "Not all table PNGs have the common publication width: ",
+      paste(bad, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  
+  invariant_cols <- c(
+    "expected_width_px",
+    "body_font_pt",
+    "header_font_pt",
+    "column_label_font_pt",
+    "spanner_font_pt",
+    "title_font_pt",
+    "source_font_pt",
+    "row_padding_pt",
+    "column_padding_pt",
+    "heading_padding_pt",
+    "source_padding_pt",
+    "body_lineheight",
+    "header_lineheight",
+    "title_lineheight",
+    "source_lineheight"
+  )
+  
+  for (col in invariant_cols) {
+    vals <- unique(audit[[col]][!is.na(audit[[col]])])
+    if (length(vals) > 1) {
+      stop(
+        "Table style audit failed: ", col,
+        " is not constant across exports.",
+        call. = FALSE
+      )
+    }
+  }
+  
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  readr::write_csv(audit, path)
+  invisible(audit)
 }
