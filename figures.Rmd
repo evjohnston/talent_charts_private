@@ -596,9 +596,30 @@ df_014 <- read_fig("FIG203") %>%
 
 labels_014 <- last_by_group(df_014, Year, Field) %>%
   mutate(
-    .label = paste0(Field, ": ", label_comma()(Count))
+    .label = case_when(
+      Field == "Math and Computer Science" ~
+        paste0(
+          "Math and Computer\nScience: ",
+          label_comma()(Count)
+        ),
+
+      Field == "Physical and Life Sciences" ~
+        paste0(
+          "Physical and Life\nSciences: ",
+          label_comma()(Count)
+        ),
+
+      TRUE ~ paste0(
+        Field,
+        ": ",
+        label_comma()(Count)
+      )
+    )
   ) %>%
-  prepare_right_labels(df_014$Year)
+  prepare_right_labels(
+    df_014$Year,
+    allow_multiline = TRUE
+  )
 
 FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
   geom_line(linewidth = LINE_WIDTH) +
@@ -609,7 +630,10 @@ FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_014$Year, right_labels = labels_014) +
+  scale_x_years(
+  df_014$Year,
+  right_labels = labels_014
+  ) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
