@@ -1,5 +1,5 @@
 ---
-title: "GTCI Infographics — Chapters 1–4"
+title: "GTCI Infographics — Chapters 1–6"
 author: "Emerson Johnston"
 output: html_document
 ---
@@ -41,6 +41,600 @@ knitr::opts_chunk$set(out.width = paste0(PUB$infographic$width_in, "in"))
 
 # Set TRUE only when you want the QA audit printed in the knitted HTML.
 INFOGRAPHIC_AUDIT_SHOW <- FALSE
+
+
+# ============================================================================
+# UNIFORM INFOGRAPHIC PAGE CONTRACT — ALL SIX CHAPTERS
+# ============================================================================
+#
+# Publication pages are fixed-size. Every NONFINAL page must contain:
+#
+#   30 body/stat rows
+#    5 visible section headers
+#   --------------------------------
+#   35 rendered row-equivalents
+#
+# Final continuation pages may contain fewer rows, but they use the exact same
+# physical canvas, typography, column widths, row height, and export DPI.
+#
+# If a future edit creates a sixth section header inside the first 30 rows,
+# pagination stops with an error rather than silently shrinking the page.
+# Consolidate/relabel sections instead.
+# ============================================================================
+
+INFOGRAPHIC_ROWS_PER_PAGE <- 30L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 5L
+INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
+  INFOGRAPHIC_ROWS_PER_PAGE +
+  INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+
+INFOGRAPHIC_EXPORT_REGISTRY <- new.env(
+  parent = emptyenv()
+)
+
+
+infographic_section_header_count <- function(data) {
+  if (nrow(data) == 0L) {
+    return(0L)
+  }
+
+  if (!"Section" %in% names(data)) {
+    stop(
+      "Infographic data must contain a `Section` column for fixed pagination.",
+      call. = FALSE
+    )
+  }
+
+  section <- as.character(
+    data$Section
+  )
+
+  if (anyNA(section)) {
+    stop(
+      "Infographic `Section` contains NA values; page-header counts would be ambiguous.",
+      call. = FALSE
+    )
+  }
+
+  if (length(section) == 1L) {
+    return(1L)
+  }
+
+  as.integer(
+    1L +
+      sum(
+        section[-1] !=
+          section[-length(section)]
+      )
+  )
+}
+
+
+infographic_page_contract <- function(
+    page_data,
+    page_number,
+    total_pages
+) {
+  body_rows <- nrow(
+    page_data
+  )
+
+  section_headers <- infographic_section_header_count(
+    page_data
+  )
+
+  rendered_rows <- body_rows +
+    section_headers
+
+  is_final <- page_number ==
+    total_pages
+
+  problems <- character()
+
+  if (body_rows > INFOGRAPHIC_ROWS_PER_PAGE) {
+    problems <- c(
+      problems,
+      paste0(
+        body_rows,
+        " body rows > ",
+        INFOGRAPHIC_ROWS_PER_PAGE
+      )
+    )
+  }
+
+  if (
+    section_headers >
+      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+  ) {
+    problems <- c(
+      problems,
+      paste0(
+        section_headers,
+        " section headers > ",
+        INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+      )
+    )
+  }
+
+  if (
+    rendered_rows >
+      INFOGRAPHIC_RENDERED_ROWS_PER_PAGE
+  ) {
+    problems <- c(
+      problems,
+      paste0(
+        rendered_rows,
+        " rendered row-equivalents > ",
+        INFOGRAPHIC_RENDERED_ROWS_PER_PAGE
+      )
+    )
+  }
+
+  # The six current chapter infographics are intentionally structured so every
+  # full/nonfinal page has the exact same 30 + 5 composition.
+  if (!is_final) {
+    if (
+      body_rows !=
+        INFOGRAPHIC_ROWS_PER_PAGE
+    ) {
+      problems <- c(
+        problems,
+        paste0(
+          "nonfinal page has ",
+          body_rows,
+          " body rows; expected exactly ",
+          INFOGRAPHIC_ROWS_PER_PAGE
+        )
+      )
+    }
+
+    if (
+      section_headers !=
+        INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+    ) {
+      problems <- c(
+        problems,
+        paste0(
+          "nonfinal page has ",
+          section_headers,
+          " section headers; expected exactly ",
+          INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+        )
+      )
+    }
+  }
+
+  list(
+    body_rows = body_rows,
+    section_headers = section_headers,
+    rendered_rows = rendered_rows,
+    is_final = is_final,
+    problems = problems
+  )
+}
+
+
+# Deliberately split by BODY rows first. We do not silently reduce the body-row
+# count to compensate for too many headings. Instead, the page contract above
+# requires the chapter's visible section structure to fit the common 30 + 5
+# publication grid.
+paginate_infographic_data <- function(
+    data,
+    build_page = NULL,
+    name = NULL,
+    output_dir = PATHS$final_infographics,
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE,
+    section_headers_per_page = INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+) {
+  if (nrow(data) < 1L) {
+    stop(
+      "The infographic contains no data rows.",
+      call. = FALSE
+    )
+  }
+
+  rows_per_page <- as.integer(
+    rows_per_page
+  )
+
+  section_headers_per_page <- as.integer(
+    section_headers_per_page
+  )
+
+  if (
+    length(rows_per_page) != 1L ||
+    !is.finite(rows_per_page) ||
+    rows_per_page !=
+      INFOGRAPHIC_ROWS_PER_PAGE
+  ) {
+    stop(
+      "`rows_per_page` must equal the publication standard of ",
+      INFOGRAPHIC_ROWS_PER_PAGE,
+      ".",
+      call. = FALSE
+    )
+  }
+
+  if (
+    length(section_headers_per_page) != 1L ||
+    !is.finite(section_headers_per_page) ||
+    section_headers_per_page !=
+      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+  ) {
+    stop(
+      "`section_headers_per_page` must equal the publication standard of ",
+      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE,
+      ".",
+      call. = FALSE
+    )
+  }
+
+  page_id <- ceiling(
+    seq_len(
+      nrow(data)
+    ) /
+      rows_per_page
+  )
+
+  pages <- split(
+    data,
+    page_id
+  )
+
+  total_pages <- length(
+    pages
+  )
+
+  for (i in seq_along(pages)) {
+    contract <- infographic_page_contract(
+      pages[[i]],
+      page_number = i,
+      total_pages = total_pages
+    )
+
+    if (length(contract$problems)) {
+      stop(
+        "Infographic page-contract failure",
+        if (!is.null(name)) paste0(" for `", name, "`") else "",
+        ", page ",
+        i,
+        ": ",
+        paste(
+          contract$problems,
+          collapse = "; "
+        ),
+        ". Keep full pages at exactly 30 body rows + 5 visible section headers; ",
+        "do not shrink typography or the canvas.",
+        call. = FALSE
+      )
+    }
+  }
+
+  pages
+}
+
+
+mark_infographic_continuation_uniform <- function(
+    page_data,
+    previous_page = NULL
+) {
+  if (
+    is.null(previous_page) ||
+    nrow(previous_page) == 0L ||
+    nrow(page_data) == 0L
+  ) {
+    return(page_data)
+  }
+
+  previous_section <- tail(
+    as.character(
+      previous_page$Section
+    ),
+    1
+  )
+
+  first_section <- as.character(
+    page_data$Section[[1]]
+  )
+
+  if (
+    !identical(
+      previous_section,
+      first_section
+    )
+  ) {
+    return(page_data)
+  }
+
+  page_sections <- as.character(
+    page_data$Section
+  )
+
+  first_change <- which(
+    page_sections !=
+      first_section
+  )
+
+  continued_rows <- if (
+    length(first_change)
+  ) {
+    seq_len(
+      first_change[[1]] -
+        1L
+    )
+  } else {
+    seq_len(
+      nrow(page_data)
+    )
+  }
+
+  page_data$Section[
+    continued_rows
+  ] <- paste0(
+    first_section,
+    " (cont.)"
+  )
+
+  page_data
+}
+
+
+verify_infographic_png_dimensions <- function(
+    png_path
+) {
+  expected_width <- as.integer(
+    INFOGRAPHIC_SPEC$output_width_px
+  )
+
+  expected_height <- as.integer(
+    INFOGRAPHIC_SPEC$output_height_px
+  )
+
+  actual_width <- NA_integer_
+  actual_height <- NA_integer_
+  verification <- "export contract"
+
+  if (
+    requireNamespace(
+      "magick",
+      quietly = TRUE
+    )
+  ) {
+    info <- magick::image_info(
+      magick::image_read(
+        png_path
+      )
+    )
+
+    actual_width <- as.integer(
+      info$width[[1]]
+    )
+
+    actual_height <- as.integer(
+      info$height[[1]]
+    )
+
+    verification <- "magick"
+  } else if (
+    requireNamespace(
+      "png",
+      quietly = TRUE
+    )
+  ) {
+    img <- png::readPNG(
+      png_path,
+      native = TRUE
+    )
+
+    dims <- dim(
+      img
+    )
+
+    actual_height <- as.integer(
+      dims[[1]]
+    )
+
+    actual_width <- as.integer(
+      dims[[2]]
+    )
+
+    verification <- "png"
+  }
+
+  if (
+    is.finite(actual_width) &&
+    is.finite(actual_height) &&
+    (
+      actual_width != expected_width ||
+      actual_height != expected_height
+    )
+  ) {
+    stop(
+      "Infographic PNG dimension mismatch for ",
+      basename(png_path),
+      ": got ",
+      actual_width,
+      "×",
+      actual_height,
+      " px; expected ",
+      expected_width,
+      "×",
+      expected_height,
+      " px.",
+      call. = FALSE
+    )
+  }
+
+  list(
+    actual_width_px = actual_width,
+    actual_height_px = actual_height,
+    expected_width_px = expected_width,
+    expected_height_px = expected_height,
+    verification = verification
+  )
+}
+
+
+# Override the helper's exporter inside this Rmd so every chapter is guaranteed
+# to use the same body-row rule, section-header rule, continuation treatment,
+# fixed canvas, and output-size validation.
+export_paginated_infographic <- function(
+    data,
+    build_page,
+    name,
+    output_dir = PATHS$final_infographics,
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE,
+    section_headers_per_page = INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+) {
+  pages <- paginate_infographic_data(
+    data = data,
+    build_page = build_page,
+    name = name,
+    output_dir = output_dir,
+    rows_per_page = rows_per_page,
+    section_headers_per_page = section_headers_per_page
+  )
+
+  total_pages <- length(
+    pages
+  )
+
+  exports <- vector(
+    "list",
+    total_pages
+  )
+
+  registry_rows <- vector(
+    "list",
+    total_pages
+  )
+
+  for (i in seq_along(pages)) {
+    page_data <- mark_infographic_continuation_uniform(
+      page_data = pages[[i]],
+      previous_page = if (
+        i > 1L
+      ) {
+        pages[[i - 1L]]
+      } else {
+        NULL
+      }
+    )
+
+    table <- build_page(
+      page_data = page_data,
+      page_number = i,
+      total_pages = total_pages,
+      is_last_page = i ==
+        total_pages
+    )
+
+    page_name <- if (
+      total_pages == 1L
+    ) {
+      name
+    } else {
+      sprintf(
+        "%s_page_%02d",
+        name,
+        i
+      )
+    }
+
+    export_result <- export_infographic_page(
+      table = table,
+      name = page_name,
+      output_dir = output_dir
+    )
+
+    dimension_check <- verify_infographic_png_dimensions(
+      export_result$png_path
+    )
+
+    contract <- infographic_page_contract(
+      pages[[i]],
+      page_number = i,
+      total_pages = total_pages
+    )
+
+    export_result$body_rows <-
+      contract$body_rows
+
+    export_result$section_headers <-
+      contract$section_headers
+
+    export_result$rendered_rows <-
+      contract$rendered_rows
+
+    exports[[i]] <- export_result
+
+    registry_rows[[i]] <- tibble::tibble(
+      Name = name,
+      Page = i,
+      TotalPages = total_pages,
+      BodyRows = contract$body_rows,
+      SectionHeaders = contract$section_headers,
+      RenderedRows = contract$rendered_rows,
+      IsFinalPage = contract$is_final,
+      WidthIn = INFOGRAPHIC_SPEC$width_in,
+      HeightIn = INFOGRAPHIC_SPEC$height_in,
+      ExpectedWidthPx =
+        dimension_check$expected_width_px,
+      ExpectedHeightPx =
+        dimension_check$expected_height_px,
+      ActualWidthPx =
+        dimension_check$actual_width_px,
+      ActualHeightPx =
+        dimension_check$actual_height_px,
+      DimensionVerification =
+        dimension_check$verification,
+      PNG = export_result$png_path
+    )
+  }
+
+  INFOGRAPHIC_EXPORT_REGISTRY[[name]] <-
+    dplyr::bind_rows(
+      registry_rows
+    )
+
+  message(
+    "Saved ",
+    total_pages,
+    " fixed-format page",
+    if (total_pages == 1L) "" else "s",
+    " for ",
+    name,
+    ". Page composition: ",
+    paste(
+      vapply(
+        seq_along(pages),
+        function(i) {
+          contract <- infographic_page_contract(
+            pages[[i]],
+            page_number = i,
+            total_pages = total_pages
+          )
+
+          paste0(
+            contract$body_rows,
+            " body + ",
+            contract$section_headers,
+            " headers"
+          )
+        },
+        character(1)
+      ),
+      collapse = "; "
+    ),
+    ". Canvas = ",
+    INFOGRAPHIC_SPEC$width_in,
+    " × ",
+    INFOGRAPHIC_SPEC$height_in,
+    " in."
+  )
+
+  exports
+}
 
 
 # ============================================================================
@@ -2664,7 +3258,7 @@ ch2_selected <- ch2_all_stats %>%
 
 
 # ----------------------------------------------------------------------------
-# 12. BUILD AND EXPORT USING THE GLOBAL 30-ROW PAGINATION RULE
+# 12. BUILD AND EXPORT USING THE GLOBAL 30-BODY-ROW / 5-HEADER PAGE CONTRACT
 # ----------------------------------------------------------------------------
 
 build_ch2_page <- function(
@@ -2749,9 +3343,9 @@ knitr::include_graphics(
 #   - Prefer longitudinal bookends whenever a time series exists.
 #   - Use the global INFOGRAPHIC_ROWS_PER_PAGE rule from infographics.R.
 #
-# With INFOGRAPHIC_ROWS_PER_PAGE = 30L:
-#   Page 1 = 30 body rows
-#   Page 2 = 6 AI-research-geography rows
+# Under the uniform page contract:
+#   Page 1 = 30 body rows + 5 section headers
+#   Page 2 = 6 AI-research-geography rows + 1 section header
 # ============================================================================
 
 
@@ -3742,6 +4336,19 @@ ch3_selected <- ch3_all_stats %>%
     DisplayOrder = match(
       .data$StatID,
       CH3_SELECTED_STATS
+    ),
+
+    # Publication pagination: merge the two adjacent workforce subsections so
+    # Page 1 contains exactly 30 body rows + 5 visible section headers.
+    Section = dplyr::case_when(
+      .data$SectionID %in% c(
+        "degree_work",
+        "visa_occupation"
+      ) ~ "From degree to workforce",
+
+      TRUE ~ as.character(
+        .data$Section
+      )
     )
   ) %>%
   arrange(
@@ -3822,7 +4429,7 @@ build_ch3_page <- function(
 
 
 # ----------------------------------------------------------------------------
-# 8. EXPORT THROUGH THE GLOBAL 30-ROW PAGINATION RULE
+# 8. EXPORT THROUGH THE GLOBAL 30-BODY-ROW / 5-HEADER PAGE CONTRACT
 # ----------------------------------------------------------------------------
 
 ch3_exports <- export_paginated_infographic(
@@ -5096,6 +5703,21 @@ ch4_selected <- ch4_all_stats %>%
     DisplayOrder = match(
       .data$StatID,
       CH4_SELECTED_STATS
+    ),
+
+    # Publication pagination: persistence, completion, and major switching are
+    # one editorial block. Keeping study-abroad field and region as separate
+    # headings gives Page 1 exactly 30 body rows + 5 visible section headers.
+    Section = dplyr::case_when(
+      .data$SectionID %in% c(
+        "persistence",
+        "completion",
+        "switching"
+      ) ~ "STEM persistence and completion",
+
+      TRUE ~ as.character(
+        .data$Section
+      )
     )
   ) %>%
   arrange(
@@ -5210,7 +5832,7 @@ knitr::include_graphics(
 # Selected output = exactly 36 body rows across five editorial sections.
 #
 # Page 1:
-#   30 body rows + 4 section headers = 34 rendered-row equivalents
+#   30 body rows + 5 section headers = 35 rendered-row equivalents
 #
 # Page 2:
 #   6 body rows + 1 section header = 7 rendered-row equivalents
@@ -6226,6 +6848,31 @@ ch5_selected <- ch5_all_stats %>%
     DisplayOrder = match(
       .data$StatID,
       CH5_SELECTED_STATS
+    ),
+
+    # Publication pagination: split the ten R&D rows into two meaningful
+    # headings. This gives Page 1 exactly 30 body rows + 5 section headers,
+    # matching Chapters 1–4 and 6.
+    Section = dplyr::case_when(
+      .data$StatID %in% c(
+        "rd_total_us",
+        "rd_total_china",
+        "rd_intensity_us",
+        "rd_intensity_china"
+      ) ~ "R&D scale and intensity",
+
+      .data$StatID %in% c(
+        "rd_basic_us",
+        "rd_basic_china",
+        "rd_experimental_us",
+        "rd_experimental_china",
+        "rd_business_us",
+        "rd_business_china"
+      ) ~ "R&D composition",
+
+      TRUE ~ as.character(
+        .data$Section
+      )
     )
   ) %>%
   arrange(
@@ -8047,38 +8694,53 @@ knitr::include_graphics(
 ```
 
 
-# Infographic audit — Chapters 1–4
+# Infographic audit — Chapters 1–6
 
 ```{r infographic_source_year_audit, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 
 # ============================================================================
-# PUBLICATION QA: SOURCE + ENDPOINT-YEAR AUDIT — CHAPTERS 1–4
+# PUBLICATION QA: SOURCE, ENDPOINT YEAR, PAGINATION, AND CANVAS AUDIT
+# CHAPTERS 1–6
 #
-# The audit reads the actual Earlier / Latest / Change cells sent to the
-# infographic tables. It therefore audits the publication output rather than
-# independently reconstructing the values.
+# This audit checks the exact displayed statistics AND the exact page contract.
+# It writes:
 #
-# The CSV is always written. Set INFOGRAPHIC_AUDIT_SHOW <- TRUE in setup if
-# you also want the audit printed at the end of the knitted HTML.
+#   1. infographic_source_year_audit_ch1_ch6.csv
+#      One row per displayed statistic.
+#
+#   2. infographic_page_layout_audit_ch1_ch6.csv
+#      One row per exported infographic page, including body-row count,
+#      section-header count, rendered-row-equivalent count, and PNG dimensions.
+#
+# Every NONFINAL page must be:
+#      30 body rows + 5 section headers = 35 rendered row-equivalents.
+#
+# Final pages may be shorter but use the identical physical canvas.
 # ============================================================================
-
-if (!exists("INFOGRAPHIC_AUDIT_SHOW")) {
-  INFOGRAPHIC_AUDIT_SHOW <- FALSE
-}
 
 
 audit_extract_year <- function(x) {
-  x <- as.character(x)
+  x <- as.character(
+    x
+  )
 
   vapply(
     x,
     function(one) {
       if (
         is.na(one) ||
-        !nzchar(trimws(one)) ||
-        trimws(one) %in% c("—", "–")
+        !nzchar(
+          trimws(one)
+        ) ||
+        trimws(one) %in%
+          c(
+            "—",
+            "–"
+          )
       ) {
-        return(NA_character_)
+        return(
+          NA_character_
+        )
       }
 
       years <- stringr::str_extract_all(
@@ -8086,11 +8748,18 @@ audit_extract_year <- function(x) {
         "(?<![0-9])(?:18|19|20|21)[0-9]{2}(?![0-9])"
       )[[1]]
 
-      if (length(years) == 0L) {
-        return(NA_character_)
+      if (
+        length(years) == 0L
+      ) {
+        return(
+          NA_character_
+        )
       }
 
-      tail(years, 1)
+      tail(
+        years,
+        1
+      )
     },
     character(1)
   )
@@ -8135,7 +8804,6 @@ CH1_AUDIT_SOURCE <- c(
   "proj_india_percap" = "FIG108"
 )
 
-
 CH2_AUDIT_SOURCE <- c(
   "total_international_students" = "FIG301",
   "international_undergraduates" = "FIG301",
@@ -8173,7 +8841,6 @@ CH2_AUDIT_SOURCE <- c(
   "feeling_unwelcome" = "FIG208",
   "social_political_environment" = "FIG208"
 )
-
 
 CH3_AUDIT_SOURCE <- c(
   "pipeline_bachelors" = "FIG301",
@@ -8214,7 +8881,6 @@ CH3_AUDIT_SOURCE <- c(
   "ai_staffing_moonshot" = "FIG310"
 )
 
-
 CH4_AUDIT_SOURCE <- c(
   "us_math_gap" = "FIG401",
   "us_science_gap" = "FIG401",
@@ -8254,8 +8920,89 @@ CH4_AUDIT_SOURCE <- c(
   "netflow_india" = "FIG410"
 )
 
+CH5_AUDIT_SOURCE <- c(
+  "neurips_oral_us" = "FIG501",
+  "neurips_oral_china" = "FIG501",
+  "top_cited_china" = "FIG502",
+  "top_cited_us" = "FIG502",
+  "top_papers_china" = "FIG503",
+  "top_papers_us" = "FIG503",
+  "highly_cited_us" = "FIG504",
+  "highly_cited_china" = "FIG504",
+  "conference_nips_china" = "TAB501",
+  "conference_cvpr_china" = "TAB501",
+  "top100_physical" = "TAB502",
+  "top100_life" = "TAB502",
+  "top100_engineering" = "TAB502",
+  "top100_computer_science" = "TAB502",
+  "rd_total_us" = "TAB503",
+  "rd_total_china" = "TAB503",
+  "rd_intensity_us" = "FIG506",
+  "rd_intensity_china" = "FIG506",
+  "rd_basic_us" = "TAB503",
+  "rd_basic_china" = "TAB503",
+  "rd_experimental_us" = "TAB503",
+  "rd_experimental_china" = "TAB503",
+  "rd_business_us" = "TAB504",
+  "rd_business_china" = "TAB504",
+  "patent_biotech_china" = "TAB505a",
+  "patent_biotech_united_states" = "TAB505a",
+  "patent_semiconductor_china" = "TAB505b",
+  "patent_semiconductor_united_states" = "TAB505b",
+  "patent_computer_china" = "TAB505c",
+  "patent_computer_united_states" = "TAB505c",
+  "company_samsung_electronics" = "TAB506",
+  "company_taiwan_semiconductor_tsmc" = "TAB506",
+  "company_qualcomm" = "TAB506",
+  "company_huawei" = "TAB506",
+  "company_apple" = "TAB506",
+  "company_ibm" = "TAB506"
+)
 
-audit_endpoint_rule <- function(chapter, stat_id) {
+CH6_AUDIT_SOURCE <- c(
+  "intent_overall" = "FIG601",
+  "intent_region_africa" = "TAB601",
+  "intent_region_asia" = "TAB601",
+  "intent_region_americas" = "TAB601",
+  "intent_region_europe" = "TAB601",
+  "intent_field_computer_and_information_sciences" = "TAB602",
+  "intent_field_engineering" = "TAB602",
+  "intent_field_social_sciences" = "TAB602",
+  "intent_field_physical_sciences" = "TAB602",
+  "stay_5yr" = "FIG602",
+  "stay_10yr" = "FIG602",
+  "stay_10yr_decline" = "FIG602",
+  "stay_10yr_recovery" = "FIG602",
+  "career_us_academe" = "TAB603a",
+  "career_us_industry_or_business" = "TAB603a",
+  "career_temp_academe" = "TAB603b",
+  "career_temp_industry_or_business" = "TAB603b",
+  "opt_received" = "FIG603",
+  "opt_approved" = "FIG603",
+  "h1b_all_approvals" = "FIG604a",
+  "h1b_tech_approvals" = "FIG604b",
+  "h1b_denial_spike" = "FIG604a + FIG605a",
+  "h1b_denial_recovery" = "FIG604a + FIG605a",
+  "perm_certifications" = "FIG606",
+  "perm_expired_india" = "TAB604",
+  "perm_expired_china" = "TAB604",
+  "wait_india_eb2" = "TAB605c",
+  "wait_india_eb3" = "TAB605c",
+  "wait_china_eb2" = "TAB605b",
+  "wait_china_eb3" = "TAB605b",
+  "j1_china" = "FIG607",
+  "workforce_gap_us_vs_oecd" = "FIG608",
+  "trained_total" = "FIG609",
+  "loss_engineering" = "FIG609",
+  "loss_physical" = "FIG609",
+  "loss_computer" = "FIG609"
+)
+
+
+audit_endpoint_rule <- function(
+    chapter,
+    stat_id
+) {
   dplyr::case_when(
 
     # ------------------------------------------------------------------------
@@ -8263,11 +9010,17 @@ audit_endpoint_rule <- function(chapter, stat_id) {
     # ------------------------------------------------------------------------
 
     chapter == "Chapter 1" &
-      stringr::str_starts(stat_id, "tab101_") ~
+      stringr::str_starts(
+        stat_id,
+        "tab101_"
+      ) ~
       "Explicit TAB101 2015 → 2025 columns",
 
     chapter == "Chapter 1" &
-      stringr::str_starts(stat_id, "proj_") ~
+      stringr::str_starts(
+        stat_id,
+        "proj_"
+      ) ~
       "Latest observed year → latest projected year",
 
     # ------------------------------------------------------------------------
@@ -8275,20 +9028,27 @@ audit_endpoint_rule <- function(chapter, stat_id) {
     # ------------------------------------------------------------------------
 
     chapter == "Chapter 2" &
-      stringr::str_starts(stat_id, "enrollment_") ~
+      stringr::str_starts(
+        stat_id,
+        "enrollment_"
+      ) ~
       "2025 actual count + FIG206 year-over-year change → 2026P",
 
     chapter == "Chapter 2" &
-      stringr::str_starts(stat_id, "top_recruitment_") ~
+      stringr::str_starts(
+        stat_id,
+        "top_recruitment_"
+      ) ~
       "2015 historical recruitment baseline → 2025 FIG207 priority",
 
     chapter == "Chapter 2" &
-      stat_id %in% c(
-        "visa_application_process",
-        "travel_restrictions",
-        "feeling_unwelcome",
-        "social_political_environment"
-      ) ~
+      stat_id %in%
+        c(
+          "visa_application_process",
+          "travel_restrictions",
+          "feeling_unwelcome",
+          "social_political_environment"
+        ) ~
       "Earliest available survey observation → Fall 2025",
 
     # ------------------------------------------------------------------------
@@ -8296,15 +9056,24 @@ audit_endpoint_rule <- function(chapter, stat_id) {
     # ------------------------------------------------------------------------
 
     chapter == "Chapter 3" &
-      stringr::str_starts(stat_id, "h1b_") ~
+      stringr::str_starts(
+        stat_id,
+        "h1b_"
+      ) ~
       "2017 → 2025",
 
     chapter == "Chapter 3" &
-      stringr::str_starts(stat_id, "founder_origin_") ~
+      stringr::str_starts(
+        stat_id,
+        "founder_origin_"
+      ) ~
       "2025 founder-origin snapshot",
 
     chapter == "Chapter 3" &
-      stringr::str_starts(stat_id, "ai_staffing_") ~
+      stringr::str_starts(
+        stat_id,
+        "ai_staffing_"
+      ) ~
       "Snapshot composition: US / China / rest of world; not a time comparison",
 
     # ------------------------------------------------------------------------
@@ -8312,27 +9081,142 @@ audit_endpoint_rule <- function(chapter, stat_id) {
     # ------------------------------------------------------------------------
 
     chapter == "Chapter 4" &
-      stat_id %in% c(
-        "pisa_us_vs_japan",
-        "pisa_top_math_us_vs_oecd"
-      ) ~
+      stat_id %in%
+        c(
+          "pisa_us_vs_japan",
+          "pisa_top_math_us_vs_oecd"
+        ) ~
       "2022 PISA benchmark comparison; not a time comparison",
 
     chapter == "Chapter 4" &
-      stringr::str_starts(stat_id, "spending_") ~
+      stringr::str_starts(
+        stat_id,
+        "spending_"
+      ) ~
       "OECD spending benchmark comparison; not a time comparison",
 
     chapter == "Chapter 4" &
-      stringr::str_starts(stat_id, "study_field_") ~
+      stringr::str_starts(
+        stat_id,
+        "study_field_"
+      ) ~
       "Explicit Table 4.03 comparison: 2005 → 2024",
 
     chapter == "Chapter 4" &
-      stringr::str_starts(stat_id, "study_region_") ~
+      stringr::str_starts(
+        stat_id,
+        "study_region_"
+      ) ~
       "Explicit Table 4.04 comparison: 2005 → 2024",
 
     chapter == "Chapter 4" &
-      stringr::str_starts(stat_id, "outbound_") ~
+      stringr::str_starts(
+        stat_id,
+        "outbound_"
+      ) ~
       "Latest available outbound-mobility snapshot",
+
+    # ------------------------------------------------------------------------
+    # Chapter 5
+    # ------------------------------------------------------------------------
+
+    chapter == "Chapter 5" &
+      stringr::str_starts(
+        stat_id,
+        "conference_"
+      ) ~
+      "First and latest years with both US and China observed at the venue",
+
+    chapter == "Chapter 5" &
+      stat_id %in%
+        c(
+          "rd_total_us",
+          "rd_total_china",
+          "rd_basic_us",
+          "rd_basic_china",
+          "rd_experimental_us",
+          "rd_experimental_china",
+          "rd_business_us",
+          "rd_business_china"
+        ) ~
+      "Explicit R&D comparison: 1994 → 2024",
+
+    chapter == "Chapter 5" &
+      stringr::str_starts(
+        stat_id,
+        "patent_biotech_"
+      ) ~
+      "Explicit biotechnology-patent comparison: 2014 → 2024",
+
+    chapter == "Chapter 5" &
+      stringr::str_starts(
+        stat_id,
+        "patent_semiconductor_"
+      ) ~
+      "Explicit semiconductor-patent comparison: 2014 → 2024",
+
+    chapter == "Chapter 5" &
+      stringr::str_starts(
+        stat_id,
+        "patent_computer_"
+      ) ~
+      "Explicit computer-technology-patent comparison: 2014 → 2024",
+
+    chapter == "Chapter 5" &
+      stringr::str_starts(
+        stat_id,
+        "company_"
+      ) ~
+      "Explicit corporate US-patent comparison: 2005 → 2025",
+
+    # ------------------------------------------------------------------------
+    # Chapter 6
+    # ------------------------------------------------------------------------
+
+    chapter == "Chapter 6" &
+      stringr::str_starts(
+        stat_id,
+        "career_"
+      ) ~
+      "Explicit Table 6.03 comparison: 1994 → 2024",
+
+    chapter == "Chapter 6" &
+      stringr::str_starts(
+        stat_id,
+        "perm_expired_"
+      ) ~
+      "Explicit Table 6.04 comparison: 2008 → 2024",
+
+    chapter == "Chapter 6" &
+      stringr::str_starts(
+        stat_id,
+        "wait_"
+      ) ~
+      "Explicit Table 6.05 green-card-wait comparison: 2005 → 2025",
+
+    chapter == "Chapter 6" &
+      stat_id %in%
+        c(
+          "h1b_denial_spike",
+          "h1b_denial_recovery"
+        ) ~
+      "Observed H-1B denial-rate peak / recovery window",
+
+    chapter == "Chapter 6" &
+      stat_id ==
+        "workforce_gap_us_vs_oecd" ~
+      "2025 US vs OECD benchmark; not a time comparison",
+
+    chapter == "Chapter 6" &
+      (
+        stat_id ==
+          "trained_total" ||
+        stringr::str_starts(
+          stat_id,
+          "loss_"
+        )
+      ) ~
+      "2012–14 doctorate cohort evaluated at the published ten-year stay rate",
 
     TRUE ~
       "First nonmissing observation → latest nonmissing observation"
@@ -8340,22 +9224,87 @@ audit_endpoint_rule <- function(chapter, stat_id) {
 }
 
 
-audit_years_expected <- function(chapter, stat_id) {
+audit_years_expected <- function(
+    chapter,
+    stat_id
+) {
   !(
     chapter == "Chapter 3" &
-      stringr::str_starts(stat_id, "ai_staffing_")
+      stringr::str_starts(
+        stat_id,
+        "ai_staffing_"
+      )
   ) &
     !(
       chapter == "Chapter 4" &
-        stat_id %in% c(
-          "pisa_us_vs_japan",
-          "pisa_top_math_us_vs_oecd"
-        )
+        stat_id %in%
+          c(
+            "pisa_us_vs_japan",
+            "pisa_top_math_us_vs_oecd"
+          )
     ) &
     !(
       chapter == "Chapter 4" &
-        stringr::str_starts(stat_id, "spending_")
+        stringr::str_starts(
+          stat_id,
+          "spending_"
+        )
+    ) &
+    !(
+      chapter == "Chapter 6" &
+        (
+          stat_id ==
+            "trained_total" ||
+          stringr::str_starts(
+            stat_id,
+            "loss_"
+          )
+        )
     )
+}
+
+
+audit_page_assignments <- function(
+    data
+) {
+  pages <- paginate_infographic_data(
+    data
+  )
+
+  total_pages <- length(
+    pages
+  )
+
+  purrr::imap_dfr(
+    pages,
+    function(page, page_number) {
+      contract <- infographic_page_contract(
+        page,
+        page_number = page_number,
+        total_pages = total_pages
+      )
+
+      tibble::tibble(
+        StatID = as.character(
+          page$StatID
+        ),
+        Page = as.integer(
+          page_number
+        ),
+        PageRow = seq_len(
+          nrow(page)
+        ),
+        PageBodyRows =
+          contract$body_rows,
+        PageSectionHeaders =
+          contract$section_headers,
+        PageRenderedRows =
+          contract$rendered_rows,
+        PageIsFinal =
+          contract$is_final
+      )
+    }
+  )
 }
 
 
@@ -8364,85 +9313,177 @@ audit_chapter <- function(
     chapter,
     source_map
 ) {
+  page_map <- audit_page_assignments(
+    data
+  )
+
   data %>%
     dplyr::mutate(
-      AuditOrder = dplyr::row_number(),
+      AuditOrder =
+        dplyr::row_number(),
 
       Source = unname(
         source_map[
-          as.character(.data$StatID)
+          as.character(
+            .data$StatID
+          )
         ]
       ),
 
-      EarlierYear = audit_extract_year(
-        .data$Earlier
-      ),
+      EarlierYear =
+        audit_extract_year(
+          .data$Earlier
+        ),
 
-      LatestYear = audit_extract_year(
-        .data$Latest
-      ),
+      LatestYear =
+        audit_extract_year(
+          .data$Latest
+        ),
 
-      EndpointRule = audit_endpoint_rule(
-        chapter,
-        as.character(.data$StatID)
-      ),
+      EndpointRule =
+        audit_endpoint_rule(
+          chapter,
+          as.character(
+            .data$StatID
+          )
+        ),
 
-      YearsExpected = audit_years_expected(
-        chapter,
-        as.character(.data$StatID)
-      ),
+      YearsExpected =
+        audit_years_expected(
+          chapter,
+          as.character(
+            .data$StatID
+          )
+        )
+    ) %>%
 
-      Page = ceiling(
-        .data$AuditOrder /
-          INFOGRAPHIC_ROWS_PER_PAGE
-      ),
+    dplyr::left_join(
+      page_map,
+      by = "StatID"
+    ) %>%
 
+    dplyr::mutate(
       AuditFlag = dplyr::case_when(
-        is.na(.data$Source) ~
+        is.na(
+          .data$Source
+        ) ~
           "CHECK: source map missing",
 
         .data$YearsExpected &
-          .data$Earlier != "—" &
-          is.na(.data$EarlierYear) ~
+          .data$Earlier !=
+            "—" &
+          is.na(
+            .data$EarlierYear
+          ) ~
           "CHECK: earlier cell has no year",
 
         .data$YearsExpected &
-          .data$Latest != "—" &
-          is.na(.data$LatestYear) ~
+          .data$Latest !=
+            "—" &
+          is.na(
+            .data$LatestYear
+          ) ~
           "CHECK: latest cell has no year",
 
-        !is.na(.data$EarlierYear) &
-          !is.na(.data$LatestYear) &
-          as.integer(.data$EarlierYear) >
-            as.integer(.data$LatestYear) ~
+        !is.na(
+          .data$EarlierYear
+        ) &
+          !is.na(
+            .data$LatestYear
+          ) &
+          as.integer(
+            .data$EarlierYear
+          ) >
+            as.integer(
+              .data$LatestYear
+            ) ~
           "CHECK: earlier year is later than latest year",
 
-        TRUE ~ ""
+        .data$PageBodyRows >
+          INFOGRAPHIC_ROWS_PER_PAGE ~
+          "CHECK: page exceeds body-row cap",
+
+        .data$PageSectionHeaders >
+          INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
+          "CHECK: page exceeds section-header cap",
+
+        .data$PageRenderedRows >
+          INFOGRAPHIC_RENDERED_ROWS_PER_PAGE ~
+          "CHECK: page exceeds rendered-row budget",
+
+        !.data$PageIsFinal &
+          .data$PageBodyRows !=
+            INFOGRAPHIC_ROWS_PER_PAGE ~
+          "CHECK: nonfinal page is not 30 body rows",
+
+        !.data$PageIsFinal &
+          .data$PageSectionHeaders !=
+            INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
+          "CHECK: nonfinal page is not 5 section headers",
+
+        TRUE ~
+          ""
       )
     ) %>%
 
     dplyr::transmute(
       Chapter = chapter,
       Page = .data$Page,
-      StatID = as.character(.data$StatID),
-      Section = as.character(.data$Section),
-      Measure = as.character(.data$Measure),
+      PageRow = .data$PageRow,
+      PageBodyRows =
+        .data$PageBodyRows,
+      PageSectionHeaders =
+        .data$PageSectionHeaders,
+      PageRenderedRows =
+        .data$PageRenderedRows,
+      StatID = as.character(
+        .data$StatID
+      ),
+      Section = as.character(
+        .data$Section
+      ),
+      Measure = as.character(
+        .data$Measure
+      ),
       Source = .data$Source,
-      EarlierYear = .data$EarlierYear,
-      LatestYear = .data$LatestYear,
-      Earlier = as.character(.data$Earlier),
-      Latest = as.character(.data$Latest),
-      Change = as.character(.data$Change),
-      EndpointRule = .data$EndpointRule,
-      AuditFlag = .data$AuditFlag,
-      AuditOrder = .data$AuditOrder
+      EarlierYear =
+        .data$EarlierYear,
+      LatestYear =
+        .data$LatestYear,
+      Earlier = as.character(
+        .data$Earlier
+      ),
+      Latest = as.character(
+        .data$Latest
+      ),
+      Change = as.character(
+        .data$Change
+      ),
+      EndpointRule =
+        .data$EndpointRule,
+      AuditFlag =
+        .data$AuditFlag,
+      AuditOrder =
+        .data$AuditOrder
     )
 }
 
 
+# Chapter 1 is exported through export_current_chapter(), which first performs
+# these same two preparation steps. Audit that exact prepared data rather than
+# the unformatted ch1_data object.
+ch1_audit_data <- finalize_infographic_data(
+  ch1_data,
+  ch1_section_order
+) %>%
+  editorialize_infographic_data(
+    1
+  )
+
+
 infographic_source_year_audit <- dplyr::bind_rows(
   audit_chapter(
-    ch1_data,
+    ch1_audit_data,
     "Chapter 1",
     CH1_AUDIT_SOURCE
   ),
@@ -8463,17 +9504,27 @@ infographic_source_year_audit <- dplyr::bind_rows(
     ch4_selected,
     "Chapter 4",
     CH4_AUDIT_SOURCE
+  ),
+
+  audit_chapter(
+    ch5_selected,
+    "Chapter 5",
+    CH5_AUDIT_SOURCE
+  ),
+
+  audit_chapter(
+    ch6_selected,
+    "Chapter 6",
+    CH6_AUDIT_SOURCE
   )
 ) %>%
 
   dplyr::arrange(
     factor(
       .data$Chapter,
-      levels = c(
-        "Chapter 1",
-        "Chapter 2",
-        "Chapter 3",
-        "Chapter 4"
+      levels = paste0(
+        "Chapter ",
+        1:6
       )
     ),
     .data$AuditOrder
@@ -8484,6 +9535,137 @@ infographic_source_year_audit <- dplyr::bind_rows(
   )
 
 
+# ----------------------------------------------------------------------------
+# PAGE-LAYOUT / OUTPUT-SIZE AUDIT
+# ----------------------------------------------------------------------------
+
+CHAPTER_EXPORT_NAMES <- c(
+  "Chapter 1" =
+    "infographic_ch1_by_the_numbers",
+  "Chapter 2" =
+    "infographic_ch2_by_the_numbers",
+  "Chapter 3" =
+    "infographic_ch3_by_the_numbers",
+  "Chapter 4" =
+    "infographic_ch4_by_the_numbers",
+  "Chapter 5" =
+    "infographic_ch5_by_the_numbers",
+  "Chapter 6" =
+    "infographic_ch6_by_the_numbers"
+)
+
+
+infographic_page_layout_audit <- purrr::imap_dfr(
+  CHAPTER_EXPORT_NAMES,
+  function(export_name, chapter) {
+    if (
+      !exists(
+        export_name,
+        envir = INFOGRAPHIC_EXPORT_REGISTRY,
+        inherits = FALSE
+      )
+    ) {
+      return(
+        tibble::tibble(
+          Chapter = chapter,
+          Name = export_name,
+          Page = NA_integer_,
+          TotalPages = NA_integer_,
+          BodyRows = NA_integer_,
+          SectionHeaders = NA_integer_,
+          RenderedRows = NA_integer_,
+          IsFinalPage = NA,
+          WidthIn = INFOGRAPHIC_SPEC$width_in,
+          HeightIn = INFOGRAPHIC_SPEC$height_in,
+          ExpectedWidthPx =
+            INFOGRAPHIC_SPEC$output_width_px,
+          ExpectedHeightPx =
+            INFOGRAPHIC_SPEC$output_height_px,
+          ActualWidthPx = NA_integer_,
+          ActualHeightPx = NA_integer_,
+          DimensionVerification =
+            "CHECK: export not registered",
+          PNG = NA_character_
+        )
+      )
+    }
+
+    get(
+      export_name,
+      envir = INFOGRAPHIC_EXPORT_REGISTRY,
+      inherits = FALSE
+    ) %>%
+      dplyr::mutate(
+        Chapter = chapter,
+        .before = 1
+      )
+  }
+) %>%
+
+  dplyr::mutate(
+    LayoutFlag = dplyr::case_when(
+      is.na(
+        .data$Page
+      ) ~
+        "CHECK: chapter export not registered",
+
+      .data$BodyRows >
+        INFOGRAPHIC_ROWS_PER_PAGE ~
+        "CHECK: body-row cap exceeded",
+
+      .data$SectionHeaders >
+        INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
+        "CHECK: section-header cap exceeded",
+
+      .data$RenderedRows >
+        INFOGRAPHIC_RENDERED_ROWS_PER_PAGE ~
+        "CHECK: rendered-row budget exceeded",
+
+      !.data$IsFinalPage &
+        .data$BodyRows !=
+          INFOGRAPHIC_ROWS_PER_PAGE ~
+        "CHECK: nonfinal page is not 30 body rows",
+
+      !.data$IsFinalPage &
+        .data$SectionHeaders !=
+          INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
+        "CHECK: nonfinal page is not 5 section headers",
+
+      is.finite(
+        .data$ActualWidthPx
+      ) &
+        .data$ActualWidthPx !=
+          .data$ExpectedWidthPx ~
+        "CHECK: PNG width differs from publication spec",
+
+      is.finite(
+        .data$ActualHeightPx
+      ) &
+        .data$ActualHeightPx !=
+          .data$ExpectedHeightPx ~
+        "CHECK: PNG height differs from publication spec",
+
+      TRUE ~
+        ""
+    )
+  ) %>%
+
+  dplyr::arrange(
+    factor(
+      .data$Chapter,
+      levels = paste0(
+        "Chapter ",
+        1:6
+      )
+    ),
+    .data$Page
+  )
+
+
+# ----------------------------------------------------------------------------
+# WRITE AUDITS
+# ----------------------------------------------------------------------------
+
 dir.create(
   PATHS$final_infographics,
   recursive = TRUE,
@@ -8493,7 +9675,12 @@ dir.create(
 
 INFOGRAPHIC_AUDIT_PATH <- file.path(
   PATHS$final_infographics,
-  "infographic_source_year_audit_ch1_ch4.csv"
+  "infographic_source_year_audit_ch1_ch6.csv"
+)
+
+INFOGRAPHIC_LAYOUT_AUDIT_PATH <- file.path(
+  PATHS$final_infographics,
+  "infographic_page_layout_audit_ch1_ch6.csv"
 )
 
 
@@ -8502,10 +9689,22 @@ readr::write_csv(
   INFOGRAPHIC_AUDIT_PATH
 )
 
+readr::write_csv(
+  infographic_page_layout_audit,
+  INFOGRAPHIC_LAYOUT_AUDIT_PATH
+)
 
-audit_problem_count <- sum(
+
+source_year_problem_count <- sum(
   nzchar(
     infographic_source_year_audit$AuditFlag
+  ),
+  na.rm = TRUE
+)
+
+layout_problem_count <- sum(
+  nzchar(
+    infographic_page_layout_audit$LayoutFlag
   ),
   na.rm = TRUE
 )
@@ -8515,12 +9714,39 @@ message(
   "Infographic source/year audit saved to: ",
   INFOGRAPHIC_AUDIT_PATH,
   ". Flags requiring review: ",
-  audit_problem_count,
+  source_year_problem_count,
+  "."
+)
+
+message(
+  "Infographic page-layout audit saved to: ",
+  INFOGRAPHIC_LAYOUT_AUDIT_PATH,
+  ". Flags requiring review: ",
+  layout_problem_count,
   "."
 )
 
 
-if (isTRUE(INFOGRAPHIC_AUDIT_SHOW)) {
+if (
+  source_year_problem_count > 0L ||
+  layout_problem_count > 0L
+) {
+  warning(
+    "Infographic QA completed with ",
+    source_year_problem_count,
+    " source/year flag(s) and ",
+    layout_problem_count,
+    " layout flag(s). Review the audit CSVs before publication.",
+    call. = FALSE
+  )
+}
+
+
+if (
+  isTRUE(
+    INFOGRAPHIC_AUDIT_SHOW
+  )
+) {
   cat(
     "\n\n## Infographic source/year audit\n\n"
   )
@@ -8531,19 +9757,61 @@ if (isTRUE(INFOGRAPHIC_AUDIT_SHOW)) {
         dplyr::select(
           Chapter,
           Page,
+          PageRow,
           StatID,
           Measure,
           Source,
           EarlierYear,
           LatestYear,
-          EndpointRule,
           AuditFlag
         ),
       align = c(
-        "l", "c", "l", "l",
-        "l", "c", "c", "l", "l"
+        "l",
+        "c",
+        "c",
+        "l",
+        "l",
+        "l",
+        "c",
+        "c",
+        "l"
+      )
+    )
+  )
+
+  cat(
+    "\n\n## Infographic page-layout audit\n\n"
+  )
+
+  print(
+    knitr::kable(
+      infographic_page_layout_audit %>%
+        dplyr::select(
+          Chapter,
+          Page,
+          BodyRows,
+          SectionHeaders,
+          RenderedRows,
+          WidthIn,
+          HeightIn,
+          ActualWidthPx,
+          ActualHeightPx,
+          LayoutFlag
+        ),
+      align = c(
+        "l",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "c",
+        "l"
       )
     )
   )
 }
 ```
+
