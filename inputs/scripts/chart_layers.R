@@ -9,22 +9,43 @@ geom_label_repel_tpa <- function(
     direction    = "y",
     ...
 ) {
-  ggrepel::geom_text_repel(
-    data               = data,
-    mapping            = mapping,
-    size               = DATA_LABEL_SIZE / .pt,
-    fontface           = "bold",
-    family             = FONT_FAMILY,
-    direction          = direction,
-    box.padding        = PUB$spacing$repel_box_padding_lines,
-    point.padding      = PUB$spacing$repel_point_padding_lines,
-    min.segment.length = if (with_segment) 0 else Inf,
-    segment.alpha      = if (with_segment) 0.5 else NA,
-    segment.size       = 0.35,
-    max.overlaps       = Inf,
-    show.legend        = FALSE,
-    ...
+  dots <- list(...)
+  
+  # Prepared right-edge labels carry their own per-row horizontal nudge.
+  # Applying it here keeps older helper functions compatible: they can map
+  # x = .label_x (the true endpoint) and the layer automatically moves every
+  # label to the shared right-side anchor.
+  if (".label_nudge_x" %in% names(data) && is.null(dots$nudge_x)) {
+    dots$nudge_x <- data$.label_nudge_x
+  }
+  
+  # ggrepel otherwise treats the panel boundary as a wall and can push labels
+  # back over the plotted lines. Prepared right-edge labels are intentionally
+  # allowed to occupy the measured plot margin to the right.
+  if (".label_target_x" %in% names(data) && is.null(dots$xlim)) {
+    dots$xlim <- c(NA, Inf)
+  }
+  
+  args <- c(
+    list(
+      data               = data,
+      mapping            = mapping,
+      size               = DATA_LABEL_SIZE / .pt,
+      fontface           = "bold",
+      family             = FONT_FAMILY,
+      direction          = direction,
+      box.padding        = PUB$spacing$repel_box_padding_lines,
+      point.padding      = PUB$spacing$repel_point_padding_lines,
+      min.segment.length = if (with_segment) 0 else Inf,
+      segment.alpha      = if (with_segment) 0.5 else NA,
+      segment.size       = 0.35,
+      max.overlaps       = Inf,
+      show.legend        = FALSE
+    ),
+    dots
   )
+  
+  do.call(ggrepel::geom_text_repel, args)
 }
 
 # ---- Right-side endpoint label layout -----------------------
@@ -71,10 +92,12 @@ label_width_pt <- function(
 prepare_right_labels <- function(
     labels_df,
     years,
+    x_col = "Year",
     label_col = ".label",
     gap_frac = 0.018,
     min_gap_years = 0.30
 ) {
+  years <- as.numeric(years)
   years <- years[is.finite(years)]
   
   if (!length(years)) {
@@ -85,24 +108,48 @@ prepare_right_labels <- function(
     stop("`", label_col, "` is missing from the label data.")
   }
   
+  if (!x_col %in% names(labels_df)) {
+    stop("`", x_col, "` is missing from the label data.")
+  }
+  
   yr_min <- min(years)
   yr_max <- max(years)
   span   <- yr_max - yr_min
   
   if (!is.finite(span) || span <= 0) span <- 1
   
+  # Small common gap between the final plotting boundary and the label column.
+  # The labels themselves live in the right plot margin, not in an artificially
+  # widened x scale.
   gap <- max(min_gap_years, span * gap_frac)
+  target_x <- yr_max + gap
   
+  # Right-edge labels should never wrap. Any deliberate/newline text is
+  # normalized to a single line before width measurement and rendering.
   labels_df[[label_col]] <- gsub(
     "[\\r\\n]+",
     " ",
     as.character(labels_df[[label_col]])
   )
   
-  labels_df$.label_x <- yr_max + gap
+  point_x <- as.numeric(labels_df[[x_col]])
   
+  if (any(!is.finite(point_x))) {
+    stop("`", x_col, "` contains non-finite endpoint values.")
+  }
+  
+  # .label_x remains the TRUE endpoint so connector segments originate at the
+  # data. Every row is nudged to exactly the same target x-coordinate.
+  labels_df$.label_x       <- point_x
+  labels_df$.label_target_x <- target_x
+  labels_df$.label_nudge_x <- target_x - point_x
+  
+  # Reserve only enough physical canvas for the longest one-line label plus
+  # the standard label-to-panel gap and outer publication edge.
   attr(labels_df, "tpa_right_margin_pt") <-
-    label_width_pt(labels_df[[label_col]]) + PUB$spacing$edge_pt
+    label_width_pt(labels_df[[label_col]]) +
+    PUB$spacing$axis_label_right_gap_pt +
+    PUB$spacing$edge_pt
   
   labels_df
 }
