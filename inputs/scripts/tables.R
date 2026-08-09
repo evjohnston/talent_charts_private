@@ -132,6 +132,7 @@ TABLE_EXPORT_AUDIT <- tibble::tibble(
   expected_width_px = integer(),
   actual_width_px = integer(),
   actual_height_px = integer(),
+  overflow_px = double(),
   body_font_pt = double(),
   header_font_pt = double(),
   column_label_font_pt = double(),
@@ -326,12 +327,71 @@ tpa_text_width_px <- function(text, pt, css_dpi, bold = FALSE) {
   max(body_w, head_w) + pad_px
 }
 
+# Stub width has to be decided ONCE and then handed to BOTH the CSS written by
+# fixed_table_width() and the cols_width() calls made by
+# scale_columns_to_width(). Each used to compute its own: the CSS pinned the
+# width the caller REQUESTED while the column distribution worked from the
+# width it had CLAMPED. Whenever those disagreed the column widths summed past
+# the table width and the right-hand columns rendered outside the captured
+# viewport -- the clipping visible in tables 1.01, 3.01, 3.02 and 5.02.
+#
+# The function is idempotent: feeding its own result back in returns the same
+# number, so apply_table_profile() can resolve once and pass the result down.
+resolve_stub_width <- function(gt_tbl,
+                               profile = "standard",
+                               stub_width_px = NULL,
+                               min_data_col_px = 34) {
+  p <- table_profile(profile)
+  requested <- stub_width_px %||% attr(gt_tbl, "tpa_stub_width_px") %||% p$stub_px
+  explicit  <- !is.null(stub_width_px) || !is.null(attr(gt_tbl, "tpa_stub_width_px"))
+  
+  data_cols   <- get_gt_data_cols(gt_tbl)
+  n_data_cols <- max(1, length(data_cols))
+  total_px    <- p$width_px
+  
+  col_pad_pt <- tryCatch(PUB$spacing$table_col_pad_pt, error = function(e) 4)
+  pad_px     <- 2 * pub_pt_to_px(col_pad_pt, p$css_dpi) + 6
+  
+  # Stub natural width from its own longest label. gt does NOT uppercase stub
+  # cells, so measure them as-is; ignore embedded images/markup (measured as
+  # text-only) and add a flat allowance when the stub clearly carries a flag.
+  data <- gt_tbl[["_data"]]
+  stub_var <- {
+    bh <- gt_tbl[["_boxhead"]]
+    sv <- if (is.data.frame(bh) && "type" %in% names(bh)) bh$var[bh$type == "stub"] else character(0)
+    sv <- sv[!is.na(sv)]
+    if (length(sv)) sv[1] else NA_character_
+  }
+  stub_natural <- NA_real_
+  if (!is.na(stub_var) && is.data.frame(data) && stub_var %in% names(data)) {
+    stub_vals <- as.character(data[[stub_var]])
+    has_img   <- any(grepl("<img", stub_vals, fixed = TRUE))
+    sw <- max(tpa_text_width_px(stub_vals, TABLE_DATA_FONT_PT, p$css_dpi), 0)
+    if (has_img) sw <- sw + pub_pt_to_px(16, p$css_dpi)  # flag/icon allowance
+    stub_natural <- sw + pad_px
+  }
+  
+  # A pinned stub width is an UPPER bound: it may shrink toward its natural size
+  # when the data columns want the room, but never grows past what the labels
+  # need. Always clamp so data columns keep their floor.
+  max_stub_width_px <- max(60, total_px - (n_data_cols * min_data_col_px))
+  stub_target <- if (explicit) {
+    if (is.finite(stub_natural)) min(requested, max(stub_natural, min_data_col_px))
+    else requested
+  } else if (is.finite(stub_natural)) {
+    stub_natural
+  } else {
+    requested
+  }
+  
+  max(60, min(stub_target, max_stub_width_px))
+}
+
 scale_columns_to_width <- function(gt_tbl,
                                    profile = "standard",
                                    stub_width_px = NULL,
                                    min_data_col_px = 34) {
   p <- table_profile(profile)
-  requested_stub_width_px <- stub_width_px %||% attr(gt_tbl, "tpa_stub_width_px") %||% p$stub_px
   
   data_cols <- get_gt_data_cols(gt_tbl)
   n_data_cols <- max(1, length(data_cols))
@@ -353,41 +413,13 @@ scale_columns_to_width <- function(gt_tbl,
   )
   natural <- pmax(natural, min_data_col_px)
   
-  # Stub natural width from its own longest label. gt does NOT uppercase stub
-  # cells, so measure them as-is; ignore embedded images/markup (measured as
-  # text-only) and add a flat allowance when the stub clearly carries a flag.
-  data <- gt_tbl[["_data"]]
-  stub_var <- {
-    bh <- gt_tbl[["_boxhead"]]
-    sv <- if (is.data.frame(bh) && "type" %in% names(bh)) bh$var[bh$type == "stub"] else character(0)
-    sv <- sv[!is.na(sv)]
-    if (length(sv)) sv[1] else NA_character_
-  }
-  stub_natural <- NA_real_
-  if (!is.na(stub_var) && is.data.frame(data) && stub_var %in% names(data)) {
-    stub_vals <- as.character(data[[stub_var]])
-    has_img <- any(grepl("<img", stub_vals, fixed = TRUE))
-    sw <- max(tpa_text_width_px(stub_vals, body_pt, p$css_dpi), 0)
-    if (has_img) sw <- sw + pub_pt_to_px(16, p$css_dpi)  # flag/icon allowance
-    stub_natural <- sw + pad_px
-  }
-  
   # ---- Choose the stub width -------------------------------------------------
-  # If the caller pinned a stub width, honor it as an UPPER bound but let it
-  # shrink toward its natural size when data columns want the room. If not
-  # pinned, use the natural width. Always clamp so data columns keep their floor.
-  max_stub_width_px <- max(60, total_px - (n_data_cols * min_data_col_px))
-  stub_target <- if (!is.null(stub_width_px) || !is.null(attr(gt_tbl, "tpa_stub_width_px"))) {
-    # explicit request present: cap by request, but never exceed natural need
-    if (is.finite(stub_natural)) min(requested_stub_width_px, max(stub_natural, min_data_col_px))
-    else requested_stub_width_px
-  } else if (is.finite(stub_natural)) {
-    stub_natural
-  } else {
-    requested_stub_width_px
-  }
-  stub_w <- min(stub_target, max_stub_width_px)
-  stub_w <- max(stub_w, 60)
+  stub_w <- resolve_stub_width(
+    gt_tbl,
+    profile         = profile,
+    stub_width_px   = stub_width_px,
+    min_data_col_px = min_data_col_px
+  )
   
   # ---- Distribute the data area proportionally -------------------------------
   avail <- total_px - stub_w
@@ -403,51 +435,75 @@ scale_columns_to_width <- function(gt_tbl,
   } else {
     scaled <- natural / nat_sum * avail
     widths <- pmax(scaled, min_data_col_px)
-    # if flooring pushed us over, trim from the widest columns
+    # Flooring can push the sum back over `avail`. Reclaim the excess from the
+    # columns that are still above the floor, proportional to their headroom, in
+    # a single vectorized pass so this can never loop. If the floors alone
+    # already exceed avail (table genuinely too dense to fit even at the
+    # minimum), leave every column at the floor and let the table be as wide as
+    # its floors require -- a fixable data/height problem, never a hang.
     over <- sum(widths) - avail
     if (over > 0) {
-      ord <- order(widths, decreasing = TRUE)
-      k <- 1
-      while (over > 0.5 && k <= length(ord)) {
-        give <- min(over, widths[ord[k]] - min_data_col_px)
-        widths[ord[k]] <- widths[ord[k]] - give
-        over <- over - give
-        k <- k + 1
-        if (k > length(ord)) k <- 1
+      headroom <- pmax(widths - min_data_col_px, 0)
+      hr_sum <- sum(headroom)
+      if (hr_sum > 0) {
+        widths <- widths - headroom / hr_sum * min(over, hr_sum)
       }
     }
   }
   
   # Integer widths reconciled so the row sums EXACTLY to total_px (stub + data),
   # keeping the fixed-layout table on its publication width with no drift.
+  # Distribute the rounding remainder one pixel at a time across a FIXED number
+  # of columns (|deficit| <= n by construction after floor(), so this is a
+  # single bounded pass -- no while loop, no chance of spinning).
   widths <- floor(widths)
   deficit <- (total_px - stub_w) - sum(widths)
   if (deficit != 0 && length(widths) > 0) {
-    ord <- order(widths, decreasing = TRUE)
-    i <- 1
+    ord <- order(widths, decreasing = (deficit > 0))
     step <- sign(deficit)
-    while (deficit != 0) {
-      widths[ord[i]] <- widths[ord[i]] + step
-      deficit <- deficit - step
-      i <- i + 1
-      if (i > length(ord)) i <- 1
+    n <- length(widths)
+    for (j in seq_len(abs(deficit))) {
+      idx <- ord[((j - 1) %% n) + 1]
+      widths[idx] <- widths[idx] + step
     }
   }
   names(widths) <- data_cols
   
+  # If the floors alone still overflow, the table genuinely cannot fit at this
+  # profile. Say so at knit time: silently overflowing is what produced tables
+  # whose right-hand columns fell outside the captured PNG.
+  overflow_px <- max(0, (stub_w + sum(widths)) - total_px)
+  if (overflow_px > 0) {
+    warning(
+      "Table columns overflow the ", profile, " profile by ", round(overflow_px),
+      " px; the rightmost column will be clipped in the exported PNG. ",
+      "Widen the profile, shorten the stub labels, or drop a column.",
+      call. = FALSE
+    )
+  }
+  
   # ---- Apply -----------------------------------------------------------------
   out <- tryCatch(
     gt_tbl %>% cols_width(stub() ~ px(stub_w)),
-    error = function(e) gt_tbl
+    error = function(e) {
+      warning("Could not set the stub width via cols_width(); falling back to ",
+              "the profile CSS width. Stub and data columns may disagree.",
+              call. = FALSE)
+      gt_tbl
+    }
   )
   for (col in data_cols) {
     w <- widths[[col]]
     out <- tryCatch(
       out %>% cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!w)))),
-      error = function(e) out
+      error = function(e) {
+        warning("Could not set the width of column '", col, "'.", call. = FALSE)
+        out
+      }
     )
   }
   
+  attr(out, "tpa_overflow_px") <- overflow_px
   attr(out, "tpa_actual_stub_width_px") <- stub_w
   attr(out, "tpa_actual_data_width_px") <- if (length(widths)) stats::median(widths) else NA_real_
   attr(out, "tpa_actual_col_widths_px") <- widths
@@ -498,6 +554,85 @@ table_change <- function(first, last, change_type = c("relative", "ppt")) {
     last - first
   }
   ifelse(is.finite(out), out, NA_real_)
+}
+
+# ---------------------------------------------------------------------------
+# Shared change vocabulary
+# ---------------------------------------------------------------------------
+# One source of truth for how a change is LABELED, FORMATTED, and DESCRIBED.
+# Each builder used to spell these out locally, which is how the set ended up
+# with "Change", "Net Change", "Net change", and "Net" all naming the same
+# operation, and how table 2.02 came to print percentage-point values with a
+# "%" suffix.
+#
+# The label rule is semantic rather than cosmetic:
+#   interior_deltas = FALSE -> "Change"     (the only change column; there is
+#                                            nothing to distinguish it from)
+#   interior_deltas = TRUE  -> "Net Change" (per-period delta columns are also
+#                                            present, so the full-window figure
+#                                            needs a name of its own)
+CHANGE_LABEL_SIMPLE <- "Change"
+CHANGE_LABEL_NET    <- "Net Change"
+TABLE_DELTA_MARK    <- "\u0394"
+
+change_col_label <- function(interior_deltas = FALSE) {
+  if (isTRUE(interior_deltas)) CHANGE_LABEL_NET else CHANGE_LABEL_SIMPLE
+}
+
+# Interior per-period delta header: the period followed by the delta mark.
+delta_col_label <- function(period) {
+  paste0(period, " ", TABLE_DELTA_MARK)
+}
+
+# Cell suffix. A "ppt" change is in percentage points and must never print "%".
+change_pattern <- function(change_type) {
+  if (resolve_change_type(change_type) == "relative") "{x}%" else "{x} pp"
+}
+
+# Footnote prose for the change operation. `units` distinguishes a share (where
+# a native-unit change is measured in percentage points) from a count or dollar
+# figure (where it is an absolute change).
+change_phrase <- function(change_type, units = c("share", "count")) {
+  units <- match.arg(units)
+  if (resolve_change_type(change_type) == "relative") {
+    "relative change"
+  } else if (units == "count") {
+    "absolute change"
+  } else {
+    "percentage-point change"
+  }
+}
+
+# Join sentence fragments and guarantee a single terminal period. paste() with a
+# bare "." as its own argument produced the "... 2000 and 2025 ." artifact in
+# table 2.01; this collapses that whitespace instead.
+end_sentence <- function(...) {
+  txt <- paste(..., sep = " ")
+  txt <- gsub("[[:space:]]+", " ", trimws(txt))
+  txt <- gsub("[[:space:]]+([.,;:])", "\\1", txt)
+  if (!grepl("[.!?]$", txt)) txt <- paste0(txt, ".")
+  txt
+}
+
+# The "Data from ... / Chart by ..." block comes from the figure metadata, so
+# terminal punctuation drifted between entries. Normalize per line so every
+# table's source block reads the same however the metadata row was typed. A
+# trailing markdown emphasis marker is preserved so the period lands inside it.
+normalize_caption <- function(caption) {
+  if (is.null(caption)) return(caption)
+  joined <- paste(caption, collapse = "\n")
+  if (!nzchar(trimws(joined))) return(caption)
+  lines <- strsplit(joined, "\n", fixed = TRUE)[[1]]
+  out <- vapply(lines, function(ln) {
+    raw <- trimws(ln)
+    if (!nzchar(raw)) return(ln)
+    m     <- regmatches(raw, regexpr("[*_]+$", raw))
+    close <- if (length(m)) m[[1]] else ""
+    core  <- sub("[*_]+$", "", raw)
+    if (grepl("[.!?]$", core)) return(raw)
+    paste0(core, ".", close)
+  }, character(1), USE.NAMES = FALSE)
+  paste(out, collapse = "\n")
 }
 
 style_stub_left <- function(gt_tbl) {
@@ -618,7 +753,12 @@ fixed_table_width <- function(gt_tbl, profile = NULL, width_px = NULL, stub_widt
         "white-space: normal !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: none !important; }\n",
         ".gt_table .gt_stub *, .gt_table .gt_rowname * { word-break: normal !important; overflow-wrap: normal !important; hyphens: none !important; }\n",
         ".gt_table .gt_row { white-space: normal !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: none !important; }\n",
-        ".gt_table .gt_col_heading { white-space: normal !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: none !important; }\n",
+        # Headings wrap on break-word, unlike body cells. An unbreakable label
+        # such as "BUSINESS/MGMT" has no natural break opportunity, so with
+        # overflow-wrap:normal it spilled out of its cell and printed on top of
+        # the neighbouring header (table 2.02). Breaking mid-token is the lesser
+        # evil: a wrapped header is legible, an overprinted one is not.
+        ".gt_table .gt_col_heading { white-space: normal !important; overflow-wrap: break-word !important; word-break: normal !important; hyphens: none !important; }\n",
         ".gt_table .gt_source_notes { white-space: normal !important; overflow-wrap: break-word !important; word-break: normal !important; }"
       ),
       width_px, width_px, width_px,
@@ -638,6 +778,14 @@ apply_table_profile <- function(gt_tbl, profile = "standard", stub_width_px = NU
     stub_width_px %||%
     attr(gt_tbl, "tpa_stub_width_px") %||%
     p$stub_px
+  
+  # Resolve once so the CSS and the column widths are derived from the SAME
+  # number (see resolve_stub_width()).
+  resolved_stub_width_px <- resolve_stub_width(
+    gt_tbl,
+    profile       = profile,
+    stub_width_px = requested_stub_width_px
+  )
   
   gt_tbl %>%
     tab_options(
@@ -680,11 +828,11 @@ apply_table_profile <- function(gt_tbl, profile = "standard", stub_width_px = NU
     opt_css(css = table_publication_css(profile)) %>%
     fixed_table_width(
       profile = profile,
-      stub_width_px = requested_stub_width_px
+      stub_width_px = resolved_stub_width_px
     ) %>%
     scale_columns_to_width(
       profile = profile,
-      stub_width_px = requested_stub_width_px
+      stub_width_px = resolved_stub_width_px
     ) %>%
     with_table_profile(profile)
 }
@@ -746,12 +894,17 @@ theme_gt_tpa <- function(gt_tbl, meta = NULL) {
       footnotes.font.size = px(TABLE_FOOTNOTE_FONT_PX),
       footnotes.padding   = px(table_pt_to_px(PUB$spacing$table_source_pad_pt))
     ) %>%
-    opt_align_table_header(align = "left")
+    opt_align_table_header(align = "left") %>%
+    # One footnote-mark system for the whole set. build_ranking_delta_table()
+    # used to switch table 5.02 to *, dagger, double-dagger whenever it carried
+    # a cell-level note, so that one table numbered its footnotes differently
+    # from every other table in the report.
+    opt_footnote_marks(marks = "numbers")
   
   if (!is.null(meta)) {
     tbl <- tbl %>%
       tab_header(title = gt::html(meta$title), subtitle = meta$subtitle) %>%
-      tab_source_note(source_note = md(meta$caption)) %>%
+      tab_source_note(source_note = md(normalize_caption(meta$caption))) %>%
       tab_style(
         style     = cell_text(color = TABLE_MUTED_TEXT_COLOR),
         locations = cells_title(groups = "subtitle")
@@ -918,11 +1071,11 @@ build_region_table <- function(name, meta) {
     cols_label(
       FirstYearCount = as.character(first_year),
       LastYearCount  = as.character(last_year),
-      PctChangeCount = "Change",
+      PctChangeCount = change_col_label(FALSE),
       
       FirstYearShare = as.character(first_year),
       LastYearShare  = as.character(last_year),
-      PctChangeShare = "Change"
+      PctChangeShare = change_col_label(FALSE)
     ) %>%
     
     data_color(
@@ -961,11 +1114,12 @@ build_region_table <- function(name, meta) {
     ) %>%
     
     tab_footnote(
-      footnote = paste(
-        "Counts represent total international students across all degree levels by region of origin.",
-        "Shares are calculated as a percentage of all international students.",
-        "Change is relative change for enrollment and percentage-point change for share between",
-        first_year, "and", last_year, "."
+      footnote = end_sentence(
+        "Counts represent total international students across all degree levels",
+        "by region of origin. Shares are calculated as a percentage of all",
+        "international students. Change is the relative change for enrollment",
+        "and the percentage-point change for share, between",
+        first_year, "and", last_year
       ),
       locations = cells_column_spanners(
         spanners = c("Enrollment", "Share of Total")
@@ -1037,7 +1191,7 @@ build_h1b_top10_table <- function(df, name, meta, first_year, last_year,
     sub_missing(columns = Change, missing_text = "new") %>%
     cols_label(Y1 = as.character(first_year),
                Y2 = as.character(last_year),
-               Change = "Change") %>%
+               Change = change_col_label(FALSE)) %>%
     data_color(
       columns = Change,
       fn = scales::col_numeric(
@@ -1052,12 +1206,13 @@ build_h1b_top10_table <- function(df, name, meta, first_year, last_year,
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
-      footnote = paste0("Share of all H-1B approvals in NAICS 54 (professional, ",
-                        "scientific, and technical services). Firms shown ranked ",
-                        "among the ten largest employers in ", first_year, " or ",
-                        last_year, ". Change is the ",
-                        if (change_type == "relative") "relative change" else "percentage-point change",
-                        " in share from ", first_year, " to ", last_year, "."),
+      footnote = end_sentence(
+        "Share of all H-1B approvals in NAICS 54 (professional, scientific, and",
+        "technical services). Firms shown ranked among the ten largest employers",
+        "in", first_year, "or", paste0(last_year, "."), change_col_label(FALSE),
+        "is the", change_phrase(change_type), "in share from", first_year, "to",
+        last_year
+      ),
       locations = cells_column_labels(columns = Change)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
@@ -1081,14 +1236,13 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
   
   change_type <- resolve_change_type(change_type)
   if (is.null(footnote)) {
-    footnote = paste(
+    footnote = end_sentence(
       "2017 and 2023 are the temporary visa holder share of employment within",
       "each STEM occupation category. 2019, 2021, and 2023 show the",
-      if (change_type == "relative") "relative change" else "percentage-point change",
-      "from the prior survey year. Net Change uses the same change type from",
-      "2017 to 2023. Rows are ordered",
-      "from occupations most directly tied to science and engineering to those",
-      "least tied.")
+      change_phrase(change_type), "from the prior survey year.",
+      change_col_label(TRUE), "uses the same change type from 2017 to 2023.",
+      "Rows are ordered from occupations most directly tied to science and",
+      "engineering to those least tied")
   }
   
   all_chg_cols <- c(chg_cols, "Change")
@@ -1096,16 +1250,14 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
   numeric_cols <- c(level_cols, all_chg_cols)   # every non-stub column
   
   level_labels <- setNames(gsub("^Y", "", level_cols), level_cols)
-  chg_labels   <- setNames(paste0(gsub("^Chg", "", chg_cols), " Δ"), chg_cols)
+  chg_labels   <- setNames(delta_col_label(gsub("^Chg", "", chg_cols)), chg_cols)
   
-  # target table width, and column widths derived from it directly --
-  # Occupation gets a fixed wider allotment, remaining space splits
-  # evenly across every numeric column, so cols_width and table.width
-  # can never drift out of sync with each other
-  table_width_px <- TABLE_CSS_WIDTH_PX
-  occ_width_px   <- table_scaled_px(260)
-  num_width_px   <- (table_width_px - occ_width_px) / length(numeric_cols)
-  
+  # No column widths are set here. Builders own content; save_table() owns
+  # geometry. These widths used to be computed against TABLE_CSS_WIDTH_PX (the
+  # STANDARD profile) while tables 3.01 and 3.02 export at the WIDE profile, so
+  # the stub was pinned at one width and the data columns distributed around
+  # another -- the sum ran past the table box and the right-hand columns fell
+  # outside the exported PNG.
   tbl <- df %>%
     gt(rowname_col = "Occupation", id = name) %>%
     fmt_number(columns = all_of(level_cols), decimals = 1, pattern = "{x}%") %>%
@@ -1114,7 +1266,8 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
                pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
     tab_spanner(label = spanner_label,
                 columns = all_of(span_order)) %>%
-    cols_label(!!!level_labels, !!!chg_labels, Change = "Net Change")
+    cols_label(!!!level_labels, !!!chg_labels,
+               Change = change_col_label(length(chg_cols) > 0))
   
   for (col in all_chg_cols) {
     lim <- max(abs(df[[col]]), na.rm = TRUE)
@@ -1137,13 +1290,7 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
       style     = cell_text(align = "left"),
       locations = cells_stub(rows = TRUE)
     ) %>%
-    cols_align(align = "right", columns = c(all_of(level_cols), all_of(all_chg_cols))) %>%
-    cols_width(rlang::new_formula(quote(Occupation), rlang::expr(px(!!occ_width_px))))
-  
-  for (col in numeric_cols) {
-    tbl <- tbl %>%
-      cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!num_width_px))))
-  }
+    cols_align(align = "right", columns = c(all_of(level_cols), all_of(all_chg_cols)))
   
   tbl %>%
     tab_style(
@@ -1223,7 +1370,10 @@ build_eb_combined_table <- function(meta,
     cols_align(align = "center", columns = all_of(num_cols)) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
-    tab_source_note(source_note = "Cell values are in months.") %>%
+    tab_footnote(
+      footnote  = "Cell values are in months.",
+      locations = cells_column_spanners(spanners = names(sources))
+    ) %>%
     theme_gt_tpa(meta = meta) %>%
     with_size("standard")
 }
@@ -1275,10 +1425,13 @@ build_peak_table <- function(name, meta, first, last,
                  domain  = c(min(rows$from_peak, 0, na.rm = TRUE), 0))) %>%
     cols_align(align = "center", columns = -country) %>%
     tab_style(cell_text(align = "left"), cells_stub(rows = TRUE)) %>%
-    tab_source_note(paste("Peak is each country's highest single-year certification total;",
-                          "\u201cfrom peak\u201d is the",
-                          if (change_type == "relative") "relative change" else "absolute change",
-                          "to 2024.")) %>%
+    tab_footnote(
+      footnote = end_sentence(
+        "Peak is each country's highest single-year certification total;",
+        "\u201cfrom peak\u201d is the", change_phrase(change_type, "count"), "to 2024"
+      ),
+      locations = cells_column_labels(columns = from_peak)
+    ) %>%
     theme_gt_tpa(meta = meta) %>%
     with_size("standard")
 }
@@ -1335,7 +1488,7 @@ build_perm_expiry_table <- function(meta, path = NULL,
                pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
     cols_label(use_first = "Used", exp_first = "Expired", share_first = "Share Expired",
                use_last  = "Used", exp_last  = "Expired", share_last  = "Share Expired",
-               share_net = "Net") %>%
+               share_net = change_col_label(FALSE)) %>%
     tab_spanner(label = as.character(first),
                 columns = c(use_first, exp_first, share_first)) %>%
     tab_spanner(label = as.character(last),
@@ -1354,10 +1507,15 @@ build_perm_expiry_table <- function(meta, path = NULL,
               locations = cells_body(columns = share_net)) %>%
     cols_align(align = "center", columns = -Country) %>%
     tab_style(style = cell_text(align = "left"), locations = cells_stub(rows = TRUE)) %>%
-    tab_source_note(paste("\u201cExpired\u201d columns show certifications that lapsed before use,",
-                          "in count and as a share of that year's certifications; Net is the",
-                          if (change_type == "relative") "relative change" else "percentage-point change",
-                          "in that share.")) %>%
+    tab_footnote(
+      footnote = end_sentence(
+        "\u201cExpired\u201d columns show certifications that lapsed before use,",
+        "in count and as a share of that year's certifications.",
+        change_col_label(FALSE), "is the", change_phrase(change_type),
+        "in that share"
+      ),
+      locations = cells_column_labels(columns = share_net)
+    ) %>%
     theme_gt_tpa(meta = meta) %>%
     opt_css(css = sprintf(
       "#%s .gt_column_spanner { border-bottom: 2px solid %s !important; }",
@@ -1412,7 +1570,7 @@ build_sector_bookend_table <- function(meta,
     tbl <- tbl %>%
       cols_label(!!paste0(k, "_first") := as.character(first),
                  !!paste0(k, "_last")  := as.character(last),
-                 !!paste0(k, "_net")   := "Net") %>%
+                 !!paste0(k, "_net")   := change_col_label(FALSE)) %>%
       tab_spanner(label = names(sources)[i],
                   columns = all_of(paste0(k, c("_first", "_last", "_net"))))
   }
@@ -1428,10 +1586,14 @@ build_sector_bookend_table <- function(meta,
               locations = cells_body(columns = all_of(net_cols))) %>%
     cols_align(align = "center", columns = -sector) %>%
     tab_style(style = cell_text(align = "left"), locations = cells_stub(rows = TRUE)) %>%
-    tab_source_note(paste("1994 and 2024 are shares of PhDs with definite commitments (%);",
-                          "Net is the",
-                          if (change_type == "relative") "relative change" else "percentage-point change",
-                          "between the two years.")) %>%
+    tab_footnote(
+      footnote = end_sentence(
+        first, "and", last, "are shares of PhDs with definite commitments (%).",
+        change_col_label(FALSE), "is the", change_phrase(change_type),
+        "between the two years"
+      ),
+      locations = cells_column_labels(columns = all_of(net_cols))
+    ) %>%
     theme_gt_tpa(meta = meta) %>%
     opt_css(css = sprintf(
       "#%s .gt_column_spanner { border-bottom: 2px solid %s !important; }",
@@ -1504,7 +1666,8 @@ build_bookend_table <- function(name, meta,
     gt(rowname_col = "category", id = name) %>%
     fmt_number(columns = c(pct_first, pct_last), decimals = 1, pattern = "{x}%") %>%
     fmt_number(columns = Change, decimals = 1, force_sign = TRUE, pattern = chg_pattern) %>%
-    cols_label(pct_first = first_label, pct_last = last_label, Change = "Net change") %>%
+    cols_label(pct_first = first_label, pct_last = last_label,
+               Change = change_col_label(FALSE)) %>%
     tab_spanner(label = spanner_label, columns = c(pct_first, pct_last)) %>%
     tab_spanner(label = "\u00A0", columns = Change) %>%   # blank spanner: aligns header heights
     data_color(
@@ -1831,18 +1994,11 @@ build_change_table_wide <- function(
   
   tbl %>%
     tab_footnote(
-      footnote = paste(
-        "Values are the percent of degree completions awarded to",
-        "international (nonresident) students.",
-        "Change is the",
-        if (
-          change_type == "relative"
-        ) {
-          "relative change"
-        } else {
-          "percentage-point change"
-        },
-        "in that share from 2015 to 2025."
+      footnote = end_sentence(
+        "Values are the percent of degree completions awarded to international",
+        "(nonresident) students.", change_col_label(FALSE), "is the",
+        change_phrase(change_type), "in that share from",
+        earlier_year, "to", latest_year
       ),
       locations = cells_column_spanners(
         spanners = degrees
@@ -1862,7 +2018,7 @@ build_change_table_wide <- function(
     ) %>%
     
     with_table_profile(
-      "wide"
+      "ultrawide"
     ) %>%
     
     with_size(
@@ -1969,22 +2125,18 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
   numeric_cols <- c(level_cols, all_chg_cols)
   
   if (is.null(footnote)) {
-    footnote <- paste(
+    footnote <- end_sentence(
       "The first and last columns are counts of universities in each field;",
-      "interior columns show the change from the prior shown year, and Net Change",
-      "is the change across the full window.",
-      if (change_type == "relative") "Changes are relative (percent)."
-      else "Changes are absolute counts."
+      "interior columns show the change from the prior shown year, and",
+      change_col_label(TRUE), "is the change across the full window. Changes are",
+      if (change_type == "relative") "relative (percent)" else "absolute counts"
     )
   }
   
   level_labels <- setNames(gsub("^Y", "", level_cols), level_cols)
-  chg_labels   <- setNames(paste0(gsub("^Chg", "", chg_cols), " \u0394"), chg_cols)
+  chg_labels   <- setNames(delta_col_label(gsub("^Chg", "", chg_cols)), chg_cols)
   
-  table_width_px <- TABLE_CSS_WIDTH_PX
-  field_width_px <- table_scaled_px(200)
-  num_width_px   <- (table_width_px - field_width_px) / length(numeric_cols)
-  
+  # Column widths are deliberately not set here; save_table() owns geometry.
   tbl <- df %>%
     gt(rowname_col = "Field", id = name) %>%
     fmt_integer(columns = all_of(level_cols))
@@ -1999,7 +2151,8 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
   tbl <- tbl %>%
     sub_missing(missing_text = "\u2014") %>%
     tab_spanner(label = spanner_label, columns = all_of(span_order)) %>%
-    cols_label(!!!level_labels, !!!chg_labels, Change = "Net Change")
+    cols_label(!!!level_labels, !!!chg_labels,
+               Change = change_col_label(length(chg_cols) > 0))
   
   for (col in all_chg_cols) {
     lim <- max(abs(df[[col]]), na.rm = TRUE)
@@ -2015,13 +2168,7 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
               locations = cells_body(columns = all_of(level_cols))) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
-    cols_align(align = "right", columns = all_of(numeric_cols)) %>%
-    cols_width(rlang::new_formula(quote(Field), rlang::expr(px(!!field_width_px))))
-  
-  for (col in numeric_cols) {
-    tbl <- tbl %>%
-      cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!num_width_px))))
-  }
+    cols_align(align = "right", columns = all_of(numeric_cols))
   
   tbl <- tbl %>%
     tab_style(style = cell_text(weight = "bold"),
@@ -2045,8 +2192,8 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
       "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
       name, tpa_colors[1]))
   
-  if (has_cell_note) tbl <- tbl %>% opt_footnote_marks(marks = "standard")
-  
+  # No opt_footnote_marks() call here: theme_gt_tpa() sets numeric marks for
+  # every table in the set, so a cell-level note is numbered like any other.
   tbl %>% with_size("standard")
 }
 
@@ -2174,19 +2321,12 @@ build_field_share_table <- function(df, name, meta, field_labels,
       style     = cell_text(weight = "bold"),
       locations = cells_body(columns = all_of(change_cols))
     ) %>%
-    cols_width(
-      Country              ~ px(table_scaled_px(170)),
-      ends_with("_First")  ~ px(table_scaled_px(72)),
-      ends_with("_Last")   ~ px(table_scaled_px(72)),
-      ends_with("_Change") ~ px(table_scaled_px(88))
-    ) %>%
     tab_footnote(
-      footnote = paste(
+      footnote = end_sentence(
         "Values are the share of each origin country's international students",
         "enrolled in the given field in 2010 and 2025, and the",
-        if (change_type == "ppt") "percentage-point change" else "relative change",
-        "between the two years. Countries are sorted by total international",
-        "student enrollment, with the largest first."
+        change_phrase(change_type), "between the two years. Countries are sorted",
+        "by total international student enrollment, with the largest first"
       ),
       locations = cells_column_spanners(spanners = field_labels)
     ) %>%
@@ -2196,6 +2336,7 @@ build_field_share_table <- function(df, name, meta, field_labels,
       name, tpa_colors[1]
     )) %>%
     with_table_profile("ultrawide") %>%
+    with_stub_width(table_scaled_px(170)) %>%
     with_size("long")
 }
 
@@ -2298,13 +2439,7 @@ build_citizenship_table <- function(df, name, meta,
               locations = cells_body(columns = all_of(white_cols))) %>%
     cols_align(align = "right", columns = -Field) %>%
     tab_style(style = cell_text(weight = "bold"),
-              locations = cells_body(columns = all_of(change_cols))) %>%
-    cols_width(
-      Field                ~ px(table_scaled_px(210)),
-      ends_with("_First")  ~ px(table_scaled_px(64)),
-      ends_with("_Last")   ~ px(table_scaled_px(64)),
-      ends_with("_Change") ~ px(table_scaled_px(82))
-    )
+              locations = cells_body(columns = all_of(change_cols)))
   
   if (!is.null(footnote)) {
     spanners <- c("U.S. citizens & permanent residents", "Temporary visa holders")
@@ -2320,6 +2455,7 @@ build_citizenship_table <- function(df, name, meta,
       "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
       name, tpa_colors[1])) %>%
     with_table_profile("wide") %>%
+    with_stub_width(table_scaled_px(210)) %>%
     with_size("long")
 }
 
@@ -2373,7 +2509,10 @@ build_conference_summary_table <- function(name, meta, conf_names,
     mutate(
       US_Change  = table_change(US_First, US_Last, change_type),
       CN_Change  = table_change(CN_First, CN_Last, change_type),
-      Coverage   = paste0(first_yr, "\u2013", last_yr),
+      # A venue observed in only one year would otherwise read "2022-2022".
+      Coverage   = if_else(first_yr == last_yr,
+                           as.character(first_yr),
+                           paste0(first_yr, "\u2013", last_yr)),
       Conference = recode(conf, !!!conf_names),
       cross_yr   = as.character(cross_yr)
     ) %>%
@@ -2423,16 +2562,15 @@ build_conference_summary_table <- function(name, meta, conf_names,
               locations = cells_body(columns = c(US_Change, CN_Change))) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
-    cols_width(Coverage ~ px(table_scaled_px(90))) %>%
     tab_footnote(
-      footnote = paste(
+      footnote = end_sentence(
         "Each row gives the U.S. and Chinese share of accepted author",
         "affiliations at the first and last year both countries are observed;",
-        "that window is shown under Coverage and differs by venue. Change is the",
-        if (change_type == "relative") "relative change." else "percentage-point change.",
-        "\u201CChina overtook\u201D is the first such year",
-        "China's share exceeded the U.S. share; \u201CNot yet\u201D means the",
-        "U.S. share still led in the latest observed year."
+        "that window is shown under Coverage and differs by venue.",
+        change_col_label(FALSE), "is the", paste0(change_phrase(change_type), "."),
+        "\u201CChina overtook\u201D is the first such year China's share",
+        "exceeded the U.S. share; \u201CNot yet\u201D means the U.S. share still",
+        "led in the latest observed year"
       ),
       locations = cells_column_labels(columns = cross_yr)
     ) %>%
@@ -2453,12 +2591,13 @@ build_rd_type_level_table <- function(df, name, meta, level_cols,
                                       footnote = NULL) {
   
   if (is.null(footnote)) {
-    footnote <- paste(
+    footnote <- end_sentence(
       "Spending levels in billions of US dollars, PPP converted, at current",
-      "prices (not adjusted for inflation). Net Change is the relative change",
-      "from the first to the last shown year. Basic research is investment in",
-      "future capability; applied research and experimental development are",
-      "nearer-term. Totals may not sum exactly because of rounding."
+      "prices (not adjusted for inflation).", change_col_label(FALSE), "is the",
+      "relative change from the first to the last shown year. Basic research is",
+      "investment in future capability; applied research and experimental",
+      "development are nearer-term. Totals may not sum exactly because of",
+      "rounding"
     )
   }
   
@@ -2472,7 +2611,7 @@ build_rd_type_level_table <- function(df, name, meta, level_cols,
                pattern = "{x}%") %>%
     tab_spanner(label = spanner_label, id = "gerd_span",
                 columns = all_of(level_cols)) %>%
-    cols_label(!!!level_labels, Change = "Net Change") %>%
+    cols_label(!!!level_labels, Change = change_col_label(FALSE)) %>%
     data_color(
       columns = Change,
       fn = scales::col_numeric(
@@ -2598,20 +2737,14 @@ build_patents_table <- function(name, meta, sources,
               locations = cells_body(columns = all_of(change_cols))) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
-    cols_width(
-      Country              ~ px(table_scaled_px(170)),
-      ends_with("_First")  ~ px(table_scaled_px(58)),
-      ends_with("_Last")   ~ px(table_scaled_px(58)),
-      ends_with("_Change") ~ px(table_scaled_px(78))
-    ) %>%
     tab_footnote(
-      footnote = paste0(
-        "Patents granted by each country's patent office. Values are grants in ",
-        fy_lab, " and ", ly_lab,
-        if (change_type == "relative") ", with the relative change between them. "
-        else ", with the absolute change between them. ",
-        "Countries are ordered by total ", ly_lab,
-        " grants across the three fields; \u2014 marks a year with no reported grants."),
+      footnote = end_sentence(
+        "Patents granted by each country's patent office. Values are grants in",
+        fy_lab, "and", ly_lab, "with the",
+        paste0(change_phrase(change_type, "count"), " between them."),
+        "Countries are ordered by total", ly_lab,
+        "grants across the three fields; \u2014 marks a year with no reported",
+        "grants"),
       locations = cells_column_spanners(spanners = field_labels)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
@@ -2619,6 +2752,7 @@ build_patents_table <- function(name, meta, sources,
       "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
       name, tpa_colors[1])) %>%
     with_table_profile("ultrawide") %>%
+    with_stub_width(table_scaled_px(170)) %>%
     with_size("standard")
 }
 
@@ -2831,23 +2965,19 @@ build_patent_company_delta_table <- function(df, name, meta,
   }
   
   if (is.null(footnote)) {
-    footnote <- paste(
+    footnote <- end_sentence(
       "The first, middle, and last columns are patent grants in each year. The",
-      "interior columns show the change from the prior shown year rather than the",
-      "level; Net Change is the change across the full window.",
-      if (change_type == "relative") "Changes are relative (percent)."
-      else "Changes are absolute counts of grants.",
-      "Rows are ordered by net change."
+      "interior columns show the change from the prior shown year rather than",
+      "the level;", change_col_label(length(chg_cols) > 0), "is the change",
+      "across the full window. Changes are",
+      if (change_type == "relative") "relative (percent)" else "absolute counts of grants"
     )
   }
   
   level_labels <- setNames(gsub("^Y", "", level_cols), level_cols)
   chg_labels   <- setNames(rep("Change", length(chg_cols)), chg_cols)
   
-  table_width_px <- TABLE_CSS_WIDTH_PX
-  comp_width_px  <- table_scaled_px(250)
-  num_width_px   <- (table_width_px - comp_width_px) / length(numeric_cols)
-  
+  # Column widths are deliberately not set here; save_table() owns geometry.
   tbl <- df %>%
     gt(rowname_col = "Company", id = name) %>%
     fmt_markdown(columns = "Company") %>%
@@ -2867,7 +2997,8 @@ build_patent_company_delta_table <- function(df, name, meta,
       cols_merge(columns = c(Company, flag), pattern = "{2}&nbsp;&nbsp;{1}")
   }
   
-  label_args <- c(level_labels, chg_labels, list(Change = "Net Change"))
+  label_args <- c(level_labels, chg_labels,
+                  list(Change = change_col_label(length(chg_cols) > 0)))
   tbl <- tbl %>%
     tab_spanner(label = spanner_label, columns = all_of(span_order)) %>%
     cols_label(.list = label_args)
@@ -2886,13 +3017,7 @@ build_patent_company_delta_table <- function(df, name, meta,
               locations = cells_body(columns = all_of(level_cols))) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
-    cols_align(align = "right", columns = all_of(numeric_cols)) %>%
-    cols_width(rlang::new_formula(quote(Company), rlang::expr(px(!!comp_width_px))))
-  
-  for (col in numeric_cols) {
-    tbl <- tbl %>%
-      cols_width(rlang::new_formula(rlang::sym(col), rlang::expr(px(!!num_width_px))))
-  }
+    cols_align(align = "right", columns = all_of(numeric_cols))
   
   tbl %>%
     tab_style(style = cell_text(weight = "bold"),
@@ -2954,7 +3079,10 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
     mutate(
       US_Change  = table_change(US_First, US_Last, change_type),
       CN_Change  = table_change(CN_First, CN_Last, change_type),
-      Coverage   = paste0(first_yr, "\u2013", last_yr),
+      # A venue observed in only one year would otherwise read "2022-2022".
+      Coverage   = if_else(first_yr == last_yr,
+                           as.character(first_yr),
+                           paste0(first_yr, "\u2013", last_yr)),
       Conference = recode(conf, !!!conf_names),
       cross_yr   = as.character(cross_yr)
     ) %>%
@@ -3016,14 +3144,14 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
-      footnote = paste(
+      footnote = end_sentence(
         "Each row gives the U.S. and Chinese share of accepted author",
         "affiliations at the first and last year both countries are observed;",
-        "that window is shown under Coverage and differs by venue. Change is the",
-        if (change_type == "relative") "relative change." else "percentage-point change.",
-        "\u201CChina overtook\u201D is the first such year",
-        "China's share exceeded the U.S. share; \u201CNot yet\u201D means the",
-        "U.S. share still led in the latest observed year."
+        "that window is shown under Coverage and differs by venue.",
+        change_col_label(FALSE), "is the", paste0(change_phrase(change_type), "."),
+        "\u201CChina overtook\u201D is the first such year China's share",
+        "exceeded the U.S. share; \u201CNot yet\u201D means the U.S. share still",
+        "led in the latest observed year"
       ),
       locations = cells_column_labels(columns = cross_yr)
     ) %>%
@@ -3068,6 +3196,8 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
     profile = profile,
     stub_width_px = stub_width_px
   )
+  
+  overflow_px <- attr(gt_tbl, "tpa_overflow_px") %||% 0
   
   # Browser headroom only. The PNG is cropped to the rendered table.
   height_scale <- p$width_px / TABLE_CSS_WIDTH_PX
@@ -3146,6 +3276,7 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
       expected_width_px = as.integer(TABLE_EXPORT_PX),
       actual_width_px = actual_width_px,
       actual_height_px = actual_height_px,
+      overflow_px = as.numeric(overflow_px),
       body_font_pt = TABLE_DATA_FONT_PT,
       header_font_pt = TABLE_COLUMN_LABEL_FONT_PT,
       column_label_font_pt = TABLE_COLUMN_LABEL_FONT_PT,
@@ -3192,6 +3323,19 @@ write_table_export_audit <- function(
         call. = FALSE
       )
     }
+  }
+  
+  # A PNG can be exactly the right raster width and still have lost its
+  # rightmost column, because the crop happens at the viewport edge. The
+  # per-table overflow figure is the only thing that catches that.
+  clipped <- audit %>% dplyr::filter(!is.na(overflow_px), overflow_px > 0)
+  if (nrow(clipped) > 0) {
+    stop(
+      "Table columns overflow their profile (content will be clipped): ",
+      paste0(clipped$name, " (+", round(clipped$overflow_px), "px)",
+             collapse = ", "),
+      call. = FALSE
+    )
   }
   
   checked <- audit %>% dplyr::filter(!is.na(actual_width_px))

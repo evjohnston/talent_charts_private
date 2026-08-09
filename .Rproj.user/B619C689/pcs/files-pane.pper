@@ -1,12 +1,12 @@
 {
-    "path": "~/Downloads/_Work/Talent/talent_charts/inputs/scripts",
+    "path": "~/Downloads/_Work/Talent/talent_charts/outputs/final_tables/pngs",
     "sortOrder": [
         {
-            "columnIndex": 2,
+            "columnIndex": 4,
             "ascending": true
         },
         {
-            "columnIndex": 4,
+            "columnIndex": 2,
             "ascending": true
         },
         {

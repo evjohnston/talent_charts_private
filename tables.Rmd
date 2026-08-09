@@ -1,3 +1,4 @@
+---
 title: "GTCI Tables"
 author: "Emerson Johnston"
 ---
@@ -103,12 +104,12 @@ field_files <- c(
 # unaffected.
 field_header_short <- c(
   "Engineering"              = "Engineering",
-  "Math & Computer Science"  = "Math/Computer",
-  "Physical & Life Sciences" = "Phys./Life Sci.",
-  "Business and Management"  = "Business/Mgmt",
-  "Education"                = "Education",
-  "Fine/Applied Arts"        = "Fine/Applied Arts",
-  "Health Professions"       = "Health Prof.",
+  "Math & Computer Science"  = "Computing",
+  "Physical & Life Sciences" = "Sciences",
+  "Business and Management"  = "Business",
+  "Education"                = "Edu",
+  "Fine/Applied Arts"        = "Arts",
+  "Health Professions"       = "Health",
   "Social Sciences"          = "Social Sci."
 )
 
@@ -158,8 +159,14 @@ lim <- max(abs(as.matrix(mat[field_order])), na.rm = TRUE)
 
 tab_202 <- mat %>%
   gt(rowname_col = "Country", id = "TAB202") %>%
+  # These are percentage-point moves, not percent changes, so the old "{x}%"
+  # suffix was wrong on all 232 cells. Every cell in this matrix shares one
+  # unit, which the spanner and the footnote both state, so the cells carry a
+  # bare signed number: repeating " pp" 232 times would cost roughly a column
+  # of width in an already dense table. Swap in change_pattern(change_type) if
+  # per-cell units are wanted instead.
   fmt_number(columns = all_of(field_order), decimals = 1,
-             force_sign = TRUE, pattern = "{x}%") %>%
+             force_sign = TRUE) %>%
   sub_missing(missing_text = "\u2014") %>%
   data_color(
     columns = all_of(field_order),
@@ -181,14 +188,19 @@ tab_202 <- mat %>%
     columns = all_of(field_order)
   ) %>%
   tab_footnote(
-    footnote = paste(
-      "Each cell is the percentage-point change in the share of that country's",
-      "U.S.-bound international students enrolled in the field, from the first",
-      "to the most recent year available (2010\u20132025 for most countries;",
-      "2012 for Iran, 2018 for Bangladesh). Red marks fields gaining share,",
-      "blue marks fields losing it. Columns are ordered from the field gaining",
-      "most across countries to the field losing most. Countries are ordered by",
-      "total international enrollment, largest first."
+    footnote = end_sentence(
+      "Each cell is the", change_phrase(change_type),
+      "in percentage points, in the share of that",
+      "country's U.S.-bound international students enrolled in the field, from",
+      "the first to the most recent year available (2010\u20132025 for most",
+      "countries; 2012 for Iran, 2018 for Bangladesh). Column headings are",
+      "abbreviated: Math/Comp. is mathematics and computer science, Phys./Life",
+      "is physical and life sciences, Business is business and management, Fine",
+      "Arts is fine and applied arts, Health is health professions, and Social",
+      "Sci. is social sciences. Red marks fields gaining share, blue marks",
+      "fields losing it. Columns are ordered from the field gaining most across",
+      "countries to the field losing most. Countries are ordered by total",
+      "international enrollment, largest first"
     ),
     locations = cells_column_spanners(
       spanners = "Change in share of the country's U.S.-bound students (pct. points)"
@@ -202,7 +214,7 @@ tab_202 <- mat %>%
   with_table_profile("ultrawide") %>%
   with_size("standard")
 
-save_table(tab_202, "tab_2_02", profile = "ultrawide", stub_width_px = 150)
+save_table(tab_202, "tab_2_02", profile = "ultrawide", stub_width_px = 170)
 ```
 
 
@@ -243,12 +255,11 @@ tab_014 <- build_occupation_share_table(
   chg_cols      = c("Chg2003", "Chg2013", "Chg2023"),
   spanner_label = "Share employed in STEM",
   change_type   = change_type,
-  footnote = paste(
+  footnote = end_sentence(
     "1993 is the share of graduates at each degree level employed in a STEM",
-    "occupation. 2003, 2013, and 2023 show the",
-    if (change_type == "relative") "relative change" else "percentage-point change",
-    "from the prior period shown rather than the share itself. Net Change uses",
-    "the same change type from 1993 to 2023."
+    "occupation. 2003, 2013, and 2023 show the", change_phrase(change_type),
+    "from the prior period shown rather than the share itself.",
+    change_col_label(TRUE), "uses the same change type from 1993 to 2023"
   )
 )
 
@@ -409,11 +420,11 @@ tab_038a <- build_bookend_table(
     "Still Enrolled",
     "Left with No Degree"
   ),
-  footnote = paste(
+  footnote = end_sentence(
     "Values are the share of each entering STEM cohort ending in each outcome;",
-    "each year column sums to 100%. Net change is the",
-    if (change_type == "relative") "relative change" else "percentage-point change",
-    "from the 2003/04 cohort to the 2011/12 cohort."
+    "each year column sums to 100%.", change_col_label(FALSE), "is the",
+    change_phrase(change_type),
+    "from the 2003/04 cohort to the 2011/12 cohort"
   )
 )
 save_table(tab_038a, "tab_4_01", profile = "standard", stub_width_px = 340)
@@ -435,10 +446,10 @@ TAB402 <- build_bookend_table(
                   "Once"           = "Switched once",
                   "More than Once" = "Switched 2+ times"),
   cat_order = c("Never switched", "Switched once", "Switched 2+ times"),
-  footnote = paste(
-    "Share of STEM entrants by number of major switches. Net change is the",
-    if (change_type == "relative") "relative change" else "percentage-point change",
-    "from the 2004/2009 to the 2012/2017 cohort."
+  footnote = end_sentence(
+    "Share of STEM entrants by number of major switches.",
+    change_col_label(FALSE), "is the", change_phrase(change_type),
+    "from the 2004/2009 to the 2012/2017 cohort"
   )
 )
 save_table(TAB402, "tab_4_02", profile = "standard")
@@ -464,11 +475,10 @@ tab_016 <- build_bookend_table(
     "these categories are not directly comparable across that break, so the",
     "reported change reflects reclassification as well as any real shift."
   ),
-  footnote = paste(
+  footnote = end_sentence(
     "Share of U.S. study-abroad students by field of study.",
-    "Net change is the",
-    if (change_type == "relative") "relative change" else "percentage-point change",
-    "from 2005 to 2024."
+    change_col_label(FALSE), "is the", change_phrase(change_type),
+    "from 2005 to 2024"
   )
 )
 
@@ -488,9 +498,9 @@ tab_017 <- build_bookend_table(
   drop_cols = "Antarctica",
   recode_cats = c("Africa, Sub-Saharan"   = "Sub-Saharan Africa",
                   "Multiple Destinations" = "Multiple destinations"),
-  footnote = paste(
-    "Share of U.S. study-abroad students by host region. Net change is the",
-    if (change_type == "relative") "relative change" else "percentage-point change",
+  footnote = end_sentence(
+    "Share of U.S. study-abroad students by host region.",
+    change_col_label(FALSE), "is the", change_phrase(change_type),
     "from 2005 to 2024.",
     if (change_type == "relative")
       "Relative change is volatile for small-share regions (e.g., the Middle East & North Africa moved 1.0% to 1.6%)."
@@ -583,16 +593,15 @@ TAB502 <- build_ranking_delta_table(
   level_cols  = c("Y2014", "Y2026"),
   chg_cols    = c("Chg2018", "Chg2022", "Chg2026"),
   change_type = change_type,
-  footnote = paste(
-    "Counts are U.S. universities in the global top 100 in each field, in 2014 and",
-    "2026. Interior columns show the",
-    if (change_type == "relative") "relative change" else "absolute change",
-    "in that count from the prior shown year; Net Change uses the same change type",
-    "from 2014 to 2026."
+  footnote = end_sentence(
+    "Counts are U.S. universities in the global top 100 in each field, in 2014",
+    "and 2026. Interior columns show the", change_phrase(change_type, "count"),
+    "in that count from the prior shown year;", change_col_label(TRUE),
+    "uses the same change type from 2014 to 2026"
   ),
-  cell_footnote       = paste(
-    "Computer science was first ranked in 2017; its 2017 count is shown here in the",
-    "2014 column so its change and net columns can be computed."
+  cell_footnote       = end_sentence(
+    "Computer science was first ranked in 2017; its 2017 count is shown here in",
+    "the 2014 column so its change and net columns can be computed"
   ),
   cell_footnote_field = "Computer Science",
   cell_footnote_col   = "Y2014"
@@ -695,12 +704,13 @@ df_022 <- bind_rows(df_022, totals_022) %>%
 tab_022 <- build_rd_type_level_table(
   df_022, "tab_5_04", meta,
   level_cols = c("Y1994", "Y2004", "Y2014", "Y2024"),
-  footnote = paste(
-    "Spending levels in billions of US dollars, PPP converted, at current prices",
-    "(not adjusted for inflation). Net Change is the relative change from the first",
-    "to the last shown year. Sectors denote where R&D is performed. China reports no",
-    "private non-profit R&D; it is shown as $0, and its net-change cell is undefined",
-    "from a zero base and appears as 0%. Totals may not sum exactly because of rounding."
+  footnote = end_sentence(
+    "Spending levels in billions of US dollars, PPP converted, at current",
+    "prices (not adjusted for inflation).", change_col_label(FALSE), "is the",
+    "relative change from the first to the last shown year. Sectors denote",
+    "where R&D is performed. China reports no private non-profit R&D; it is",
+    "shown as $0, and its change cell is undefined from a zero base and appears",
+    "as 0%. Totals may not sum exactly because of rounding"
   )
 )
 
@@ -732,6 +742,8 @@ build_patents_table(
 ### Table 5.06 - Patent Leadership Shifted From U.S. and Japanese Incumbents to Asian Challengers
 ```{r TAB506}
 meta <- get_meta("TAB506")
+# "ppt" here means "native units": these are counts of grants, so the change is
+# an absolute count difference rather than a percentage-point move.
 change_type <- "ppt"
 num  <- function(x) parse_number(as.character(x))
 
@@ -779,12 +791,12 @@ TAB506 <- build_patent_company_delta_table(
   level_cols  = c("Y2005", "Y2025"),
   chg_cols    = character(0),
   change_type = change_type,
-  footnote = paste(
+  footnote = end_sentence(
     "The first and last columns are patent grants in 2005 and 2025.",
-    "Net Change is the absolute change across the window.",
-    "Arrows mark the five firms that ranked in the top five by 2005 grants,",
-    "with their 2005 rank; red points to a fall in rank by 2025, green to a rise.",
-    "Rows are ordered by 2025 grants."
+    change_col_label(FALSE), "is the", change_phrase(change_type, "count"),
+    "across the window. Arrows mark the five firms that ranked in the top five",
+    "by 2005 grants, with their 2005 rank; red points to a fall in rank by",
+    "2025, green to a rise. Rows are ordered by 2025 grants"
   )
 )
 save_table(TAB506, "tab_5_06", profile = "ultrawide", stub_width_px = 360)
@@ -897,6 +909,8 @@ message(
   ),
   " pt; row padding = ",
   unique(table_layout_audit$row_padding_pt),
-  " pt."
+  " pt; max column overflow = ",
+  max(c(0, table_layout_audit$overflow_px), na.rm = TRUE),
+  " px."
 )
 ```
