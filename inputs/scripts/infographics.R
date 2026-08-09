@@ -777,10 +777,24 @@ INFOGRAPHIC_FIXED_LAYOUT$row_height_px <- ceiling(
 
 # Fixed editorial pagination.
 #
-# Every infographic uses the same maximum number of body rows per page.
-# Pages are never resized and typography is never reduced to squeeze in more
-# rows. A final page may contain fewer rows simply because the chapter ends.
+# The publication target is 30 BODY rows per page, with room reserved for up
+# to five visible section headers. A section header counts as one rendered-row
+# equivalent when pages are split.
+#
+# Therefore:
+#   body-row cap             = 30
+#   section-header allowance = 5
+#   rendered-row budget      = 35
+#
+# A page with five section headers can contain all 30 body rows.
+# A page with more than five section headers is broken earlier so the combined
+# body-row + section-header count never exceeds 35. Pages are never resized and
+# typography is never reduced to force additional content onto the canvas.
 INFOGRAPHIC_ROWS_PER_PAGE <- 30L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 5L
+INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
+  INFOGRAPHIC_ROWS_PER_PAGE +
+  INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
 
 # Retained as a compatibility alias. It is deliberately independent of n_rows.
 layout_for_rows <- function(n_rows = NULL) {
@@ -1056,7 +1070,7 @@ build_infographic_table <- function(
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = "#3B7A57",
+        color = "#008a22",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1066,7 +1080,7 @@ build_infographic_table <- function(
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = "#8C1515",
+        color = "#8a0022",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1231,13 +1245,15 @@ paginate_infographic_data <- function(
     build_page = NULL,
     name = NULL,
     output_dir = PATHS$final_infographics,
-    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE,
+    section_headers_per_page = INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
 ) {
   if (nrow(data) < 1) {
     stop("The infographic contains no data rows.")
   }
 
   rows_per_page <- as.integer(rows_per_page)
+  section_headers_per_page <- as.integer(section_headers_per_page)
 
   if (
     length(rows_per_page) != 1L ||
@@ -1247,12 +1263,101 @@ paginate_infographic_data <- function(
     stop("`rows_per_page` must be one positive integer.")
   }
 
-  page_id <- ceiling(seq_len(nrow(data)) / rows_per_page)
+  if (
+    length(section_headers_per_page) != 1L ||
+    !is.finite(section_headers_per_page) ||
+    section_headers_per_page < 0L
+  ) {
+    stop("`section_headers_per_page` must be one nonnegative integer.")
+  }
 
-  split(
-    data,
-    page_id
-  )
+  if (!"Section" %in% names(data)) {
+    stop(
+      "Infographic pagination requires a `Section` column so section headers ",
+      "can be counted in the fixed page-height budget."
+    )
+  }
+
+  rendered_row_budget <- rows_per_page + section_headers_per_page
+
+  # Greedy pagination in publication order.
+  #
+  # Cost model:
+  #   each body/stat row        = 1 unit
+  #   each visible section head = 1 unit
+  #
+  # The first row on every page necessarily creates a section header. A new
+  # section within a page creates one additional header. If a section continues
+  # onto the next page, mark_infographic_continuation() still renders a
+  # "(cont.)" header there, so the first-header cost on each page is correct.
+  pages <- list()
+  page_start <- 1L
+  body_rows_on_page <- 0L
+  rendered_units_on_page <- 0L
+  previous_section_on_page <- NULL
+
+  for (i in seq_len(nrow(data))) {
+    current_section <- as.character(data$Section[[i]])
+
+    starts_new_section <- (
+      body_rows_on_page == 0L ||
+      is.null(previous_section_on_page) ||
+      !identical(current_section, previous_section_on_page)
+    )
+
+    body_cost <- 1L
+    header_cost <- if (starts_new_section) 1L else 0L
+
+    would_exceed_body_cap <- (
+      body_rows_on_page + body_cost >
+        rows_per_page
+    )
+
+    would_exceed_rendered_budget <- (
+      rendered_units_on_page +
+        body_cost +
+        header_cost >
+        rendered_row_budget
+    )
+
+    if (
+      body_rows_on_page > 0L &&
+      (
+        would_exceed_body_cap ||
+        would_exceed_rendered_budget
+      )
+    ) {
+      pages[[length(pages) + 1L]] <- data[
+        page_start:(i - 1L),
+        ,
+        drop = FALSE
+      ]
+
+      page_start <- i
+      body_rows_on_page <- 0L
+      rendered_units_on_page <- 0L
+      previous_section_on_page <- NULL
+
+      starts_new_section <- TRUE
+      header_cost <- 1L
+    }
+
+    body_rows_on_page <- body_rows_on_page + body_cost
+    rendered_units_on_page <-
+      rendered_units_on_page +
+      body_cost +
+      header_cost
+
+    previous_section_on_page <- current_section
+  }
+
+  pages[[length(pages) + 1L]] <- data[
+    page_start:nrow(data),
+    ,
+    drop = FALSE
+  ]
+
+  pages
 }
 
 
@@ -1371,14 +1476,16 @@ export_paginated_infographic <- function(
     build_page,
     name,
     output_dir = PATHS$final_infographics,
-    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
+    rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE,
+    section_headers_per_page = INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
 ) {
   pages <- paginate_infographic_data(
     data = data,
     build_page = build_page,
     name = name,
     output_dir = output_dir,
-    rows_per_page = rows_per_page
+    rows_per_page = rows_per_page,
+    section_headers_per_page = section_headers_per_page
   )
 
   total_pages <- length(pages)
@@ -1415,12 +1522,48 @@ export_paginated_infographic <- function(
     )
   })
 
+  page_body_counts <- vapply(
+    pages,
+    nrow,
+    integer(1)
+  )
+
+  page_header_counts <- vapply(
+    pages,
+    function(x) {
+      if (nrow(x) == 0L) {
+        return(0L)
+      }
+
+      section <- as.character(x$Section)
+
+      sum(
+        c(
+          TRUE,
+          section[-1] != section[-length(section)]
+        ),
+        na.rm = TRUE
+      )
+    },
+    integer(1)
+  )
+
   message(
     "Saved ", total_pages,
     " fixed-format page", if (total_pages == 1L) "" else "s",
-    " for ", name,
-    ". Up to ", rows_per_page,
-    " body rows are used per page; type size, row height, columns, and PNG dimensions remain fixed."
+    " for ", name, ". ",
+    "Body-row cap = ", rows_per_page,
+    "; section-header allowance = ", section_headers_per_page,
+    "; rendered-row budget = ",
+    rows_per_page + section_headers_per_page,
+    ". Page body/header counts: ",
+    paste0(
+      page_body_counts,
+      "+",
+      page_header_counts,
+      collapse = ", "
+    ),
+    ". Type size, row height, columns, and PNG dimensions remain fixed."
   )
 
   invisible(exports)

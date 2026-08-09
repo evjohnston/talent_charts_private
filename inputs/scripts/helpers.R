@@ -135,7 +135,7 @@ plot_country_lines <- function(df, meta, y_label,
         direction    = "y",
         with_segment = TRUE
       ) +
-      scale_x_years(df$Year, pad_right = 0) +
+      scale_x_years(df$Year, right_labels = labels) +
       color_scale +
       guides(color = "none") +
       labs_meta(meta, y = y_label) +
@@ -196,7 +196,7 @@ plot_country_lines <- function(df, meta, y_label,
         direction    = "y",
         with_segment = TRUE
       ) +
-      scale_x_years(df$Year, pad_right = 0) +
+      scale_x_years(df$Year, right_labels = labels) +
       color_scale +
       guides(color = "none") +
       labs_meta(meta, y = y_label) +
@@ -267,7 +267,7 @@ plot_sector_employment <- function(df, meta, y_label,
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = 0) +
+    scale_x_years(df$Year, right_labels = labels) +
     do.call(scale_y_continuous, y_args) +
     scale_color_tpa() +
     guides(color = "none") +
@@ -350,7 +350,7 @@ plot_patents <- function(df, meta, y_label = "Patents granted (log scale)") {
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = 0) +
+    scale_x_years(df$Year, right_labels = labels) +
     scale_y_log10(
       labels = label_comma(),
       breaks = c(10, 100, 1000, 5000, 10000, 50000),
@@ -499,7 +499,7 @@ plot_nonresident_field <- function(df, meta, y_label) {
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = 0) +
+    scale_x_years(df$Year, right_labels = labels) +
     scale_y_continuous(
       labels = label_number(suffix = "%"),
       expand = EXPAND_LINE
@@ -570,7 +570,7 @@ get_meta <- function(id) {
   list(
     title      = full_title,
     title_long = m$title_long[1],
-#   subtitle   = CHART_LINE,
+    #   subtitle   = CHART_LINE,
     caption    = format_source(short),
     csv        = m$csv[1]
   )
@@ -676,6 +676,14 @@ fmt_num_b    <- function(x) paste0(round(x / 1e9, 1), "B")
 fmt_dollar   <- function(x) sprintf("$%.2f", x)
 fmt_dollar_m <- function(x) sprintf("$%.1fM", x)
 fmt_dollar_b <- function(x) sprintf("$%.1fB", x)
+fmt_kbm <- function(x) {
+  dplyr::case_when(
+    is.na(x)  ~ NA_character_,
+    x >= 1e6  ~ paste0(scales::number(x / 1e6, accuracy = 0.1), "M"),
+    x >= 1e3  ~ paste0(scales::number(x / 1e3, accuracy = 1), "K"),
+    TRUE      ~ scales::number(x, accuracy = 1)
+  )
+}
 
 # ---- Stacked-chart palettes ---------------------------------
 

@@ -54,6 +54,7 @@ theme_map <- function() {
       axis.line  = element_blank(),
       axis.ticks = element_blank(),
       panel.grid = element_blank(),
-      legend.position = "right"
+      legend.position = "right",
+      plot.margin = margin(2, 2, 2, 2, unit = "pt")
     )
 }

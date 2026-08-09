@@ -454,8 +454,8 @@ theme_dual_axis <- function() {
         size   = AXIS_SIZE
       ),
       plot.margin = publication_margin(
-        left  = PUB$spacing$edge_wide_pt,
-        right = PUB$spacing$edge_wide_pt
+        left  = PUB$spacing$edge_pt,
+        right = PUB$spacing$edge_pt
       )
     )
 }

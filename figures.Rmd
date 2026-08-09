@@ -248,11 +248,12 @@ df_001 <- read_levels("FIG103", value_col = "Count",
 FIG103 <- ggplot(df_001, aes(Year, Count, fill = Level)) +
   geom_area(alpha = ALPHA_AREA) +
   scale_x_years(df_001$Year) +
-  scale_y_continuous(breaks = c(250000, 500000, 750000),
-                     labels = label_comma(),
+  scale_y_continuous(breaks = c(200000, 400000, 600000, 800000),
+                     labels = fmt_num_k,
                      expand = EXPAND_BAR) +
   scale_fill_levels(reverse_legend = FALSE) +
   labs_meta(meta, y = "Degrees awarded") +
+  coord_cartesian(ylim = c(200000, 800000)) +
   theme_tpa()
 save_chart(FIG103, "fig_1_03")
 ```
@@ -281,7 +282,7 @@ FIG104 <- ggplot(df_009, aes(Year)) +
   scale_x_years(df_009$Year) +
   scale_y_continuous(
     name   = "Count of international students",
-    labels = label_comma(),
+    labels = fmt_kbm,
     expand = EXPAND_BAR,
     sec.axis = sec_axis_scaled(scale_factor,
                                name   = "Share of total US enrollment",
@@ -338,7 +339,7 @@ FIG105 <- ggplot(df_099, aes(Year, Share, color = Level, group = Level)) +
   scale_color_levels() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of completions") +
-  coord_cartesian(clip = "off") +
+  coord_cartesian(ylim = c(0, .35)) +
   theme_tpa() +
   theme_right_labels(last_099)
 save_chart(FIG105, "fig_1_05")
@@ -529,7 +530,7 @@ FIG203 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of Enrolled International Students") +
-  coord_cartesian(clip = "off") +
+  coord_cartesian(ylim = c(0, 0.4), clip = "off") +
   theme_tpa() +
   theme_right_labels(labels_109)
 
@@ -576,7 +577,7 @@ FIG204 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of Enrolled International Students") +
-  coord_cartesian(clip = "off") +
+  coord_cartesian(ylim = c(0, 0.4), clip = "off") +
   theme_tpa() +
   theme_right_labels(labels_111)
 
@@ -634,8 +635,8 @@ FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
   df_014$Year,
   right_labels = labels_014
   ) +
-  scale_y_continuous(labels = label_comma(),
-                     expand = EXPAND_LINE) +
+  scale_y_continuous(labels = fmt_num_k,
+                   expand = EXPAND_LINE) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "Enrolled students") +
@@ -682,7 +683,7 @@ FIG206 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
     with_segment = TRUE
   ) +
   scale_x_years(df_013$Year, right_labels = labels_013) +
-  scale_y_log10(labels = label_comma(),
+  scale_y_log10(labels = fmt_num_k,
                 breaks = c(0, 1000, 5000, 10000, 50000, 100000, 250000),
                 expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -793,7 +794,7 @@ df_106 <- read_fig("FIG208") %>%
   filter(!is.na(Share)) %>%
   mutate(
     Cohort = factor(Cohort, levels = c("Fall 2018", "Fall 2021", "Fall 2025")),
-    Reason = str_wrap(Reason, width = 50),                 # <- lower width = narrower text column
+    Reason = str_wrap(Reason, width = 40),                 # <- lower width = narrower text column
     Reason = factor(Reason, levels = rev(unique(Reason)))
   ) 
 
@@ -815,12 +816,12 @@ labels_106 <- df_106 %>%
   ungroup()
 
 FIG212 <- ggplot(df_106, aes(Share, Reason, color = Cohort)) +
-  geom_point(size = 3.5) +
+  geom_point(size = 2.5) +
   geom_text(
     data = labels_106,
     aes(x = label_x, label = paste0(Share, "%")),
     nudge_y = -0.34,
-    size = SMALL_LABEL_SIZE / .pt,
+    size = 8 / .pt,
     fontface = "bold",
     family = FONT_FAMILY,
     show.legend = FALSE
@@ -845,7 +846,7 @@ meta <- get_meta("FIG301")
 
 df_102 <- read_fig("FIG301") %>%
   rename(
-    `Graduate (unspecified)` = `Graduate - Unspecified`,
+    `Graduate (Other)` = `Graduate - Unspecified`,
     `Non-degree`             = `Non-Degree`,
     OPT                      = `Optional Practical Training (OPT)`
   ) %>%
@@ -869,7 +870,7 @@ FIG201 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
     with_segment = TRUE
   ) +
   scale_x_years(df_102$Year, right_labels = labels_102) +
-  scale_y_continuous(labels = label_comma(),
+  scale_y_continuous(labels = fmt_num_k,
                      expand = expansion(mult = c(0.02, 0.05))) +
   scale_color_manual(values = acad_level_colors) +
   guides(color = "none") +

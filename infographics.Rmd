@@ -1,5 +1,5 @@
 ---
-title: "GTCI Infographics — Chapters 1–3"
+title: "GTCI Infographics — Chapters 1–4"
 author: "Emerson Johnston"
 output: html_document
 ---
@@ -2680,7 +2680,9 @@ build_ch2_page <- function(
         "**Note:** Academic-level rows use longitudinal bookends from the ",
         "current international-enrollment-by-level series. The 2025/26 ",
         "enrollment rows apply the reported 2025 year-over-year change to ",
-        "the 2024/25 actual category count."
+        "the 2024/25 actual category count. The 2015 recruitment priorities ",
+        "are hard-coded from the historical recruitment-priorities chart; ",
+        "the 2025 priorities and barrier measures use the current snapshot."
       ),
       paste0(
         "**Source:** Current report data underlying Figures 2.01–2.08 and ",
@@ -3099,7 +3101,7 @@ ch3_founder_origin_metric <- function(
       scales::comma(
         row$Count[[1]]
       ),
-      " founders (2025)"
+      " founders"
     ),
     change = "—",
     emphasis = emphasis
@@ -3840,19 +3842,4224 @@ knitr::include_graphics(
 )
 ```
 
-# Infographic audit — Chapters 1–3
+# Chapter 4
+
+```{r infographic_ch4_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
+
+# ============================================================================
+# CHAPTER 4: BUILDING TALENT AT HOME — BY THE NUMBERS
+#
+# Editorial rule:
+#   - Use the current Figure 4.01–4.10 and Table 4.01–4.04 source data.
+#   - Prefer longitudinal bookends where the source actually provides them.
+#   - Use benchmark comparisons only where the underlying figure is explicitly
+#     comparative (PISA rankings / OECD spending comparisons).
+#   - Table 4.03 is intentionally shown from 2005 to 2024 to match the
+#     published table, even though the underlying series begins in 2001.
+#   - Use the global INFOGRAPHIC_ROWS_PER_PAGE rule from infographics.R.
+#
+# Selected output = 36 body rows.
+#
+# Pagination is header-aware:
+#   - maximum 30 body rows
+#   - allowance for 5 section headers
+#   - maximum 35 rendered row-equivalents per page
+#
+# A section heading counts as one rendered-row equivalent. Therefore a page
+# with more than five section headings may contain fewer than 30 body rows.
+# No section consolidation is required.
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. CURRENT SOURCE DATA
+# ----------------------------------------------------------------------------
+
+fig401 <- read_current_figure("FIG401") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig402 <- read_current_figure("FIG402") %>%
+  mutate(
+    PISA_Math_Mean = numeric_clean(.data$PISA_Math_Mean),
+    PISA_Science_Mean = numeric_clean(.data$PISA_Science_Mean)
+  )
+
+fig403 <- read_current_figure("FIG403") %>%
+  rename(
+    Country = 1
+  ) %>%
+  mutate(
+    across(-Country, numeric_clean),
+    CountryClean = stringr::str_remove(
+      as.character(.data$Country),
+      "\\*+$"
+    )
+  )
+
+fig404 <- read_current_figure("FIG404") %>%
+  mutate(
+    MathScore = numeric_clean(.data$`OECD Math Average`),
+    K12 = numeric_clean(.data$`K-12 (in USD)`),
+    Tertiary = numeric_clean(.data$`Tertiary (in USD)`),
+    K12GDP = numeric_clean(.data$`K-12 (% of GDP)`),
+    TertiaryGDP = numeric_clean(.data$`Tertiary (% of GDP)`)
+  )
+
+# Figure 4.05 uses the same OECD spending source as Figure 4.04.
+fig405 <- read_current_figure("FIG405") %>%
+  mutate(
+    MathScore = numeric_clean(.data$`OECD Math Average`),
+    K12 = numeric_clean(.data$`K-12 (in USD)`),
+    Tertiary = numeric_clean(.data$`Tertiary (in USD)`),
+    SpendingRatio = .data$Tertiary / .data$K12
+  )
+
+fig406 <- read_current_figure("FIG406") %>%
+  mutate(
+    pct = numeric_clean(.data$pct)
+  )
+
+fig407 <- read_current_figure("FIG407") %>%
+  mutate(
+    across(
+      c(
+        entry_2003,
+        entry_2011
+      ),
+      numeric_clean
+    )
+  )
+
+fig408 <- read_current_figure("FIG408") %>%
+  rename(
+    Cohort = 1
+  ) %>%
+  mutate(
+    across(-Cohort, numeric_clean)
+  )
+
+fig409 <- read_current_figure("FIG409")
+
+fig410 <- read_current_figure("FIG410") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+
+tab401 <- read_current_table("TAB401") %>%
+  mutate(
+    across(-cohort, numeric_clean)
+  )
+
+tab402 <- read_current_table("TAB402") %>%
+  mutate(
+    across(-Survey, numeric_clean)
+  )
+
+tab403 <- read_current_table("TAB403") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab404 <- read_current_table("TAB404") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+
+# ----------------------------------------------------------------------------
+# 2. GENERIC CHAPTER 4 HELPERS
+# ----------------------------------------------------------------------------
+
+bookend_category_metric <- function(
+    df,
+    id_col,
+    category,
+    section_id,
+    section,
+    measure,
+    stat_id,
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = FALSE
+) {
+  if (!all(c(id_col, category) %in% names(df))) {
+    return(NULL)
+  }
+
+  rows <- df %>%
+    filter(
+      !is.na(.data[[id_col]]),
+      is.finite(
+        numeric_clean(
+          .data[[category]]
+        )
+      )
+    )
+
+  if (nrow(rows) < 2) {
+    return(NULL)
+  }
+
+  first <- rows %>%
+    slice_head(n = 1)
+
+  last <- rows %>%
+    slice_tail(n = 1)
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    first_value = numeric_clean(
+      first[[category]]
+    )[[1]],
+    first_label = as.character(
+      first[[id_col]]
+    )[[1]],
+    last_value = numeric_clean(
+      last[[category]]
+    )[[1]],
+    last_label = as.character(
+      last[[id_col]]
+    )[[1]],
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+}
+
+
+fixed_year_metric <- function(
+    df,
+    column,
+    earlier_year,
+    latest_year,
+    section_id,
+    section,
+    measure,
+    stat_id,
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = FALSE
+) {
+  if (!all(c("Year", column) %in% names(df))) {
+    return(NULL)
+  }
+
+  earlier <- df %>%
+    filter(
+      .data$Year == .env$earlier_year
+    )
+
+  latest <- df %>%
+    filter(
+      .data$Year == .env$latest_year
+    )
+
+  if (
+    nrow(earlier) != 1 ||
+    nrow(latest) != 1
+  ) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    first_value = earlier[[column]][[1]],
+    first_label = earlier_year,
+    last_value = latest[[column]][[1]],
+    last_label = latest_year,
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+}
+
+
+benchmark_text_metric <- function(
+    stat_id,
+    section_id,
+    section,
+    measure,
+    baseline_text,
+    comparison_text,
+    change_text,
+    emphasis = FALSE
+) {
+  metric_text(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    earlier = baseline_text,
+    latest = comparison_text,
+    change = change_text,
+    emphasis = emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 3. PERFORMANCE BENCHMARKS — FIGURES 4.02–4.03
+# ----------------------------------------------------------------------------
+
+pisa_us <- fig402 %>%
+  filter(
+    .data$Country == "United States"
+  )
+
+pisa_japan <- fig402 %>%
+  filter(
+    .data$Country == "Japan"
+  )
+
+proficiency_us <- fig403 %>%
+  filter(
+    .data$CountryClean == "United States"
+  ) %>%
+  mutate(
+    TopMath = .data$`Level 5` +
+      .data$`Level 6`
+  )
+
+proficiency_oecd <- fig403 %>%
+  filter(
+    .data$CountryClean == "OECD average"
+  ) %>%
+  mutate(
+    TopMath = .data$`Level 5` +
+      .data$`Level 6`
+  )
+
+
+pisa_us_vs_japan <- if (
+  nrow(pisa_us) == 1 &&
+  nrow(pisa_japan) == 1
+) {
+  benchmark_text_metric(
+    stat_id = "pisa_us_vs_japan",
+    section_id = "performance",
+    section = "US educational performance",
+    measure = "2022 PISA math score: US vs Japan",
+    baseline_text = paste0(
+      "Japan: ",
+      scales::comma(
+        pisa_japan$PISA_Math_Mean[[1]],
+        accuracy = 1
+      )
+    ),
+    comparison_text = paste0(
+      "US: ",
+      scales::comma(
+        pisa_us$PISA_Math_Mean[[1]],
+        accuracy = 1
+      )
+    ),
+    change_text = sprintf(
+      "%+d points",
+      round(
+        pisa_us$PISA_Math_Mean[[1]] -
+          pisa_japan$PISA_Math_Mean[[1]]
+      )
+    )
+  )
+} else {
+  NULL
+}
+
+
+pisa_top_math_us_vs_oecd <- if (
+  nrow(proficiency_us) == 1 &&
+  nrow(proficiency_oecd) == 1
+) {
+  benchmark_text_metric(
+    stat_id = "pisa_top_math_us_vs_oecd",
+    section_id = "performance",
+    section = "US educational performance",
+    measure = "Students at PISA math Levels 5–6: US vs OECD",
+    baseline_text = paste0(
+      "OECD: ",
+      sprintf(
+        "%.1f%%",
+        proficiency_oecd$TopMath[[1]]
+      )
+    ),
+    comparison_text = paste0(
+      "US: ",
+      sprintf(
+        "%.1f%%",
+        proficiency_us$TopMath[[1]]
+      )
+    ),
+    change_text = sprintf(
+      "%+.1f pp",
+      proficiency_us$TopMath[[1]] -
+        proficiency_oecd$TopMath[[1]]
+    ),
+    emphasis = TRUE
+  )
+} else {
+  NULL
+}
+
+
+# ----------------------------------------------------------------------------
+# 4. EDUCATION SPENDING BENCHMARKS — FIGURES 4.04–4.05
+# ----------------------------------------------------------------------------
+
+spending_us <- fig405 %>%
+  filter(
+    .data$Country == "United States"
+  )
+
+spending_oecd <- fig405 %>%
+  filter(
+    .data$Country == "OECD average"
+  )
+
+
+spending_k12_us_vs_oecd <- if (
+  nrow(spending_us) == 1 &&
+  nrow(spending_oecd) == 1
+) {
+  benchmark_text_metric(
+    stat_id = "spending_k12_us_vs_oecd",
+    section_id = "spending",
+    section = "Education spending",
+    measure = "K–12 spending per student: US vs OECD",
+    baseline_text = paste0(
+      "OECD: $",
+      scales::comma(
+        spending_oecd$K12[[1]],
+        accuracy = 1
+      )
+    ),
+    comparison_text = paste0(
+      "US: $",
+      scales::comma(
+        spending_us$K12[[1]],
+        accuracy = 1
+      )
+    ),
+    change_text = sprintf(
+      "%+.1f%%",
+      100 * (
+        spending_us$K12[[1]] /
+          spending_oecd$K12[[1]] -
+          1
+      )
+    ),
+    emphasis = TRUE
+  )
+} else {
+  NULL
+}
+
+
+spending_tertiary_us_vs_oecd <- if (
+  nrow(spending_us) == 1 &&
+  nrow(spending_oecd) == 1
+) {
+  benchmark_text_metric(
+    stat_id = "spending_tertiary_us_vs_oecd",
+    section_id = "spending",
+    section = "Education spending",
+    measure = "Tertiary spending per student: US vs OECD",
+    baseline_text = paste0(
+      "OECD: $",
+      scales::comma(
+        spending_oecd$Tertiary[[1]],
+        accuracy = 1
+      )
+    ),
+    comparison_text = paste0(
+      "US: $",
+      scales::comma(
+        spending_us$Tertiary[[1]],
+        accuracy = 1
+      )
+    ),
+    change_text = sprintf(
+      "%+.1f%%",
+      100 * (
+        spending_us$Tertiary[[1]] /
+          spending_oecd$Tertiary[[1]] -
+          1
+      )
+    )
+  )
+} else {
+  NULL
+}
+
+
+spending_ratio_us_vs_oecd <- if (
+  nrow(spending_us) == 1 &&
+  nrow(spending_oecd) == 1
+) {
+  benchmark_text_metric(
+    stat_id = "spending_ratio_us_vs_oecd",
+    section_id = "spending",
+    section = "Education spending",
+    measure = "Tertiary-to-K–12 spending ratio: US vs OECD",
+    baseline_text = paste0(
+      "OECD: ",
+      sprintf(
+        "%.1f×",
+        spending_oecd$SpendingRatio[[1]]
+      )
+    ),
+    comparison_text = paste0(
+      "US: ",
+      sprintf(
+        "%.1f×",
+        spending_us$SpendingRatio[[1]]
+      )
+    ),
+    change_text = sprintf(
+      "%+.1f×",
+      spending_us$SpendingRatio[[1]] -
+        spending_oecd$SpendingRatio[[1]]
+    )
+  )
+} else {
+  NULL
+}
+
+
+# ----------------------------------------------------------------------------
+# 5. STEM PERSISTENCE / ATTRITION — FIGURES 4.06–4.08
+# ----------------------------------------------------------------------------
+
+fig407_long <- fig407 %>%
+  pivot_longer(
+    cols = c(
+      .data$entry_2003,
+      .data$entry_2011
+    ),
+    names_to = "CohortCode",
+    values_to = "Share"
+  ) %>%
+  mutate(
+    Cohort = dplyr::recode(
+      .data$CohortCode,
+      entry_2003 = "2003/04",
+      entry_2011 = "2011/12"
+    ),
+    CohortOrder = dplyr::recode(
+      .data$CohortCode,
+      entry_2003 = 1L,
+      entry_2011 = 2L
+    )
+  )
+
+
+retention_metric <- function(
+    field,
+    stat_id,
+    emphasis = FALSE
+) {
+  row <- fig407_long %>%
+    filter(
+      .data$field == .env$field,
+      is.finite(.data$Share)
+    ) %>%
+    arrange(
+      .data$CohortOrder
+    )
+
+  if (nrow(row) != 2) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "persistence",
+    section = "STEM persistence and attrition",
+    measure = paste0(
+      field,
+      ": graduated in entry field"
+    ),
+    first_value = row$Share[[1]],
+    first_label = row$Cohort[[1]],
+    last_value = row$Share[[2]],
+    last_label = row$Cohort[[2]],
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = emphasis
+  )
+}
+
+
+exit_year_metric <- function(
+    column,
+    measure,
+    stat_id,
+    emphasis = FALSE
+) {
+  if (!column %in% names(fig408)) {
+    return(NULL)
+  }
+
+  first <- fig408 %>%
+    slice_head(n = 1)
+
+  last <- fig408 %>%
+    slice_tail(n = 1)
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "persistence",
+    section = "STEM persistence and attrition",
+    measure = measure,
+    first_value = first[[column]][[1]],
+    first_label = first$Cohort[[1]],
+    last_value = last[[column]][[1]],
+    last_label = last$Cohort[[1]],
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = emphasis
+  )
+}
+
+
+exit_first_two_years <- {
+  cols <- c(
+    "No degree, left without return year 1",
+    "No degree, left without return year 2"
+  )
+
+  if (all(cols %in% names(fig408))) {
+    first <- fig408 %>%
+      slice_head(n = 1)
+
+    last <- fig408 %>%
+      slice_tail(n = 1)
+
+    first_value <- sum(
+      unlist(
+        first[cols],
+        use.names = FALSE
+      ),
+      na.rm = TRUE
+    )
+
+    last_value <- sum(
+      unlist(
+        last[cols],
+        use.names = FALSE
+      ),
+      na.rm = TRUE
+    )
+
+    metric_values(
+      stat_id = "exit_first_two_years",
+      section_id = "persistence",
+      section = "STEM persistence and attrition",
+      measure = "STEM entrants leaving without return in first two years",
+      first_value = first_value,
+      first_label = first$Cohort[[1]],
+      last_value = last_value,
+      last_label = last$Cohort[[1]],
+      value_type = "percent_value",
+      change_type = "pp_percent",
+      emphasis = TRUE
+    )
+  } else {
+    NULL
+  }
+}
+
+
+# ----------------------------------------------------------------------------
+# 6. STUDY-ABROAD FIELD AND REGION HELPERS — TABLES 4.03–4.04
+# ----------------------------------------------------------------------------
+# Table 4.03 intentionally uses 2005 and 2024, matching the published table
+# rather than taking the underlying series' 2001 observation.
+
+study_field_metric <- function(
+    column,
+    measure,
+    stat_id,
+    emphasis = FALSE
+) {
+  fixed_year_metric(
+    df = tab403,
+    column = column,
+    earlier_year = 2005L,
+    latest_year = 2024L,
+    section_id = "study_field",
+    section = "What Americans study abroad",
+    measure = measure,
+    stat_id = stat_id,
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = emphasis
+  )
+}
+
+
+study_region_metric <- function(
+    column,
+    measure,
+    stat_id,
+    emphasis = FALSE
+) {
+  fixed_year_metric(
+    df = tab404,
+    column = column,
+    earlier_year = 2005L,
+    latest_year = 2024L,
+    section_id = "study_region",
+    section = "Where Americans study abroad",
+    measure = measure,
+    stat_id = stat_id,
+    value_type = "percent_value",
+    change_type = "pp_percent",
+    emphasis = emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 7. INTERNATIONAL MOBILITY — FIGURES 4.09–4.10
+# ----------------------------------------------------------------------------
+
+mobility <- fig409 %>%
+  rename(
+    Country = 1
+  ) %>%
+  select(
+    -any_of(
+      "Grand Total"
+    )
+  ) %>%
+  pivot_longer(
+    -Country,
+    names_to = "Year",
+    values_to = "Share"
+  ) %>%
+  mutate(
+    Year = suppressWarnings(
+      as.integer(
+        .data$Year
+      )
+    ),
+    Share = numeric_clean(
+      .data$Share
+    )
+  ) %>%
+  filter(
+    is.finite(.data$Year),
+    is.finite(.data$Share)
+  )
+
+
+mobility_snapshot <- function(
+    country,
+    stat_id,
+    emphasis = FALSE
+) {
+  row <- mobility %>%
+    filter(
+      .data$Country ==
+        .env$country
+    ) %>%
+    slice_max(
+      order_by = .data$Year,
+      n = 1,
+      with_ties = FALSE
+    )
+
+  if (nrow(row) != 1) {
+    return(NULL)
+  }
+
+  metric_snapshot(
+    stat_id = stat_id,
+    section_id = "mobility",
+    section = "International student mobility",
+    measure = paste0(
+      country,
+      ": tertiary students studying abroad"
+    ),
+    value = row$Share[[1]],
+    label = row$Year[[1]],
+    value_type = "percent_value",
+    emphasis = emphasis
+  )
+}
+
+
+flow_metric <- function(
+    country,
+    display_country = country,
+    stat_id,
+    emphasis = FALSE
+) {
+  if (!country %in% names(fig410)) {
+    return(NULL)
+  }
+
+  tmp <- fig410 %>%
+    transmute(
+      Year = .data$Year,
+      Flow = .data[[country]]
+    ) %>%
+    filter(
+      is.finite(.data$Year),
+      is.finite(.data$Flow)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+  if (nrow(tmp) < 2) {
+    return(NULL)
+  }
+
+  first <- tmp %>%
+    slice_head(n = 1)
+
+  last <- tmp %>%
+    slice_tail(n = 1)
+
+  first_m <- first$Flow[[1]] / 1e6
+  last_m <- last$Flow[[1]] / 1e6
+  delta_m <- last_m - first_m
+
+  metric_text(
+    stat_id = stat_id,
+    section_id = "mobility",
+    section = "International student mobility",
+    measure = paste0(
+      display_country,
+      ": net international-student flow"
+    ),
+    earlier = paste0(
+      sprintf(
+        "%.2fM",
+        first_m
+      ),
+      " (",
+      first$Year[[1]],
+      ")"
+    ),
+    latest = paste0(
+      sprintf(
+        "%.2fM",
+        last_m
+      ),
+      " (",
+      last$Year[[1]],
+      ")"
+    ),
+    change = sprintf(
+      "%+.2fM",
+      delta_m
+    ),
+    emphasis = emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 8. CODE THE FULL CHAPTER 4 STATISTIC SET
+# ----------------------------------------------------------------------------
+
+ch4_all_stats <- bind_rows(
+
+  # ==========================================================================
+  # US EDUCATIONAL PERFORMANCE
+  # ==========================================================================
+
+  metric_series(
+    stat_id = "us_math_gap",
+    section_id = "performance",
+    section = "US educational performance",
+    measure = "PISA math score relative to OECD average",
+    df = fig401,
+    column = "Math",
+    value_type = "signed_score",
+    change_type = "points",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "us_science_gap",
+    section_id = "performance",
+    section = "US educational performance",
+    measure = "PISA science score relative to OECD average",
+    df = fig401,
+    column = "Science",
+    value_type = "signed_score",
+    change_type = "points"
+  ),
+
+  metric_series(
+    stat_id = "us_reading_gap",
+    section_id = "performance",
+    section = "US educational performance",
+    measure = "PISA reading score relative to OECD average",
+    df = fig401,
+    column = "Reading",
+    value_type = "signed_score",
+    change_type = "points"
+  ),
+
+  pisa_us_vs_japan,
+
+  pisa_top_math_us_vs_oecd,
+
+
+  # ==========================================================================
+  # EDUCATION SPENDING
+  # ==========================================================================
+
+  spending_k12_us_vs_oecd,
+  spending_tertiary_us_vs_oecd,
+  spending_ratio_us_vs_oecd,
+
+
+  # ==========================================================================
+  # STEM PERSISTENCE AND ATTRITION
+  # ==========================================================================
+
+  retention_metric(
+    field = "Computer & information sciences",
+    stat_id = "retain_computing",
+    emphasis = TRUE
+  ),
+
+  retention_metric(
+    field = "Engineering",
+    stat_id = "retain_engineering"
+  ),
+
+  retention_metric(
+    field = "Bio/physical sciences, math & ag",
+    stat_id = "retain_broad_science",
+    emphasis = TRUE
+  ),
+
+  exit_year_metric(
+    column = "No degree, left without return year 1",
+    measure = "STEM entrants leaving without return in first year",
+    stat_id = "exit_year1"
+  ),
+
+  exit_first_two_years,
+
+  # Code the remaining annual exit timing measures for future use.
+  exit_year_metric(
+    column = "No degree, left without return year 2",
+    measure = "STEM entrants leaving without return in year 2",
+    stat_id = "exit_year2"
+  ),
+
+  exit_year_metric(
+    column = "No degree, left without return year 3",
+    measure = "STEM entrants leaving without return in year 3",
+    stat_id = "exit_year3"
+  ),
+
+  exit_year_metric(
+    column = "No degree, left without return year 4",
+    measure = "STEM entrants leaving without return in year 4",
+    stat_id = "exit_year4"
+  ),
+
+  exit_year_metric(
+    column = "No degree, left without return year 5",
+    measure = "STEM entrants leaving without return in year 5",
+    stat_id = "exit_year5"
+  ),
+
+  exit_year_metric(
+    column = "No degree, left without return year 6",
+    measure = "STEM entrants leaving without return in year 6",
+    stat_id = "exit_year6"
+  ),
+
+
+  # ==========================================================================
+  # STEM COMPLETION OUTCOMES — TABLE 4.01
+  # ==========================================================================
+
+  bookend_category_metric(
+    df = tab401,
+    id_col = "cohort",
+    category = "stem_bachelors",
+    section_id = "completion",
+    section = "STEM completion outcomes",
+    measure = "Completed bachelor’s degree in STEM field",
+    stat_id = "completion_stem_bachelors",
+    emphasis = TRUE
+  ),
+
+  bookend_category_metric(
+    df = tab401,
+    id_col = "cohort",
+    category = "nonstem_bachelors",
+    section_id = "completion",
+    section = "STEM completion outcomes",
+    measure = "Completed bachelor’s degree in non-STEM field",
+    stat_id = "completion_nonstem_bachelors"
+  ),
+
+  bookend_category_metric(
+    df = tab401,
+    id_col = "cohort",
+    category = "subbac_credential",
+    section_id = "completion",
+    section = "STEM completion outcomes",
+    measure = "Completed sub-baccalaureate credential",
+    stat_id = "completion_subbac"
+  ),
+
+  bookend_category_metric(
+    df = tab401,
+    id_col = "cohort",
+    category = "still_enrolled",
+    section_id = "completion",
+    section = "STEM completion outcomes",
+    measure = "Still enrolled",
+    stat_id = "completion_still_enrolled"
+  ),
+
+  bookend_category_metric(
+    df = tab401,
+    id_col = "cohort",
+    category = "left_no_degree",
+    section_id = "completion",
+    section = "STEM completion outcomes",
+    measure = "Left with no degree",
+    stat_id = "completion_left_no_degree",
+    emphasis = TRUE
+  ),
+
+
+  # ==========================================================================
+  # MAJOR SWITCHING — TABLE 4.02
+  # ==========================================================================
+
+  bookend_category_metric(
+    df = tab402,
+    id_col = "Survey",
+    category = "Never",
+    section_id = "switching",
+    section = "Major switching",
+    measure = "STEM entrants who never switched majors",
+    stat_id = "switch_never",
+    emphasis = TRUE
+  ),
+
+  bookend_category_metric(
+    df = tab402,
+    id_col = "Survey",
+    category = "Once",
+    section_id = "switching",
+    section = "Major switching",
+    measure = "STEM entrants who switched once",
+    stat_id = "switch_once"
+  ),
+
+  bookend_category_metric(
+    df = tab402,
+    id_col = "Survey",
+    category = "More than Once",
+    section_id = "switching",
+    section = "Major switching",
+    measure = "STEM entrants who switched 2+ times",
+    stat_id = "switch_multiple",
+    emphasis = TRUE
+  ),
+
+
+  # ==========================================================================
+  # WHAT AMERICANS STUDY ABROAD — TABLE 4.03
+  # ==========================================================================
+
+  study_field_metric(
+    column = "STEM Fields",
+    measure = "STEM",
+    stat_id = "study_field_stem",
+    emphasis = TRUE
+  ),
+
+  study_field_metric(
+    column = "Business & Management",
+    measure = "Business and management",
+    stat_id = "study_field_business"
+  ),
+
+  study_field_metric(
+    column = "Social Sciences",
+    measure = "Social sciences",
+    stat_id = "study_field_social"
+  ),
+
+  study_field_metric(
+    column = "Fine and Applied Arts",
+    measure = "Fine and applied arts",
+    stat_id = "study_field_arts"
+  ),
+
+  study_field_metric(
+    column = "Humanities",
+    measure = "Humanities",
+    stat_id = "study_field_humanities",
+    emphasis = TRUE
+  ),
+
+  study_field_metric(
+    column = "Other",
+    measure = "Other fields",
+    stat_id = "study_field_other"
+  ),
+
+
+  # ==========================================================================
+  # WHERE AMERICANS STUDY ABROAD — TABLE 4.04
+  # ==========================================================================
+
+  study_region_metric(
+    column = "Europe",
+    measure = "Europe",
+    stat_id = "study_region_europe"
+  ),
+
+  study_region_metric(
+    column = "Asia",
+    measure = "Asia",
+    stat_id = "study_region_asia",
+    emphasis = TRUE
+  ),
+
+  study_region_metric(
+    column = "Latin America & Caribbean",
+    measure = "Latin America and Caribbean",
+    stat_id = "study_region_latin"
+  ),
+
+  study_region_metric(
+    column = "Oceania",
+    measure = "Oceania",
+    stat_id = "study_region_oceania"
+  ),
+
+  # Code the remaining Table 4.04 regions even though they are not selected.
+  study_region_metric(
+    column = "Africa, Sub-Saharan",
+    measure = "Sub-Saharan Africa",
+    stat_id = "study_region_ssa"
+  ),
+
+  study_region_metric(
+    column = "Middle East & North Africa",
+    measure = "Middle East and North Africa",
+    stat_id = "study_region_mena"
+  ),
+
+  study_region_metric(
+    column = "North America",
+    measure = "North America",
+    stat_id = "study_region_north_america"
+  ),
+
+  study_region_metric(
+    column = "Multiple Destinations",
+    measure = "Multiple destinations",
+    stat_id = "study_region_multiple"
+  ),
+
+
+  # ==========================================================================
+  # INTERNATIONAL STUDENT MOBILITY — FIGURES 4.09–4.10
+  # ==========================================================================
+
+  mobility_snapshot(
+    country = "United States",
+    stat_id = "outbound_us",
+    emphasis = TRUE
+  ),
+
+  mobility_snapshot(
+    country = "China",
+    stat_id = "outbound_china"
+  ),
+
+  mobility_snapshot(
+    country = "India",
+    stat_id = "outbound_india"
+  ),
+
+  flow_metric(
+    country = "United States of America",
+    display_country = "United States",
+    stat_id = "netflow_us",
+    emphasis = TRUE
+  ),
+
+  flow_metric(
+    country = "China",
+    display_country = "China",
+    stat_id = "netflow_china",
+    emphasis = TRUE
+  ),
+
+  flow_metric(
+    country = "India",
+    display_country = "India",
+    stat_id = "netflow_india"
+  )
+)
+
+
+# ----------------------------------------------------------------------------
+# 9. EDITORIAL SELECTION — EXACTLY 36 DISPLAYED BODY ROWS
+# ----------------------------------------------------------------------------
+
+CH4_SELECTED_STATS <- c(
+
+  # US educational performance — 5
+  "us_math_gap",
+  "us_science_gap",
+  "us_reading_gap",
+  "pisa_us_vs_japan",
+  "pisa_top_math_us_vs_oecd",
+
+  # Education spending — 3
+  "spending_k12_us_vs_oecd",
+  "spending_tertiary_us_vs_oecd",
+  "spending_ratio_us_vs_oecd",
+
+  # STEM persistence and attrition — 5
+  "retain_computing",
+  "retain_engineering",
+  "retain_broad_science",
+  "exit_year1",
+  "exit_first_two_years",
+
+  # STEM completion outcomes — 5
+  "completion_stem_bachelors",
+  "completion_nonstem_bachelors",
+  "completion_subbac",
+  "completion_still_enrolled",
+  "completion_left_no_degree",
+
+  # Major switching — 3
+  "switch_never",
+  "switch_once",
+  "switch_multiple",
+
+  # What Americans study abroad — 5
+  "study_field_stem",
+  "study_field_business",
+  "study_field_social",
+  "study_field_arts",
+  "study_field_humanities",
+
+  # Where Americans study abroad — 4
+  "study_region_europe",
+  "study_region_asia",
+  "study_region_latin",
+  "study_region_oceania",
+
+  # International student mobility — 6
+  "outbound_us",
+  "outbound_china",
+  "outbound_india",
+  "netflow_us",
+  "netflow_china",
+  "netflow_india"
+)
+
+
+ch4_selected <- ch4_all_stats %>%
+  filter(
+    .data$StatID %in%
+      CH4_SELECTED_STATS
+  ) %>%
+  mutate(
+    DisplayOrder = match(
+      .data$StatID,
+      CH4_SELECTED_STATS
+    )
+  ) %>%
+  arrange(
+    .data$DisplayOrder
+  )
+
+
+if (nrow(ch4_selected) != 36L) {
+  warning(
+    "Chapter 4 selected ",
+    nrow(ch4_selected),
+    " rows; expected 36. Check source-column names or missing metrics."
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 10. BUILD PAGES
+# ----------------------------------------------------------------------------
+
+build_ch4_page <- function(
+    page_data,
+    page_number,
+    total_pages,
+    is_last_page
+) {
+
+  final_notes <- if (
+    is_last_page
+  ) {
+    c(
+      paste0(
+        "**Note:** Longitudinal rows compare the stated earlier and latest ",
+        "cohorts or years. Table 4.03 rows deliberately compare 2005 with ",
+        "2024 to match the published table. Benchmark rows compare the United ",
+        "States with the named OECD benchmark rather than change over time. ",
+        "Arrow colors indicate numeric direction only, not whether the authors ",
+        "consider the difference or change positive or negative."
+      ),
+      paste0(
+        "**Source:** Current report data underlying Figures 4.01–4.10 and ",
+        "Tables 4.01–4.04. See the cited figures and tables for full source ",
+        "information."
+      )
+    )
+  } else {
+    character()
+  }
+
+  build_infographic_table(
+    data = page_data,
+    id = paste0(
+      "infographic_ch4_by_the_numbers_page_",
+      sprintf(
+        "%02d",
+        page_number
+      )
+    ),
+    chapter_number = 4,
+    title = "BUILDING TALENT AT HOME: BY THE NUMBERS",
+    subtitle = "Performance, spending, persistence, and international mobility",
+    column_labels = c(
+      Earlier = "Earlier or<br>baseline",
+      Latest  = "Latest or<br>comparison value",
+      Change  = "Change"
+    ),
+    notes = final_notes,
+    layout = INFOGRAPHIC_FIXED_LAYOUT,
+    row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+    nowrap_values = TRUE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 11. EXPORT THROUGH THE GLOBAL 30-BODY-ROW / 5-HEADER PAGINATION RULE
+# ----------------------------------------------------------------------------
+
+ch4_exports <- export_paginated_infographic(
+  data = ch4_selected,
+  build_page = build_ch4_page,
+  name = "infographic_ch4_by_the_numbers"
+)
+
+
+knitr::include_graphics(
+  vapply(
+    ch4_exports,
+    `[[`,
+    character(1),
+    "png_path"
+  )
+)
+```
+
+# Chapter 5
+
+```{r infographic_ch5_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
+
+# ============================================================================
+# CHAPTER 5: SCIENCE, R&D, AND INNOVATION — BY THE NUMBERS
+#
+# Editorial rule:
+#   - Code the full current Chapter 5 source set wherever practical.
+#   - Display a selective 36-row set emphasizing longitudinal shifts in
+#     research leadership, R&D investment, and patenting.
+#   - Use the current header-aware pagination rule:
+#         max 30 body rows
+#         + allowance for 5 section headers
+#         = 35 rendered-row equivalents
+#
+# Selected output = exactly 36 body rows across five editorial sections.
+#
+# Page 1:
+#   30 body rows + 4 section headers = 34 rendered-row equivalents
+#
+# Page 2:
+#   6 body rows + 1 section header = 7 rendered-row equivalents
+#
+# No section is intentionally split across pages.
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. CURRENT SOURCE DATA
+# ----------------------------------------------------------------------------
+
+fig501 <- read_current_figure("FIG501") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig502 <- read_current_figure("FIG502") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig503 <- read_current_figure("FIG503") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig504 <- read_current_figure("FIG504") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig505 <- read_current_figure("FIG505") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig506 <- read_current_figure("FIG506") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig507 <- read_current_figure("FIG507") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    `USD, PPP conv, BN` = numeric_clean(.data$`USD, PPP conv, BN`)
+  )
+
+fig508 <- read_current_figure("FIG508") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    USD_PPP_BN = numeric_clean(.data$USD_PPP_BN)
+  )
+
+
+tab501 <- read_current_table("TAB501") %>%
+  mutate(
+    year = year_number(.data$year),
+    count = numeric_clean(.data$count),
+    share = numeric_clean(.data$share)
+  )
+
+tab502 <- read_current_table("TAB502") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab503 <- read_current_table("TAB503") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    `USD, PPP conv, BN` = numeric_clean(.data$`USD, PPP conv, BN`)
+  )
+
+tab504 <- read_current_table("TAB504") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    USD_PPP_BN = numeric_clean(.data$USD_PPP_BN)
+  )
+
+tab505a <- read_current_table("TAB505a") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab505b <- read_current_table("TAB505b") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab505c <- read_current_table("TAB505c") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab506 <- read_current_table("TAB506") %>%
+  mutate(
+    across(
+      c(
+        `2005 Patents`,
+        `2015 Patents`,
+        `2025 Patents`
+      ),
+      numeric_clean
+    )
+  )
+
+
+# ----------------------------------------------------------------------------
+# 2. HELPERS
+# ----------------------------------------------------------------------------
+
+ch5_fixed_year_metric <- function(
+    df,
+    column,
+    earlier_year,
+    latest_year,
+    section_id,
+    section,
+    measure,
+    stat_id,
+    value_type,
+    change_type,
+    emphasis = FALSE
+) {
+  if (!all(c("Year", column) %in% names(df))) {
+    return(NULL)
+  }
+
+  earlier <- df %>%
+    filter(
+      .data$Year == .env$earlier_year
+    )
+
+  latest <- df %>%
+    filter(
+      .data$Year == .env$latest_year
+    )
+
+  if (
+    nrow(earlier) != 1L ||
+    nrow(latest) != 1L
+  ) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    first_value = earlier[[column]][[1]],
+    first_label = earlier_year,
+    last_value = latest[[column]][[1]],
+    last_label = latest_year,
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+}
+
+
+ch5_slug <- function(x) {
+  x %>%
+    stringr::str_to_lower() %>%
+    stringr::str_replace_all(
+      "[^a-z0-9]+",
+      "_"
+    ) %>%
+    stringr::str_replace_all(
+      "^_|_$",
+      ""
+    )
+}
+
+
+# ----------------------------------------------------------------------------
+# 3. CONFERENCE LEADERSHIP — TABLE 5.01
+# ----------------------------------------------------------------------------
+# Table 5.01 is raw conference/country/year data. For each venue, use the first
+# and last year in which both the United States and China are observed.
+
+conference_two_country_series <- function(
+    conf
+) {
+  tab501 %>%
+    filter(
+      normalize_label(.data$conference) ==
+        normalize_label(.env$conf),
+      .data$country %in% c(
+        "United States",
+        "China"
+      )
+    ) %>%
+    select(
+      Year = .data$year,
+      Country = .data$country,
+      Share = .data$share
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = .data$Country,
+      values_from = .data$Share
+    ) %>%
+    filter(
+      is.finite(.data$`United States`),
+      is.finite(.data$China)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+}
+
+
+conference_country_metric <- function(
+    conf,
+    display_conf,
+    country,
+    stat_id,
+    emphasis = FALSE
+) {
+  tmp <- conference_two_country_series(
+    conf
+  )
+
+  if (
+    nrow(tmp) < 1L ||
+    !country %in% names(tmp)
+  ) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "research",
+    section = "Research leadership",
+    measure = paste0(
+      display_conf,
+      ": ",
+      country,
+      " share of accepted author affiliations"
+    ),
+    first_value = tmp[[country]][[1]],
+    first_label = tmp$Year[[1]],
+    last_value = tmp[[country]][[nrow(tmp)]],
+    last_label = tmp$Year[[nrow(tmp)]],
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = emphasis
+  )
+}
+
+
+# Code every conference-country series in Table 5.01 for future use.
+CH5_CONFERENCE_LABELS <- c(
+  "acml" = "ACML",
+  "nips" = "NeurIPS",
+  "icml" = "ICML",
+  "cvpr" = "CVPR",
+  "iccv" = "ICCV",
+  "iclr" = "ICLR",
+  "emnlp" = "EMNLP",
+  "ijcai" = "IJCAI",
+  "corl" = "CoRL",
+  "rss" = "RSS",
+  "iros" = "IROS",
+  "coling" = "COLING",
+  "icra" = "ICRA",
+  "uai" = "UAI",
+  "naacl" = "NAACL",
+  "acl" = "ACL",
+  "aistats" = "AISTATS",
+  "colt" = "COLT",
+  "siggraphasia" = "SIGGRAPH Asia",
+  "wacv" = "WACV"
+)
+
+
+ch5_all_conference_stats <- purrr::imap_dfr(
+  CH5_CONFERENCE_LABELS,
+  function(display_conf, conf) {
+    dplyr::bind_rows(
+      conference_country_metric(
+        conf = conf,
+        display_conf = display_conf,
+        country = "United States",
+        stat_id = paste0(
+          "conference_",
+          ch5_slug(conf),
+          "_us"
+        )
+      ),
+      conference_country_metric(
+        conf = conf,
+        display_conf = display_conf,
+        country = "China",
+        stat_id = paste0(
+          "conference_",
+          ch5_slug(conf),
+          "_china"
+        )
+      )
+    )
+  }
+)
+
+
+# ----------------------------------------------------------------------------
+# 4. US UNIVERSITIES IN THE GLOBAL TOP 100 — TABLE 5.02
+# ----------------------------------------------------------------------------
+
+top100_metric <- function(
+    column,
+    measure,
+    stat_id,
+    emphasis = FALSE
+) {
+  metric_series(
+    stat_id = stat_id,
+    section_id = "universities",
+    section = "US universities in the global top 100",
+    measure = measure,
+    df = tab502,
+    column = column,
+    value_type = "count",
+    change_type = "count_delta",
+    emphasis = emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 5. R&D SCALE / TYPE / PERFORMER — TABLES 5.03–5.04
+# ----------------------------------------------------------------------------
+
+rd_type_metric <- function(
+    country,
+    research_type,
+    display_measure,
+    stat_id,
+    emphasis = FALSE,
+    earlier_year = 1994L,
+    latest_year = 2024L
+) {
+  tmp <- tab503 %>%
+    filter(
+      .data$Country == .env$country,
+      .data$`Research Type` == .env$research_type,
+      .data$Year %in% c(
+        .env$earlier_year,
+        .env$latest_year
+      )
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+  if (nrow(tmp) != 2L) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "rd",
+    section = "R&D scale and composition",
+    measure = display_measure,
+    first_value = tmp$`USD, PPP conv, BN`[[1]],
+    first_label = tmp$Year[[1]],
+    last_value = tmp$`USD, PPP conv, BN`[[2]],
+    last_label = tmp$Year[[2]],
+    value_type = "currency_billions",
+    change_type = "percent",
+    emphasis = emphasis
+  )
+}
+
+
+rd_performer_metric <- function(
+    country,
+    category,
+    display_measure,
+    stat_id,
+    emphasis = FALSE,
+    earlier_year = 1994L,
+    latest_year = 2024L
+) {
+  tmp <- tab504 %>%
+    filter(
+      .data$Country == .env$country,
+      .data$Category == .env$category,
+      .data$Year %in% c(
+        .env$earlier_year,
+        .env$latest_year
+      )
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+  if (nrow(tmp) != 2L) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "rd",
+    section = "R&D scale and composition",
+    measure = display_measure,
+    first_value = tmp$USD_PPP_BN[[1]],
+    first_label = tmp$Year[[1]],
+    last_value = tmp$USD_PPP_BN[[2]],
+    last_label = tmp$Year[[2]],
+    value_type = "currency_billions",
+    change_type = "percent",
+    emphasis = emphasis
+  )
+}
+
+
+# Construct Table 5.03 totals directly from the displayed component series.
+rd_totals <- tab503 %>%
+  group_by(
+    .data$Year,
+    .data$Country
+  ) %>%
+  summarise(
+    Total = sum(
+      .data$`USD, PPP conv, BN`,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+
+rd_total_metric <- function(
+    country,
+    stat_id,
+    emphasis = FALSE,
+    earlier_year = 1994L,
+    latest_year = 2024L
+) {
+  tmp <- rd_totals %>%
+    filter(
+      .data$Country == .env$country,
+      .data$Year %in% c(
+        .env$earlier_year,
+        .env$latest_year
+      )
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+  if (nrow(tmp) != 2L) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "rd",
+    section = "R&D scale and composition",
+    measure = paste0(
+      country,
+      ": total R&D spending"
+    ),
+    first_value = tmp$Total[[1]],
+    first_label = tmp$Year[[1]],
+    last_value = tmp$Total[[2]],
+    last_label = tmp$Year[[2]],
+    value_type = "currency_billions",
+    change_type = "percent",
+    emphasis = emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 6. CRITICAL-TECH PATENTS — TABLE 5.05
+# ----------------------------------------------------------------------------
+
+critical_patent_metric <- function(
+    df,
+    country_column,
+    country_label,
+    technology,
+    stat_id,
+    emphasis = FALSE
+) {
+  if (
+    !all(
+      c(
+        "Year",
+        country_column
+      ) %in% names(df)
+    )
+  ) {
+    return(NULL)
+  }
+
+  tmp <- df %>%
+    filter(
+      .data$Year %in% c(
+        2014L,
+        2024L
+      )
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+  if (nrow(tmp) != 2L) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "critical_patents",
+    section = "Patents in critical technologies",
+    measure = paste0(
+      country_label,
+      ": ",
+      technology
+    ),
+    first_value = tmp[[country_column]][[1]],
+    first_label = tmp$Year[[1]],
+    last_value = tmp[[country_column]][[2]],
+    last_label = tmp$Year[[2]],
+    value_type = "count",
+    change_type = "percent",
+    emphasis = emphasis
+  )
+}
+
+
+# Code all countries in Table 5.05 across all three technology areas.
+CH5_PATENT_COUNTRIES <- c(
+  "Australia",
+  "China",
+  "Germany",
+  "Japan",
+  "Republic of Korea",
+  "United Kingdom",
+  "United States of America"
+)
+
+
+ch5_all_critical_patent_stats <- purrr::map_dfr(
+  CH5_PATENT_COUNTRIES,
+  function(country) {
+    display_country <- dplyr::recode(
+      country,
+      "Republic of Korea" = "South Korea",
+      "United States of America" = "United States",
+      .default = country
+    )
+
+    dplyr::bind_rows(
+      critical_patent_metric(
+        df = tab505a,
+        country_column = country,
+        country_label = display_country,
+        technology = "biotechnology patents",
+        stat_id = paste0(
+          "patent_biotech_",
+          ch5_slug(display_country)
+        )
+      ),
+      critical_patent_metric(
+        df = tab505b,
+        country_column = country,
+        country_label = display_country,
+        technology = "semiconductor patents",
+        stat_id = paste0(
+          "patent_semiconductor_",
+          ch5_slug(display_country)
+        )
+      ),
+      critical_patent_metric(
+        df = tab505c,
+        country_column = country,
+        country_label = display_country,
+        technology = "computer-technology patents",
+        stat_id = paste0(
+          "patent_computer_",
+          ch5_slug(display_country)
+        )
+      )
+    )
+  }
+)
+
+
+# ----------------------------------------------------------------------------
+# 7. CORPORATE US PATENT LEADERS — TABLE 5.06
+# ----------------------------------------------------------------------------
+
+company_patent_metric <- function(
+    company,
+    stat_id = NULL,
+    emphasis = FALSE
+) {
+  row <- tab506 %>%
+    filter(
+      normalize_label(.data$Company) ==
+        normalize_label(.env$company)
+    )
+
+  if (nrow(row) != 1L) {
+    return(NULL)
+  }
+
+  if (is.null(stat_id)) {
+    stat_id <- paste0(
+      "company_",
+      ch5_slug(company)
+    )
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "company_patents",
+    section = "Corporate leaders in US patents",
+    measure = company,
+    first_value = row$`2005 Patents`[[1]],
+    first_label = 2005L,
+    last_value = row$`2025 Patents`[[1]],
+    last_label = 2025L,
+    value_type = "count",
+    change_type = "count_delta",
+    emphasis = emphasis
+  )
+}
+
+
+# Code every firm in Table 5.06; display only the editorial selection below.
+ch5_all_company_patent_stats <- purrr::map_dfr(
+  tab506$Company,
+  function(company) {
+    company_patent_metric(
+      company = company
+    )
+  }
+)
+
+
+# ----------------------------------------------------------------------------
+# 8. CODE THE FULL CURRENT CHAPTER 5 STATISTIC SET
+# ----------------------------------------------------------------------------
+
+ch5_all_stats <- dplyr::bind_rows(
+
+  # ==========================================================================
+  # RESEARCH LEADERSHIP — FIGURES 5.01–5.04 + TABLE 5.01
+  # ==========================================================================
+
+  metric_series(
+    stat_id = "neurips_oral_us",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "NeurIPS oral presentations: United States",
+    df = fig501,
+    column = "United States",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "neurips_oral_china",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "NeurIPS oral presentations: China",
+    df = fig501,
+    column = "China",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "neurips_oral_row",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "NeurIPS oral presentations: rest of world",
+    df = fig501,
+    column = "Rest of the World",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "top_cited_china",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "China share of top-cited emerging-tech publications",
+    df = fig502,
+    column = "china",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "top_cited_us",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "US share of top-cited emerging-tech publications",
+    df = fig502,
+    column = "us",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "top_papers_china",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "Top papers with at least one China-affiliated author",
+    df = fig503,
+    column = "pct_papers_with_cn",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "top_papers_us",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "Top papers with at least one US-affiliated author",
+    df = fig503,
+    column = "pct_papers_with_us",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "highly_cited_us",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "US share of global top-1% most-cited researchers",
+    df = fig504,
+    column = "US_Share",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "highly_cited_china",
+    section_id = "research",
+    section = "Research leadership",
+    measure = "China share of global top-1% most-cited researchers",
+    df = fig504,
+    column = "CN_Share",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  ch5_all_conference_stats,
+
+
+  # ==========================================================================
+  # US UNIVERSITIES IN THE GLOBAL TOP 100 — TABLE 5.02
+  # ==========================================================================
+
+  top100_metric(
+    column = "Physical Sciences",
+    measure = "Physical sciences",
+    stat_id = "top100_physical"
+  ),
+
+  top100_metric(
+    column = "Life Sciences",
+    measure = "Life sciences",
+    stat_id = "top100_life"
+  ),
+
+  top100_metric(
+    column = "Engineering",
+    measure = "Engineering",
+    stat_id = "top100_engineering"
+  ),
+
+  top100_metric(
+    column = "Computer Science",
+    measure = "Computer science",
+    stat_id = "top100_computer_science",
+    emphasis = TRUE
+  ),
+
+
+  # ==========================================================================
+  # R&D SCALE AND COMPOSITION — FIGURES/TABLES 5.03–5.08
+  # ==========================================================================
+
+  rd_total_metric(
+    country = "United States",
+    stat_id = "rd_total_us",
+    emphasis = TRUE
+  ),
+
+  rd_total_metric(
+    country = "China",
+    stat_id = "rd_total_china",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "rd_intensity_us",
+    section_id = "rd",
+    section = "R&D scale and composition",
+    measure = "United States: R&D intensity",
+    df = fig506,
+    column = "United States",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "rd_intensity_china",
+    section_id = "rd",
+    section = "R&D scale and composition",
+    measure = "China: R&D intensity",
+    df = fig506,
+    column = "China",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  rd_type_metric(
+    country = "United States",
+    research_type = "Basic research",
+    display_measure = "United States: basic research",
+    stat_id = "rd_basic_us"
+  ),
+
+  rd_type_metric(
+    country = "China",
+    research_type = "Basic research",
+    display_measure = "China: basic research",
+    stat_id = "rd_basic_china",
+    emphasis = TRUE
+  ),
+
+  rd_type_metric(
+    country = "United States",
+    research_type = "Applied research",
+    display_measure = "United States: applied research",
+    stat_id = "rd_applied_us"
+  ),
+
+  rd_type_metric(
+    country = "China",
+    research_type = "Applied research",
+    display_measure = "China: applied research",
+    stat_id = "rd_applied_china"
+  ),
+
+  rd_type_metric(
+    country = "United States",
+    research_type = "Experimental development",
+    display_measure = "United States: experimental development",
+    stat_id = "rd_experimental_us"
+  ),
+
+  rd_type_metric(
+    country = "China",
+    research_type = "Experimental development",
+    display_measure = "China: experimental development",
+    stat_id = "rd_experimental_china",
+    emphasis = TRUE
+  ),
+
+  rd_performer_metric(
+    country = "United States",
+    category = "Business enterprise sector",
+    display_measure = "United States: business-performed R&D",
+    stat_id = "rd_business_us"
+  ),
+
+  rd_performer_metric(
+    country = "China",
+    category = "Business enterprise sector",
+    display_measure = "China: business-performed R&D",
+    stat_id = "rd_business_china",
+    emphasis = TRUE
+  ),
+
+  rd_performer_metric(
+    country = "United States",
+    category = "Government sector",
+    display_measure = "United States: government-performed R&D",
+    stat_id = "rd_government_us"
+  ),
+
+  rd_performer_metric(
+    country = "China",
+    category = "Government sector",
+    display_measure = "China: government-performed R&D",
+    stat_id = "rd_government_china"
+  ),
+
+  rd_performer_metric(
+    country = "United States",
+    category = "Higher education sector",
+    display_measure = "United States: higher-education-performed R&D",
+    stat_id = "rd_higher_ed_us"
+  ),
+
+  rd_performer_metric(
+    country = "China",
+    category = "Higher education sector",
+    display_measure = "China: higher-education-performed R&D",
+    stat_id = "rd_higher_ed_china"
+  ),
+
+
+  # ==========================================================================
+  # CRITICAL-TECH PATENTS — TABLE 5.05
+  # ==========================================================================
+
+  ch5_all_critical_patent_stats,
+
+
+  # ==========================================================================
+  # CORPORATE US PATENT LEADERS — TABLE 5.06
+  # ==========================================================================
+
+  ch5_all_company_patent_stats
+)
+
+
+# ----------------------------------------------------------------------------
+# 9. EDITORIAL SELECTION — EXACTLY 36 DISPLAYED BODY ROWS
+# ----------------------------------------------------------------------------
+#
+# 10 research leadership
+#  4 university depth
+# 10 R&D scale/composition
+#  6 critical-tech patents
+#  6 corporate patent leaders
+# ------------------------------------------------
+# 36 total
+#
+# The first four sections contain exactly 30 body rows, so the new
+# header-aware paginator places all six corporate rows cleanly on Page 2.
+
+CH5_SELECTED_STATS <- c(
+
+  # Research leadership — 10
+  "neurips_oral_us",
+  "neurips_oral_china",
+  "top_cited_china",
+  "top_cited_us",
+  "top_papers_china",
+  "top_papers_us",
+  "highly_cited_us",
+  "highly_cited_china",
+  "conference_nips_china",
+  "conference_cvpr_china",
+
+  # US universities in the global top 100 — 4
+  "top100_physical",
+  "top100_life",
+  "top100_engineering",
+  "top100_computer_science",
+
+  # R&D scale and composition — 10
+  "rd_total_us",
+  "rd_total_china",
+  "rd_intensity_us",
+  "rd_intensity_china",
+  "rd_basic_us",
+  "rd_basic_china",
+  "rd_experimental_us",
+  "rd_experimental_china",
+  "rd_business_us",
+  "rd_business_china",
+
+  # Patents in critical technologies — 6
+  "patent_biotech_china",
+  "patent_biotech_united_states",
+  "patent_semiconductor_china",
+  "patent_semiconductor_united_states",
+  "patent_computer_china",
+  "patent_computer_united_states",
+
+  # Corporate leaders in US patents — 6
+  "company_samsung_electronics",
+  "company_taiwan_semiconductor_tsmc",
+  "company_qualcomm",
+  "company_huawei",
+  "company_apple",
+  "company_ibm"
+)
+
+
+ch5_selected <- ch5_all_stats %>%
+  filter(
+    .data$StatID %in%
+      CH5_SELECTED_STATS
+  ) %>%
+  mutate(
+    DisplayOrder = match(
+      .data$StatID,
+      CH5_SELECTED_STATS
+    )
+  ) %>%
+  arrange(
+    .data$DisplayOrder
+  )
+
+
+if (nrow(ch5_selected) != 36L) {
+  warning(
+    "Chapter 5 selected ",
+    nrow(ch5_selected),
+    " rows; expected 36. Check source IDs, company slugs, or source columns."
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 10. BUILD PAGES
+# ----------------------------------------------------------------------------
+
+build_ch5_page <- function(
+    page_data,
+    page_number,
+    total_pages,
+    is_last_page
+) {
+
+  final_notes <- if (
+    is_last_page
+  ) {
+    c(
+      paste0(
+        "**Note:** Longitudinal rows compare the stated first and latest ",
+        "observations. R&D component and performer rows use the 1994 and 2024 ",
+        "bookends shown in Tables 5.03–5.04; critical-technology patent rows ",
+        "compare 2014 with 2024; corporate patent rows compare 2005 with 2025. ",
+        "Arrow colors indicate numeric direction only, not whether the authors ",
+        "consider the change positive or negative."
+      ),
+      paste0(
+        "**Source:** Current report data underlying Figures 5.01–5.08 and ",
+        "Tables 5.01–5.06. See the cited figures and tables for full source ",
+        "information."
+      )
+    )
+  } else {
+    character()
+  }
+
+  build_infographic_table(
+    data = page_data,
+    id = paste0(
+      "infographic_ch5_by_the_numbers_page_",
+      sprintf(
+        "%02d",
+        page_number
+      )
+    ),
+    chapter_number = 5,
+    title = "SCIENCE, R&D, AND INNOVATION: BY THE NUMBERS",
+    subtitle = "Research leadership, investment, and patenting",
+    column_labels = c(
+      Earlier = "Earlier<br>value",
+      Latest  = "Latest<br>value",
+      Change  = "Change"
+    ),
+    notes = final_notes,
+    layout = INFOGRAPHIC_FIXED_LAYOUT,
+    row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+    nowrap_values = TRUE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 11. EXPORT THROUGH THE GLOBAL HEADER-AWARE PAGINATION RULE
+# ----------------------------------------------------------------------------
+
+ch5_exports <- export_paginated_infographic(
+  data = ch5_selected,
+  build_page = build_ch5_page,
+  name = "infographic_ch5_by_the_numbers"
+)
+
+
+knitr::include_graphics(
+  vapply(
+    ch5_exports,
+    `[[`,
+    character(1),
+    "png_path"
+  )
+)
+```
+
+# Chapter 6
+
+```{r infographic_ch6_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
+
+# ============================================================================
+# CHAPTER 6: THE RETENTION GAP — BY THE NUMBERS
+#
+# Editorial rule:
+#   - Code the full current Chapter 6 source set wherever practical.
+#   - Display a selective 36-row set emphasizing the gap between wanting to
+#     stay, actually staying, and navigating the work-to-permanent-residence
+#     pipeline.
+#   - Prefer longitudinal bookends when the source is longitudinal.
+#   - Preserve the published comparison windows for Tables 6.03 and 6.05.
+#   - Use the global header-aware pagination rule:
+#         max 30 body rows
+#         + allowance for 5 section headers
+#         = 35 rendered-row equivalents
+#
+# Selected output = exactly 36 body rows.
+#
+# Page 1:
+#    9  Stay intentions
+#    4  Realized retention
+#    4  Career paths after the PhD
+#    6  Work-visa bridge
+#    7  Permanent-residence bottleneck
+#   -----------------------------------
+#   30 body rows + 5 section headers = 35 rendered-row equivalents
+#
+# Page 2:
+#    6  Other signals and talent loss
+#
+# No section is intentionally split across pages.
+# ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 1. CURRENT SOURCE DATA
+# ----------------------------------------------------------------------------
+
+fig601 <- read_current_figure("FIG601") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig602 <- read_current_figure("FIG602") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig603 <- read_current_figure("FIG603") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig604_all <- read_current_figure(
+  "FIG604a",
+  meta_id = "FIG604"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig604_tech <- read_current_figure(
+  "FIG604b",
+  meta_id = "FIG604"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig605_all <- read_current_figure(
+  "FIG605a",
+  meta_id = "FIG605"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig605_tech <- read_current_figure(
+  "FIG605b",
+  meta_id = "FIG605"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig606 <- read_current_figure("FIG606") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig607 <- read_current_figure("FIG607") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+fig608 <- read_current_figure("FIG608") %>%
+  mutate(
+    `Gap with the native-born` =
+      numeric_clean(.data$`Gap with the native-born`)
+  )
+
+fig609 <- read_current_figure("FIG609") %>%
+  mutate(
+    recipients = numeric_clean(.data$recipients),
+    stay_rate_10yr = numeric_clean(.data$stay_rate_10yr),
+    ttd_years = numeric_clean(.data$ttd_years)
+  )
+
+
+tab601 <- read_current_table("TAB601") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab602 <- read_current_table("TAB602") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab603_us <- read_current_table(
+  "TAB603a",
+  meta_id = "TAB603"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab603_temp <- read_current_table(
+  "TAB603b",
+  meta_id = "TAB603"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(-Year, numeric_clean)
+  )
+
+tab604 <- read_current_table("TAB604") %>%
+  mutate(
+    Year = year_number(.data$Year),
+    Count = numeric_clean(.data$Count)
+  )
+
+# Table 6.05:
+#   a = Rest of world
+#   b = China
+#   c = India
+
+tab605_row <- read_current_table(
+  "TAB605a",
+  meta_id = "TAB605"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(
+      c(
+        EB1,
+        EB2,
+        EB3
+      ),
+      numeric_clean
+    )
+  )
+
+tab605_china <- read_current_table(
+  "TAB605b",
+  meta_id = "TAB605"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(
+      c(
+        EB1,
+        EB2,
+        EB3
+      ),
+      numeric_clean
+    )
+  )
+
+tab605_india <- read_current_table(
+  "TAB605c",
+  meta_id = "TAB605"
+) %>%
+  mutate(
+    Year = year_number(.data$Year),
+    across(
+      c(
+        EB1,
+        EB2,
+        EB3
+      ),
+      numeric_clean
+    )
+  )
+
+
+# ----------------------------------------------------------------------------
+# 2. GENERIC CHAPTER 6 HELPERS
+# ----------------------------------------------------------------------------
+
+ch6_fixed_year_metric <- function(
+    df,
+    column,
+    earlier_year,
+    latest_year,
+    section_id,
+    section,
+    measure,
+    stat_id,
+    value_type,
+    change_type,
+    emphasis = FALSE
+) {
+  if (!all(c("Year", column) %in% names(df))) {
+    return(NULL)
+  }
+
+  earlier <- df %>%
+    filter(
+      .data$Year == .env$earlier_year
+    )
+
+  latest <- df %>%
+    filter(
+      .data$Year == .env$latest_year
+    )
+
+  if (
+    nrow(earlier) != 1L ||
+    nrow(latest) != 1L
+  ) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    first_value = earlier[[column]][[1]],
+    first_label = earlier_year,
+    last_value = latest[[column]][[1]],
+    last_label = latest_year,
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+}
+
+
+ch6_series_metric <- function(
+    df,
+    column,
+    section_id,
+    section,
+    measure,
+    stat_id,
+    value_type,
+    change_type,
+    emphasis = FALSE
+) {
+  metric_series(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+    df = df,
+    column = column,
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+}
+
+
+ch6_sum_series <- function(
+    df,
+    columns
+) {
+  row_sum_data(
+    df,
+    columns
+  ) %>%
+    rename(
+      Total = .data$Value
+    )
+}
+
+
+ch6_peak_endpoint <- function(
+    series
+) {
+  row <- series %>%
+    slice_max(
+      order_by = .data$Value,
+      n = 1,
+      with_ties = FALSE
+    )
+
+  list(
+    value = row$Value[[1]],
+    year = row$Year[[1]],
+    label = calendar_year_label(
+      row$Year[[1]]
+    )
+  )
+}
+
+
+ch6_first_endpoint <- function(
+    series
+) {
+  row <- series %>%
+    slice_head(n = 1)
+
+  list(
+    value = row$Value[[1]],
+    year = row$Year[[1]],
+    label = calendar_year_label(
+      row$Year[[1]]
+    )
+  )
+}
+
+
+ch6_last_endpoint <- function(
+    series
+) {
+  row <- series %>%
+    slice_tail(n = 1)
+
+  list(
+    value = row$Value[[1]],
+    year = row$Year[[1]],
+    label = calendar_year_label(
+      row$Year[[1]]
+    )
+  )
+}
+
+
+ch6_largest_decline <- function(
+    df,
+    column
+) {
+  series <- series_data(
+    df,
+    column
+  )
+
+  if (nrow(series) < 2L) {
+    return(NULL)
+  }
+
+  candidates <- purrr::map_dfr(
+    2:nrow(series),
+    function(i) {
+      prior <- series[
+        1:(i - 1),
+        ,
+        drop = FALSE
+      ]
+
+      peak <- prior %>%
+        slice_max(
+          order_by = .data$Value,
+          n = 1,
+          with_ties = FALSE
+        )
+
+      tibble(
+        peak_year = peak$Year[[1]],
+        peak_value = peak$Value[[1]],
+        trough_year = series$Year[[i]],
+        trough_value = series$Value[[i]],
+        decline = peak$Value[[1]] -
+          series$Value[[i]]
+      )
+    }
+  )
+
+  best <- candidates %>%
+    slice_max(
+      order_by = .data$decline,
+      n = 1,
+      with_ties = FALSE
+    )
+
+  list(
+    peak = list(
+      year = best$peak_year[[1]],
+      label = calendar_year_label(
+        best$peak_year[[1]]
+      ),
+      value = best$peak_value[[1]]
+    ),
+    trough = list(
+      year = best$trough_year[[1]],
+      label = calendar_year_label(
+        best$trough_year[[1]]
+      ),
+      value = best$trough_value[[1]]
+    )
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 3. STAY INTENTIONS — FIGURE 6.01 + TABLES 6.01–6.02
+# ----------------------------------------------------------------------------
+
+CH6_INTENTION_COLUMN <- setdiff(
+  names(fig601),
+  "Year"
+)
+
+if (length(CH6_INTENTION_COLUMN) != 1L) {
+  stop(
+    "FIG601 must contain exactly one intention series in addition to Year."
+  )
+}
+
+CH6_INTENTION_COLUMN <- CH6_INTENTION_COLUMN[[1]]
+
+
+# Code every reported region in Table 6.01.
+CH6_REGION_COLUMNS <- c(
+  "Africa",
+  "Asia",
+  "Americas",
+  "Europe",
+  "Australia-Oceania",
+  "Middle East"
+)
+
+ch6_region_stats <- purrr::map_dfr(
+  CH6_REGION_COLUMNS,
+  function(region) {
+    ch6_series_metric(
+      df = tab601,
+      column = region,
+      section_id = "intentions",
+      section = "Stay intentions",
+      measure = paste0(
+        region,
+        ": intend to stay in the US"
+      ),
+      stat_id = paste0(
+        "intent_region_",
+        stringr::str_replace_all(
+          stringr::str_to_lower(region),
+          "[^a-z0-9]+",
+          "_"
+        )
+      ),
+      value_type = "share",
+      change_type = "pp_share",
+      emphasis = region %in%
+        c(
+          "Africa",
+          "Asia"
+        )
+    )
+  }
+)
+
+
+# Code every field in Table 6.02.
+CH6_FIELD_COLUMNS <- setdiff(
+  names(tab602),
+  "Year"
+)
+
+ch6_field_intention_stats <- purrr::map_dfr(
+  CH6_FIELD_COLUMNS,
+  function(field) {
+    ch6_series_metric(
+      df = tab602,
+      column = field,
+      section_id = "intentions",
+      section = "Stay intentions",
+      measure = paste0(
+        field,
+        ": PhDs with US plans"
+      ),
+      stat_id = paste0(
+        "intent_field_",
+        stringr::str_replace_all(
+          stringr::str_to_lower(field),
+          "[^a-z0-9]+",
+          "_"
+        )
+      ),
+      value_type = "share",
+      change_type = "pp_share",
+      emphasis = field %in%
+        c(
+          "Computer and information sciences",
+          "Engineering",
+          "Social sciences"
+        )
+    )
+  }
+)
+
+
+# ----------------------------------------------------------------------------
+# 4. REALIZED RETENTION — FIGURE 6.02
+# ----------------------------------------------------------------------------
+
+ch6_stay_decline <- ch6_largest_decline(
+  fig602,
+  "10-year stay rate"
+)
+
+ch6_stay_latest <- data_endpoint(
+  fig602,
+  "10-year stay rate",
+  which = "last"
+)
+
+
+ch6_stay_decline_metric <- if (
+  !is.null(ch6_stay_decline)
+) {
+  metric_values(
+    stat_id = "stay_10yr_decline",
+    section_id = "retention",
+    section = "Realized retention",
+    measure = "Ten-year stay rate during its largest observed decline",
+    first_value = ch6_stay_decline$peak$value,
+    first_label = ch6_stay_decline$peak$label,
+    last_value = ch6_stay_decline$trough$value,
+    last_label = ch6_stay_decline$trough$label,
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  )
+} else {
+  NULL
+}
+
+
+ch6_stay_recovery_metric <- if (
+  !is.null(ch6_stay_decline)
+) {
+  metric_values(
+    stat_id = "stay_10yr_recovery",
+    section_id = "retention",
+    section = "Realized retention",
+    measure = paste0(
+      "Ten-year stay rate after the ",
+      ch6_stay_decline$trough$label,
+      " low"
+    ),
+    first_value = ch6_stay_decline$trough$value,
+    first_label = ch6_stay_decline$trough$label,
+    last_value = ch6_stay_latest$value,
+    last_label = ch6_stay_latest$label,
+    value_type = "share",
+    change_type = "pp_share"
+  )
+} else {
+  NULL
+}
+
+
+# ----------------------------------------------------------------------------
+# 5. CAREER PATHS AFTER THE PhD — TABLE 6.03
+# ----------------------------------------------------------------------------
+# The published table compares 1994 with 2024, even though the underlying
+# source series begins earlier. Keep those explicit endpoints.
+
+ch6_career_metric <- function(
+    df,
+    population,
+    column,
+    stat_id,
+    emphasis = FALSE
+) {
+  ch6_fixed_year_metric(
+    df = df,
+    column = column,
+    earlier_year = 1994L,
+    latest_year = 2024L,
+    section_id = "career",
+    section = "Career paths after the PhD",
+    measure = paste0(
+      population,
+      ": ",
+      stringr::str_to_lower(column)
+    ),
+    stat_id = stat_id,
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = emphasis
+  )
+}
+
+
+# Code all Table 6.03 categories for both populations.
+CH6_CAREER_COLUMNS <- c(
+  "Academe",
+  "Industry or business",
+  "Government",
+  "Nonprofit organization",
+  "Other or unknown"
+)
+
+ch6_all_career_stats <- purrr::map_dfr(
+  CH6_CAREER_COLUMNS,
+  function(column) {
+    dplyr::bind_rows(
+      ch6_career_metric(
+        df = tab603_us,
+        population = "US citizens",
+        column = column,
+        stat_id = paste0(
+          "career_us_",
+          stringr::str_replace_all(
+            stringr::str_to_lower(column),
+            "[^a-z0-9]+",
+            "_"
+          )
+        ),
+        emphasis = column %in%
+          c(
+            "Academe",
+            "Industry or business"
+          )
+      ),
+
+      ch6_career_metric(
+        df = tab603_temp,
+        population = "Temporary visa holders",
+        column = column,
+        stat_id = paste0(
+          "career_temp_",
+          stringr::str_replace_all(
+            stringr::str_to_lower(column),
+            "[^a-z0-9]+",
+            "_"
+          )
+        ),
+        emphasis = column %in%
+          c(
+            "Academe",
+            "Industry or business"
+          )
+      )
+    )
+  }
+)
+
+
+# ----------------------------------------------------------------------------
+# 6. WORK-VISA BRIDGE — FIGURES 6.03–6.05
+# ----------------------------------------------------------------------------
+
+h1b_all_approvals <- ch6_sum_series(
+  fig604_all,
+  c(
+    "New Approved",
+    "Renewal Approved"
+  )
+)
+
+h1b_tech_approvals <- ch6_sum_series(
+  fig604_tech,
+  c(
+    "New Approved",
+    "Renewal Approved"
+  )
+)
+
+
+ch6_h1b_denial_series <- function(
+    approved_df,
+    denied_df
+) {
+  approved <- series_data(
+    approved_df,
+    "New Approved"
+  ) %>%
+    rename(
+      Approved = .data$Value
+    )
+
+  denied <- series_data(
+    denied_df,
+    "New Denials"
+  ) %>%
+    rename(
+      Denied = .data$Value
+    )
+
+  inner_join(
+    approved,
+    denied,
+    by = "Year"
+  ) %>%
+    transmute(
+      Year = .data$Year,
+      Value = .data$Denied /
+        (
+          .data$Approved +
+            .data$Denied
+        )
+    ) %>%
+    filter(
+      is.finite(.data$Value)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+}
+
+
+h1b_all_denial_rate <- ch6_h1b_denial_series(
+  fig604_all,
+  fig605_all
+)
+
+h1b_tech_denial_rate <- ch6_h1b_denial_series(
+  fig604_tech,
+  fig605_tech
+)
+
+h1b_all_denial_first <- ch6_first_endpoint(
+  h1b_all_denial_rate
+)
+
+h1b_all_denial_peak <- ch6_peak_endpoint(
+  h1b_all_denial_rate
+)
+
+h1b_all_denial_last <- ch6_last_endpoint(
+  h1b_all_denial_rate
+)
+
+
+# ----------------------------------------------------------------------------
+# 7. PERMANENT-RESIDENCE BOTTLENECK — FIGURE 6.06 + TABLES 6.04–6.05
+# ----------------------------------------------------------------------------
+
+ch6_perm_expired_series <- function(
+    country
+) {
+  tab604 %>%
+    filter(
+      normalize_label(.data$Country) ==
+        normalize_label(.env$country),
+      normalize_label(.data$Status) %in%
+        c(
+          normalize_label("Certified"),
+          normalize_label("Certified-Expired")
+        )
+    ) %>%
+    mutate(
+      StatusClean = dplyr::case_when(
+        normalize_label(.data$Status) ==
+          normalize_label("Certified") ~
+          "Used",
+
+        normalize_label(.data$Status) ==
+          normalize_label("Certified-Expired") ~
+          "Expired",
+
+        TRUE ~ NA_character_
+      )
+    ) %>%
+    filter(
+      !is.na(.data$StatusClean)
+    ) %>%
+    group_by(
+      .data$Year,
+      .data$StatusClean
+    ) %>%
+    summarise(
+      Count = sum(
+        .data$Count,
+        na.rm = TRUE
+      ),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_wider(
+      names_from = .data$StatusClean,
+      values_from = .data$Count,
+      values_fill = 0
+    ) %>%
+    mutate(
+      Value = .data$Expired /
+        (
+          .data$Used +
+            .data$Expired
+        )
+    ) %>%
+    filter(
+      is.finite(.data$Value)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+}
+
+
+ch6_perm_expired_metric <- function(
+    country,
+    stat_id,
+    emphasis = FALSE
+) {
+  series <- ch6_perm_expired_series(
+    country
+  )
+
+  # Match the published Table 6.04 comparison window.
+  first <- series %>%
+    filter(
+      .data$Year == 2008L
+    )
+
+  last <- series %>%
+    filter(
+      .data$Year == 2024L
+    )
+
+  if (
+    nrow(first) != 1L ||
+    nrow(last) != 1L
+  ) {
+    return(NULL)
+  }
+
+  metric_values(
+    stat_id = stat_id,
+    section_id = "permanence",
+    section = "Permanent-residence bottleneck",
+    measure = paste0(
+      country,
+      ": PERM certifications expiring unused"
+    ),
+    first_value = first$Value[[1]],
+    first_label = 2008L,
+    last_value = last$Value[[1]],
+    last_label = 2024L,
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = emphasis
+  )
+}
+
+
+CH6_PERM_COUNTRIES <- c(
+  "India",
+  "China",
+  "South Korea",
+  "Mexico"
+)
+
+ch6_all_perm_expired_stats <- purrr::map_dfr(
+  CH6_PERM_COUNTRIES,
+  function(country) {
+    ch6_perm_expired_metric(
+      country = country,
+      stat_id = paste0(
+        "perm_expired_",
+        stringr::str_replace_all(
+          stringr::str_to_lower(country),
+          "[^a-z0-9]+",
+          "_"
+        )
+      ),
+      emphasis = country %in%
+        c(
+          "India",
+          "China"
+        )
+    )
+  }
+)
+
+
+ch6_wait_endpoint <- function(
+    df,
+    category,
+    year
+) {
+  row <- df %>%
+    filter(
+      .data$Year == .env$year
+    )
+
+  if (nrow(row) != 1L) {
+    return(NULL)
+  }
+
+  value <- row[[category]][[1]]
+
+  if (!is.finite(value)) {
+    return(NULL)
+  }
+
+  list(
+    year = year,
+    value = value
+  )
+}
+
+
+ch6_wait_label <- function(
+    months
+) {
+  months <- round(months)
+
+  if (!is.finite(months)) {
+    return("—")
+  }
+
+  if (months == 0L) {
+    return("0 mo")
+  }
+
+  years <- months %/% 12
+  remainder <- months %% 12
+
+  if (years == 0L) {
+    return(
+      paste0(
+        remainder,
+        " mo"
+      )
+    )
+  }
+
+  if (remainder == 0L) {
+    return(
+      paste0(
+        years,
+        "y"
+      )
+    )
+  }
+
+  paste0(
+    years,
+    "y ",
+    remainder,
+    "m"
+  )
+}
+
+
+ch6_wait_change_label <- function(
+    first_months,
+    last_months
+) {
+  difference <- round(
+    last_months -
+      first_months
+  )
+
+  if (!is.finite(difference)) {
+    return("—")
+  }
+
+  sign <- if (difference > 0) {
+    "+"
+  } else if (difference < 0) {
+    "-"
+  } else {
+    ""
+  }
+
+  paste0(
+    sign,
+    ch6_wait_label(
+      abs(difference)
+    )
+  )
+}
+
+
+ch6_wait_metric <- function(
+    df,
+    geography,
+    category,
+    stat_id,
+    emphasis = FALSE
+) {
+  # Match the displayed Table 6.05: 2005 → 2025.
+  first <- ch6_wait_endpoint(
+    df,
+    category,
+    2005L
+  )
+
+  last <- ch6_wait_endpoint(
+    df,
+    category,
+    2025L
+  )
+
+  if (
+    is.null(first) ||
+    is.null(last)
+  ) {
+    return(NULL)
+  }
+
+  metric_text(
+    stat_id = stat_id,
+    section_id = "permanence",
+    section = "Permanent-residence bottleneck",
+    measure = paste0(
+      geography,
+      " ",
+      category,
+      " green-card wait"
+    ),
+    earlier = paste0(
+      ch6_wait_label(
+        first$value
+      ),
+      " (2005)"
+    ),
+    latest = paste0(
+      ch6_wait_label(
+        last$value
+      ),
+      " (2025)"
+    ),
+    change = ch6_wait_change_label(
+      first$value,
+      last$value
+    ),
+    emphasis = emphasis
+  )
+}
+
+
+# Code all EB categories and geographies in Table 6.05.
+ch6_all_wait_stats <- dplyr::bind_rows(
+  purrr::map_dfr(
+    c(
+      "EB1",
+      "EB2",
+      "EB3"
+    ),
+    function(category) {
+      ch6_wait_metric(
+        df = tab605_row,
+        geography = "Rest of world",
+        category = category,
+        stat_id = paste0(
+          "wait_row_",
+          stringr::str_to_lower(category)
+        )
+      )
+    }
+  ),
+
+  purrr::map_dfr(
+    c(
+      "EB1",
+      "EB2",
+      "EB3"
+    ),
+    function(category) {
+      ch6_wait_metric(
+        df = tab605_china,
+        geography = "China",
+        category = category,
+        stat_id = paste0(
+          "wait_china_",
+          stringr::str_to_lower(category)
+        ),
+        emphasis = category %in%
+          c(
+            "EB2",
+            "EB3"
+          )
+      )
+    }
+  ),
+
+  purrr::map_dfr(
+    c(
+      "EB1",
+      "EB2",
+      "EB3"
+    ),
+    function(category) {
+      ch6_wait_metric(
+        df = tab605_india,
+        geography = "India",
+        category = category,
+        stat_id = paste0(
+          "wait_india_",
+          stringr::str_to_lower(category)
+        ),
+        emphasis = category %in%
+          c(
+            "EB2",
+            "EB3"
+          )
+      )
+    }
+  )
+)
+
+
+# ----------------------------------------------------------------------------
+# 8. OTHER SIGNALS AND TALENT LOSS — FIGURES 6.07–6.09
+# ----------------------------------------------------------------------------
+
+ch6_fig608_value <- function(
+    country
+) {
+  value <- fig608 %>%
+    filter(
+      normalize_label(.data$Country) ==
+        normalize_label(.env$country)
+    ) %>%
+    pull(
+      .data$`Gap with the native-born`
+    )
+
+  if (
+    length(value) != 1L ||
+    !is.finite(value[[1]])
+  ) {
+    return(NA_real_)
+  }
+
+  value[[1]]
+}
+
+
+ch6_us_work_gap <- ch6_fig608_value(
+  "United States"
+)
+
+ch6_oecd_work_gap <- ch6_fig608_value(
+  "OECD average"
+)
+
+
+ch6_workforce_benchmark <- if (
+  is.finite(ch6_us_work_gap) &&
+  is.finite(ch6_oecd_work_gap)
+) {
+  metric_text(
+    stat_id = "workforce_gap_us_vs_oecd",
+    section_id = "loss",
+    section = "Other signals and talent loss",
+    measure = "Immigrant employment gap relative to native-born",
+    earlier = paste0(
+      "OECD: ",
+      sprintf(
+        "%+.1f pp (2025)",
+        ch6_oecd_work_gap
+      )
+    ),
+    latest = paste0(
+      "US: ",
+      sprintf(
+        "%+.1f pp (2025)",
+        ch6_us_work_gap
+      )
+    ),
+    change = sprintf(
+      "%+.1f pp",
+      ch6_us_work_gap -
+        ch6_oecd_work_gap
+    ),
+    emphasis = TRUE
+  )
+} else {
+  NULL
+}
+
+
+ch6_loss_by_field <- fig609 %>%
+  mutate(
+    retained = round(
+      .data$recipients *
+        .data$stay_rate_10yr
+    ),
+    lost = .data$recipients -
+      .data$retained,
+    lost_share = 1 -
+      .data$stay_rate_10yr
+  )
+
+
+ch6_total_recipients <- sum(
+  ch6_loss_by_field$recipients,
+  na.rm = TRUE
+)
+
+ch6_total_retained <- sum(
+  ch6_loss_by_field$retained,
+  na.rm = TRUE
+)
+
+ch6_total_lost <- sum(
+  ch6_loss_by_field$lost,
+  na.rm = TRUE
+)
+
+ch6_total_lost_share <- if (
+  ch6_total_recipients > 0
+) {
+  ch6_total_lost /
+    ch6_total_recipients
+} else {
+  NA_real_
+}
+
+
+ch6_loss_metric <- function(
+    field,
+    stat_id,
+    emphasis = FALSE
+) {
+  row <- ch6_loss_by_field %>%
+    filter(
+      normalize_label(.data$field) ==
+        normalize_label(.env$field)
+    )
+
+  if (nrow(row) != 1L) {
+    return(NULL)
+  }
+
+  metric_text(
+    stat_id = stat_id,
+    section_id = "loss",
+    section = "Other signals and talent loss",
+    measure = paste0(
+      field,
+      ": US-trained international PhDs after ten years"
+    ),
+    earlier = paste0(
+      scales::comma(
+        row$recipients[[1]],
+        accuracy = 1
+      ),
+      " trained (2012–14)"
+    ),
+    latest = paste0(
+      scales::comma(
+        row$retained[[1]],
+        accuracy = 1
+      ),
+      " retained"
+    ),
+    change = paste0(
+      "-",
+      scales::comma(
+        row$lost[[1]],
+        accuracy = 1
+      ),
+      " (",
+      scales::percent(
+        row$lost_share[[1]],
+        accuracy = 1
+      ),
+      ")"
+    ),
+    emphasis = emphasis
+  )
+}
+
+
+ch6_total_loss_metric <- metric_text(
+  stat_id = "trained_total",
+  section_id = "loss",
+  section = "Other signals and talent loss",
+  measure = "US-trained international STEM PhDs after ten years",
+  earlier = paste0(
+    scales::comma(
+      ch6_total_recipients,
+      accuracy = 1
+    ),
+    " trained (2012–14)"
+  ),
+  latest = paste0(
+    scales::comma(
+      ch6_total_retained,
+      accuracy = 1
+    ),
+    " retained"
+  ),
+  change = paste0(
+    "-",
+    scales::comma(
+      ch6_total_lost,
+      accuracy = 1
+    ),
+    " (",
+    scales::percent(
+      ch6_total_lost_share,
+      accuracy = 1
+    ),
+    ")"
+  ),
+  emphasis = TRUE
+)
+
+
+# ----------------------------------------------------------------------------
+# 9. CODE THE FULL CURRENT CHAPTER 6 STATISTIC SET
+# ----------------------------------------------------------------------------
+
+ch6_all_stats <- bind_rows(
+
+  # ==========================================================================
+  # STAY INTENTIONS
+  # ==========================================================================
+
+  ch6_series_metric(
+    df = fig601,
+    column = CH6_INTENTION_COLUMN,
+    section_id = "intentions",
+    section = "Stay intentions",
+    measure = "International PhD recipients intending to stay in the US",
+    stat_id = "intent_overall",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  ch6_region_stats,
+
+  ch6_field_intention_stats,
+
+
+  # ==========================================================================
+  # REALIZED RETENTION
+  # ==========================================================================
+
+  ch6_series_metric(
+    df = fig602,
+    column = "5-year stay rate",
+    section_id = "retention",
+    section = "Realized retention",
+    measure = "International STEM PhDs remaining after five years",
+    stat_id = "stay_5yr",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  ch6_series_metric(
+    df = fig602,
+    column = "10-year stay rate",
+    section_id = "retention",
+    section = "Realized retention",
+    measure = "International STEM PhDs remaining after ten years",
+    stat_id = "stay_10yr",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  ch6_stay_decline_metric,
+  ch6_stay_recovery_metric,
+
+
+  # ==========================================================================
+  # CAREER PATHS AFTER THE PhD
+  # ==========================================================================
+
+  ch6_all_career_stats,
+
+
+  # ==========================================================================
+  # WORK-VISA BRIDGE
+  # ==========================================================================
+
+  ch6_series_metric(
+    df = fig603,
+    column = "Received",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "STEM OPT applications received",
+    stat_id = "opt_received",
+    value_type = "count",
+    change_type = "multiple"
+  ),
+
+  ch6_series_metric(
+    df = fig603,
+    column = "Approved",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "STEM OPT applications approved",
+    stat_id = "opt_approved",
+    value_type = "count",
+    change_type = "multiple",
+    emphasis = TRUE
+  ),
+
+  ch6_series_metric(
+    df = fig603,
+    column = "Approval Rate",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "STEM OPT approval rate",
+    stat_id = "opt_approval_rate",
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+  metric_series(
+    stat_id = "h1b_all_approvals",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "H-1B approvals: all industries",
+    df = h1b_all_approvals,
+    column = "Total",
+    value_type = "count",
+    change_type = "percent",
+    emphasis = TRUE
+  ),
+
+  metric_series(
+    stat_id = "h1b_tech_approvals",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "H-1B approvals: tech occupations",
+    df = h1b_tech_approvals,
+    column = "Total",
+    value_type = "count",
+    change_type = "percent"
+  ),
+
+  metric_values(
+    stat_id = "h1b_denial_spike",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = "Initial H-1B petition denial rate through its observed peak",
+    first_value = h1b_all_denial_first$value,
+    first_label = h1b_all_denial_first$label,
+    last_value = h1b_all_denial_peak$value,
+    last_label = h1b_all_denial_peak$label,
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  metric_values(
+    stat_id = "h1b_denial_recovery",
+    section_id = "work_visas",
+    section = "Work-visa bridge",
+    measure = paste0(
+      "Initial H-1B petition denial rate after the ",
+      h1b_all_denial_peak$label,
+      " peak"
+    ),
+    first_value = h1b_all_denial_peak$value,
+    first_label = h1b_all_denial_peak$label,
+    last_value = h1b_all_denial_last$value,
+    last_label = h1b_all_denial_last$label,
+    value_type = "share",
+    change_type = "pp_share"
+  ),
+
+
+  # ==========================================================================
+  # PERMANENT-RESIDENCE BOTTLENECK
+  # ==========================================================================
+
+  ch6_series_metric(
+    df = fig606,
+    column = "Certified (Current + Expired)",
+    section_id = "permanence",
+    section = "Permanent-residence bottleneck",
+    measure = "PERM labor certifications issued",
+    stat_id = "perm_certifications",
+    value_type = "count",
+    change_type = "multiple",
+    emphasis = TRUE
+  ),
+
+  ch6_all_perm_expired_stats,
+  ch6_all_wait_stats,
+
+
+  # ==========================================================================
+  # OTHER SIGNALS AND TALENT LOSS
+  # ==========================================================================
+
+  ch6_series_metric(
+    df = fig607,
+    column = "China",
+    section_id = "loss",
+    section = "Other signals and talent loss",
+    measure = "China share of J-1 research scholars",
+    stat_id = "j1_china",
+    value_type = "share",
+    change_type = "pp_share",
+    emphasis = TRUE
+  ),
+
+  ch6_workforce_benchmark,
+  ch6_total_loss_metric,
+
+  ch6_loss_metric(
+    field = "Engineering",
+    stat_id = "loss_engineering",
+    emphasis = TRUE
+  ),
+
+  ch6_loss_metric(
+    field = "Life, health & ag. sciences",
+    stat_id = "loss_life"
+  ),
+
+  ch6_loss_metric(
+    field = "Physical sciences",
+    stat_id = "loss_physical",
+    emphasis = TRUE
+  ),
+
+  ch6_loss_metric(
+    field = "Computer & math sciences",
+    stat_id = "loss_computer",
+    emphasis = TRUE
+  )
+)
+
+
+# ----------------------------------------------------------------------------
+# 10. EDITORIAL SELECTION — EXACTLY 36 DISPLAYED BODY ROWS
+# ----------------------------------------------------------------------------
+#
+#  9  Stay intentions
+#  4  Realized retention
+#  4  Career paths after the PhD
+#  6  Work-visa bridge
+#  7  Permanent-residence bottleneck
+#  6  Other signals and talent loss
+# ------------------------------------------------
+# 36 total
+#
+# The first five sections contain exactly 30 rows. Because they also contain
+# exactly five section headers, Page 1 uses the entire 35-row-equivalent
+# publication budget without shrinking.
+
+CH6_SELECTED_STATS <- c(
+
+  # Stay intentions — 9
+  "intent_overall",
+  "intent_region_africa",
+  "intent_region_asia",
+  "intent_region_americas",
+  "intent_region_europe",
+  "intent_field_computer_and_information_sciences",
+  "intent_field_engineering",
+  "intent_field_social_sciences",
+  "intent_field_physical_sciences",
+
+  # Realized retention — 4
+  "stay_5yr",
+  "stay_10yr",
+  "stay_10yr_decline",
+  "stay_10yr_recovery",
+
+  # Career paths after the PhD — 4
+  "career_us_academe",
+  "career_us_industry_or_business",
+  "career_temp_academe",
+  "career_temp_industry_or_business",
+
+  # Work-visa bridge — 6
+  "opt_received",
+  "opt_approved",
+  "h1b_all_approvals",
+  "h1b_tech_approvals",
+  "h1b_denial_spike",
+  "h1b_denial_recovery",
+
+  # Permanent-residence bottleneck — 7
+  "perm_certifications",
+  "perm_expired_india",
+  "perm_expired_china",
+  "wait_india_eb2",
+  "wait_india_eb3",
+  "wait_china_eb2",
+  "wait_china_eb3",
+
+  # Other signals and talent loss — 6
+  "j1_china",
+  "workforce_gap_us_vs_oecd",
+  "trained_total",
+  "loss_engineering",
+  "loss_physical",
+  "loss_computer"
+)
+
+
+ch6_selected <- ch6_all_stats %>%
+  filter(
+    .data$StatID %in%
+      CH6_SELECTED_STATS
+  ) %>%
+  mutate(
+    DisplayOrder = match(
+      .data$StatID,
+      CH6_SELECTED_STATS
+    )
+  ) %>%
+  arrange(
+    .data$DisplayOrder
+  )
+
+
+if (nrow(ch6_selected) != 36L) {
+  warning(
+    "Chapter 6 selected ",
+    nrow(ch6_selected),
+    " rows; expected 36. Check source-column names or generated StatIDs."
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 11. BUILD PAGES
+# ----------------------------------------------------------------------------
+
+build_ch6_page <- function(
+    page_data,
+    page_number,
+    total_pages,
+    is_last_page
+) {
+
+  final_notes <- if (
+    is_last_page
+  ) {
+    c(
+      paste0(
+        "**Note:** Longitudinal rows compare the stated first and latest ",
+        "observations unless otherwise noted. Table 6.03 career-path rows ",
+        "compare 1994 with 2024. Table 6.04 PERM-expiration rows compare ",
+        "2008 with 2024. Green-card wait rows compare 2005 with 2025 to match ",
+        "the published Table 6.05. Figure 6.09 uses the 2012–14 doctorate ",
+        "cohorts and estimates retention from published ten-year stay rates. ",
+        "Arrow colors indicate numeric direction only, not whether the authors ",
+        "consider the change positive or negative."
+      ),
+
+      paste0(
+        "**Source:** Current report data underlying Figures 6.01–6.09 and ",
+        "Tables 6.01–6.05. See the cited figures and tables for full source ",
+        "information."
+      )
+    )
+  } else {
+    character()
+  }
+
+  build_infographic_table(
+    data = page_data,
+    id = paste0(
+      "infographic_ch6_by_the_numbers_page_",
+      sprintf(
+        "%02d",
+        page_number
+      )
+    ),
+    chapter_number = 6,
+    title = "THE RETENTION GAP: BY THE NUMBERS",
+    subtitle = "Why America is losing talent that wants to stay",
+    column_labels = c(
+      Earlier = "Earlier or<br>baseline",
+      Latest  = "Latest or<br>outcome",
+      Change  = "Change"
+    ),
+    notes = final_notes,
+    layout = INFOGRAPHIC_FIXED_LAYOUT,
+    row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+    nowrap_values = TRUE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 12. EXPORT THROUGH THE GLOBAL HEADER-AWARE PAGINATION RULE
+# ----------------------------------------------------------------------------
+
+ch6_exports <- export_paginated_infographic(
+  data = ch6_selected,
+  build_page = build_ch6_page,
+  name = "infographic_ch6_by_the_numbers"
+)
+
+
+knitr::include_graphics(
+  vapply(
+    ch6_exports,
+    `[[`,
+    character(1),
+    "png_path"
+  )
+)
+```
+
+
+# Infographic audit — Chapters 1–4
 
 ```{r infographic_source_year_audit, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 
 # ============================================================================
-# PUBLICATION QA: SOURCE + ENDPOINT-YEAR AUDIT
+# PUBLICATION QA: SOURCE + ENDPOINT-YEAR AUDIT — CHAPTERS 1–4
 #
-# This audit reads the actual Earlier/Latest cells that were sent to the
-# infographic tables. It therefore checks what is *displayed*, not a separate
-# reconstruction of the years.
+# The audit reads the actual Earlier / Latest / Change cells sent to the
+# infographic tables. It therefore audits the publication output rather than
+# independently reconstructing the values.
 #
-# The CSV is always written. Set INFOGRAPHIC_AUDIT_SHOW <- TRUE if you also
-# want the audit table printed at the end of the knitted HTML.
+# The CSV is always written. Set INFOGRAPHIC_AUDIT_SHOW <- TRUE in setup if
+# you also want the audit printed at the end of the knitted HTML.
 # ============================================================================
 
 if (!exists("INFOGRAPHIC_AUDIT_SHOW")) {
@@ -4008,15 +8215,64 @@ CH3_AUDIT_SOURCE <- c(
 )
 
 
+CH4_AUDIT_SOURCE <- c(
+  "us_math_gap" = "FIG401",
+  "us_science_gap" = "FIG401",
+  "us_reading_gap" = "FIG401",
+  "pisa_us_vs_japan" = "FIG402",
+  "pisa_top_math_us_vs_oecd" = "FIG403",
+  "spending_k12_us_vs_oecd" = "FIG405",
+  "spending_tertiary_us_vs_oecd" = "FIG405",
+  "spending_ratio_us_vs_oecd" = "FIG405",
+  "retain_computing" = "FIG407",
+  "retain_engineering" = "FIG407",
+  "retain_broad_science" = "FIG407",
+  "exit_year1" = "FIG408",
+  "exit_first_two_years" = "FIG408",
+  "completion_stem_bachelors" = "TAB401",
+  "completion_nonstem_bachelors" = "TAB401",
+  "completion_subbac" = "TAB401",
+  "completion_still_enrolled" = "TAB401",
+  "completion_left_no_degree" = "TAB401",
+  "switch_never" = "TAB402",
+  "switch_once" = "TAB402",
+  "switch_multiple" = "TAB402",
+  "study_field_stem" = "TAB403",
+  "study_field_business" = "TAB403",
+  "study_field_social" = "TAB403",
+  "study_field_arts" = "TAB403",
+  "study_field_humanities" = "TAB403",
+  "study_region_europe" = "TAB404",
+  "study_region_asia" = "TAB404",
+  "study_region_latin" = "TAB404",
+  "study_region_oceania" = "TAB404",
+  "outbound_us" = "FIG409",
+  "outbound_china" = "FIG409",
+  "outbound_india" = "FIG409",
+  "netflow_us" = "FIG410",
+  "netflow_china" = "FIG410",
+  "netflow_india" = "FIG410"
+)
+
+
 audit_endpoint_rule <- function(chapter, stat_id) {
   dplyr::case_when(
+
+    # ------------------------------------------------------------------------
+    # Chapter 1
+    # ------------------------------------------------------------------------
+
     chapter == "Chapter 1" &
       stringr::str_starts(stat_id, "tab101_") ~
-      "Table-defined first/latest field-share endpoints",
+      "Explicit TAB101 2015 → 2025 columns",
 
     chapter == "Chapter 1" &
       stringr::str_starts(stat_id, "proj_") ~
       "Latest observed year → latest projected year",
+
+    # ------------------------------------------------------------------------
+    # Chapter 2
+    # ------------------------------------------------------------------------
 
     chapter == "Chapter 2" &
       stringr::str_starts(stat_id, "enrollment_") ~
@@ -4035,6 +8291,10 @@ audit_endpoint_rule <- function(chapter, stat_id) {
       ) ~
       "Earliest available survey observation → Fall 2025",
 
+    # ------------------------------------------------------------------------
+    # Chapter 3
+    # ------------------------------------------------------------------------
+
     chapter == "Chapter 3" &
       stringr::str_starts(stat_id, "h1b_") ~
       "2017 → 2025",
@@ -4047,9 +8307,55 @@ audit_endpoint_rule <- function(chapter, stat_id) {
       stringr::str_starts(stat_id, "ai_staffing_") ~
       "Snapshot composition: US / China / rest of world; not a time comparison",
 
+    # ------------------------------------------------------------------------
+    # Chapter 4
+    # ------------------------------------------------------------------------
+
+    chapter == "Chapter 4" &
+      stat_id %in% c(
+        "pisa_us_vs_japan",
+        "pisa_top_math_us_vs_oecd"
+      ) ~
+      "2022 PISA benchmark comparison; not a time comparison",
+
+    chapter == "Chapter 4" &
+      stringr::str_starts(stat_id, "spending_") ~
+      "OECD spending benchmark comparison; not a time comparison",
+
+    chapter == "Chapter 4" &
+      stringr::str_starts(stat_id, "study_field_") ~
+      "Explicit Table 4.03 comparison: 2005 → 2024",
+
+    chapter == "Chapter 4" &
+      stringr::str_starts(stat_id, "study_region_") ~
+      "Explicit Table 4.04 comparison: 2005 → 2024",
+
+    chapter == "Chapter 4" &
+      stringr::str_starts(stat_id, "outbound_") ~
+      "Latest available outbound-mobility snapshot",
+
     TRUE ~
       "First nonmissing observation → latest nonmissing observation"
   )
+}
+
+
+audit_years_expected <- function(chapter, stat_id) {
+  !(
+    chapter == "Chapter 3" &
+      stringr::str_starts(stat_id, "ai_staffing_")
+  ) &
+    !(
+      chapter == "Chapter 4" &
+        stat_id %in% c(
+          "pisa_us_vs_japan",
+          "pisa_top_math_us_vs_oecd"
+        )
+    ) &
+    !(
+      chapter == "Chapter 4" &
+        stringr::str_starts(stat_id, "spending_")
+    )
 }
 
 
@@ -4061,37 +8367,46 @@ audit_chapter <- function(
   data %>%
     dplyr::mutate(
       AuditOrder = dplyr::row_number(),
+
       Source = unname(
         source_map[
           as.character(.data$StatID)
         ]
       ),
+
       EarlierYear = audit_extract_year(
         .data$Earlier
       ),
+
       LatestYear = audit_extract_year(
         .data$Latest
       ),
+
       EndpointRule = audit_endpoint_rule(
         chapter,
         as.character(.data$StatID)
       ),
+
+      YearsExpected = audit_years_expected(
+        chapter,
+        as.character(.data$StatID)
+      ),
+
       Page = ceiling(
         .data$AuditOrder /
           INFOGRAPHIC_ROWS_PER_PAGE
       ),
+
       AuditFlag = dplyr::case_when(
         is.na(.data$Source) ~
           "CHECK: source map missing",
 
-        .data$EndpointRule !=
-          "Snapshot composition: US / China / rest of world; not a time comparison" &
+        .data$YearsExpected &
           .data$Earlier != "—" &
           is.na(.data$EarlierYear) ~
           "CHECK: earlier cell has no year",
 
-        .data$EndpointRule !=
-          "Snapshot composition: US / China / rest of world; not a time comparison" &
+        .data$YearsExpected &
           .data$Latest != "—" &
           is.na(.data$LatestYear) ~
           "CHECK: latest cell has no year",
@@ -4105,6 +8420,7 @@ audit_chapter <- function(
         TRUE ~ ""
       )
     ) %>%
+
     dplyr::transmute(
       Chapter = chapter,
       Page = .data$Page,
@@ -4130,28 +8446,39 @@ infographic_source_year_audit <- dplyr::bind_rows(
     "Chapter 1",
     CH1_AUDIT_SOURCE
   ),
+
   audit_chapter(
     ch2_selected,
     "Chapter 2",
     CH2_AUDIT_SOURCE
   ),
+
   audit_chapter(
     ch3_selected,
     "Chapter 3",
     CH3_AUDIT_SOURCE
+  ),
+
+  audit_chapter(
+    ch4_selected,
+    "Chapter 4",
+    CH4_AUDIT_SOURCE
   )
 ) %>%
+
   dplyr::arrange(
     factor(
       .data$Chapter,
       levels = c(
         "Chapter 1",
         "Chapter 2",
-        "Chapter 3"
+        "Chapter 3",
+        "Chapter 4"
       )
     ),
     .data$AuditOrder
   ) %>%
+
   dplyr::select(
     -.data$AuditOrder
   )
@@ -4163,10 +8490,12 @@ dir.create(
   showWarnings = FALSE
 )
 
+
 INFOGRAPHIC_AUDIT_PATH <- file.path(
   PATHS$final_infographics,
-  "infographic_source_year_audit_ch1_ch3.csv"
+  "infographic_source_year_audit_ch1_ch4.csv"
 )
+
 
 readr::write_csv(
   infographic_source_year_audit,
@@ -4180,6 +8509,7 @@ audit_problem_count <- sum(
   ),
   na.rm = TRUE
 )
+
 
 message(
   "Infographic source/year audit saved to: ",
@@ -4206,11 +8536,12 @@ if (isTRUE(INFOGRAPHIC_AUDIT_SHOW)) {
           Source,
           EarlierYear,
           LatestYear,
+          EndpointRule,
           AuditFlag
         ),
       align = c(
         "l", "c", "l", "l",
-        "l", "c", "c", "l"
+        "l", "c", "c", "l", "l"
       )
     )
   )
