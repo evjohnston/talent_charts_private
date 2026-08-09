@@ -577,7 +577,7 @@ FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_014$Year, pad_right = .6) +
+  scale_x_years(df_014$Year) +
   scale_y_continuous(labels = label_comma(),
                      expand = EXPAND_LINE) +
   scale_color_tpa() +
@@ -752,7 +752,7 @@ labels_106 <- df_106 %>%
   ungroup()
 
 FIG212 <- ggplot(df_106, aes(Share, Reason, color = Cohort)) +
-  geom_point(size = 3.5) +
+  geom_point(size = 2.5) +
   geom_text(
     data = labels_106,
     aes(x = label_x, label = paste0(Share, "%")),

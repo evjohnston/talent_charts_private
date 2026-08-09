@@ -21,7 +21,117 @@ geom_label_repel_tpa <- function(
     min.segment.length = if (with_segment) 0 else Inf,
     segment.alpha      = if (with_segment) 0.5 else NA,
     segment.size       = 0.35,
+    max.overlaps       = Inf,
     show.legend        = FALSE,
+    ...
+  )
+}
+
+# ---- Right-side endpoint label layout -----------------------
+# Use these helpers for line charts whose series names/values sit to the right
+# of the final observation. Labels are kept on one line, share one x anchor,
+# and reserve only the physical right margin required by the longest label.
+
+label_width_pt <- function(
+    labels,
+    size_pt = DATA_LABEL_SIZE,
+    family = FONT_FAMILY,
+    face = "bold"
+) {
+  labels <- as.character(labels)
+  labels <- gsub("[\\r\\n]+", " ", labels)
+  labels <- labels[!is.na(labels) & nzchar(labels)]
+  
+  if (!length(labels)) return(0)
+  
+  widths <- vapply(
+    labels,
+    function(label) {
+      grob <- grid::textGrob(
+        label,
+        gp = grid::gpar(
+          fontfamily = family,
+          fontsize   = size_pt,
+          fontface   = face
+        )
+      )
+      
+      grid::convertWidth(
+        grid::grobWidth(grob),
+        unitTo    = "pt",
+        valueOnly = TRUE
+      )
+    },
+    numeric(1)
+  )
+  
+  max(widths, na.rm = TRUE)
+}
+
+prepare_right_labels <- function(
+    labels_df,
+    years,
+    label_col = ".label",
+    gap_frac = 0.018,
+    min_gap_years = 0.30
+) {
+  years <- years[is.finite(years)]
+  
+  if (!length(years)) {
+    stop("`years` contains no finite values.")
+  }
+  
+  if (!label_col %in% names(labels_df)) {
+    stop("`", label_col, "` is missing from the label data.")
+  }
+  
+  yr_min <- min(years)
+  yr_max <- max(years)
+  span   <- yr_max - yr_min
+  
+  if (!is.finite(span) || span <= 0) span <- 1
+  
+  gap <- max(min_gap_years, span * gap_frac)
+  
+  labels_df[[label_col]] <- gsub(
+    "[\\r\\n]+",
+    " ",
+    as.character(labels_df[[label_col]])
+  )
+  
+  labels_df$.label_x <- yr_max + gap
+  
+  attr(labels_df, "tpa_right_margin_pt") <-
+    label_width_pt(labels_df[[label_col]]) + PUB$spacing$edge_pt
+  
+  labels_df
+}
+
+theme_right_labels <- function(
+    labels_df,
+    minimum_right = PUB$spacing$edge_pt
+) {
+  right_margin <- attr(labels_df, "tpa_right_margin_pt")
+  
+  if (is.null(right_margin) || !is.finite(right_margin)) {
+    right_margin <- minimum_right
+  }
+  
+  theme(
+    plot.margin = publication_margin(
+      right = max(minimum_right, right_margin)
+    )
+  )
+}
+
+geom_right_label_connector_tpa <- function(data, mapping, ...) {
+  geom_segment(
+    data        = data,
+    mapping     = mapping,
+    inherit.aes = FALSE,
+    linewidth   = 0.35,
+    alpha       = 0.5,
+    show.legend = FALSE,
     ...
   )
 }
@@ -47,9 +157,9 @@ geom_text_tpa <- function(data, mapping, color = NULL, ...) {
 smart_year_interval <- function(years) {
   years <- years[is.finite(years)]
   if (!length(years)) stop("`years` contains no finite values.")
-
+  
   span <- max(years) - min(years)
-
+  
   if (span > 140) 20
   else if (span > 60) 10
   else if (span > 25) 5
@@ -60,15 +170,15 @@ smart_year_interval <- function(years) {
 year_breaks_latest <- function(years, by = NULL) {
   years <- years[is.finite(years)]
   if (!length(years)) stop("`years` contains no finite values.")
-
+  
   yr_min <- min(years)
   yr_max <- max(years)
   by <- by %||% smart_year_interval(years)
-
+  
   if (!is.numeric(by) || length(by) != 1 || !is.finite(by) || by <= 0) {
     stop("`by` must be one positive finite number.")
   }
-
+  
   # Anchor the sequence to the latest observed year rather than to round
   # calendar multiples. Example: a 10-year interval ending in 2024 produces
   # 2024, 2014, 2004, 1994, ... .
@@ -85,7 +195,7 @@ scale_x_years <- function(
 ) {
   years <- years[is.finite(years)]
   if (!length(years)) stop("`years` contains no finite values.")
-
+  
   scale_x_continuous(
     breaks = year_breaks_latest(years, by = by),
     expand = expansion(mult = c(pad_left, pad_right)),

@@ -3,7 +3,7 @@
     "path": "~/Downloads/_Work/Talent/talent_charts/inputs/titles_and_sources.csv",
     "project_path": "inputs/titles_and_sources.csv",
     "type": "text",
-    "hash": "4005468727",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1786223972178.0,
@@ -12,8 +12,8 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "63,97",
-        "scrollLine": "38"
+        "cursorPosition": "9,38",
+        "scrollLine": "0"
     },
     "folds": "",
     "lastKnownWriteTime": 1786231399,

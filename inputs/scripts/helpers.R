@@ -52,7 +52,7 @@ pivot_observed_projected <- function(
 # label_fmt:   a function applied to the value for the repel label,
 #              e.g. label_comma(), fmt_pct_0, fmt_pct_1.
 # y_scale:     "continuous" (default) or "log10".
-# pad_right:   defaults to PAD_RIGHT_STANDARD.
+# pad_right:   retained for backward compatibility; right-label spacing is automatic.
 # color_scale: a ggplot scale object; defaults to scale_color_tpa().
 # y_args:      named list of extra arguments forwarded to
 #              scale_y_continuous / scale_y_log10.
@@ -79,61 +79,130 @@ read_country_lines <- function(name,
 }
 
 plot_country_lines <- function(df, meta, y_label,
-                               group_col     = "Country",
-                               value_col     = "Count",
-                               label_fmt     = label_comma(),
-                               y_scale       = "continuous",
-                               pad_right     = PAD_RIGHT_STANDARD,
-                               color_scale   = scale_color_tpa(),
-                               highlight     = NULL,          # character vector of groups to keep in color; rest greyed
-                               highlight_grey = "grey80",     # color for the muted background lines
-                               y_args        = list()) {
+                               group_col      = "Country",
+                               value_col      = "Count",
+                               label_fmt      = label_comma(),
+                               y_scale        = "continuous",
+                               pad_right      = PAD_RIGHT_STANDARD,
+                               color_scale    = scale_color_tpa(),
+                               highlight      = NULL,
+                               highlight_grey = "grey80",
+                               y_args         = list()) {
   label_fn <- if (is.function(label_fmt)) label_fmt else identity
   
-  # --- no highlighting: original behavior, every line colored & labeled ---
+  # `pad_right` is retained so existing figure calls do not break. Endpoint
+  # labels now use a measured physical margin rather than proportional x padding.
+  invisible(pad_right)
+  
   if (is.null(highlight)) {
-    labels <- last_by_group(df, Year, .data[[group_col]])
-    p <- ggplot(df, aes(Year, .data[[value_col]],
-                        color = .data[[group_col]],
-                        group = .data[[group_col]])) +
+    labels <- last_by_group(df, Year, .data[[group_col]]) %>%
+      mutate(
+        .label = paste0(
+          .data[[group_col]],
+          ": ",
+          label_fn(.data[[value_col]])
+        )
+      ) %>%
+      prepare_right_labels(df$Year)
+    
+    p <- ggplot(
+      df,
+      aes(
+        Year,
+        .data[[value_col]],
+        color = .data[[group_col]],
+        group = .data[[group_col]]
+      )
+    ) +
       geom_line(linewidth = LINE_WIDTH) +
-      geom_label_repel_tpa(
-        data    = labels,
-        mapping = aes(label = paste0(.data[[group_col]], ": ",
-                                     label_fn(.data[[value_col]]))),
-        nudge_x = 0.5, hjust = 0, direction = "y", with_segment = TRUE
+      geom_right_label_connector_tpa(
+        data = labels,
+        mapping = aes(
+          x    = Year,
+          xend = .label_x,
+          y    = .data[[value_col]],
+          yend = .data[[value_col]],
+          color = .data[[group_col]]
+        )
       ) +
-      scale_x_years(df$Year, pad_right = pad_right) +
+      geom_label_repel_tpa(
+        data = labels,
+        mapping = aes(
+          x     = .label_x,
+          label = .label
+        ),
+        hjust        = 0,
+        direction    = "y",
+        with_segment = TRUE
+      ) +
+      scale_x_years(df$Year, pad_right = 0) +
       color_scale +
       guides(color = "none") +
       labs_meta(meta, y = y_label) +
-      theme_tpa()
+      coord_cartesian(clip = "off") +
+      theme_tpa() +
+      theme_right_labels(labels)
     
-    # --- highlighting: background groups drawn grey & unlabeled, on top ---
   } else {
-    is_hi   <- df[[group_col]] %in% highlight
-    df_bg   <- df[!is_hi, , drop = FALSE]
-    df_hi   <- df[ is_hi, , drop = FALSE]
-    labels  <- last_by_group(df_hi, Year, .data[[group_col]])
+    is_hi <- df[[group_col]] %in% highlight
+    df_bg <- df[!is_hi, , drop = FALSE]
+    df_hi <- df[ is_hi, , drop = FALSE]
     
-    p <- ggplot(mapping = aes(Year, .data[[value_col]],
-                              group = .data[[group_col]])) +
-      geom_line(data = df_bg, color = highlight_grey,
-                linewidth = LINE_WIDTH_LIGHT) +
-      geom_line(data = df_hi, aes(color = .data[[group_col]]),
-                linewidth = LINE_WIDTH) +
-      geom_label_repel_tpa(
-        data    = labels,
-        mapping = aes(label = paste0(.data[[group_col]], ": ",
-                                     label_fn(.data[[value_col]])),
-                      color = .data[[group_col]]),
-        nudge_x = 0.5, hjust = 0, direction = "y", with_segment = TRUE
+    labels <- last_by_group(df_hi, Year, .data[[group_col]]) %>%
+      mutate(
+        .label = paste0(
+          .data[[group_col]],
+          ": ",
+          label_fn(.data[[value_col]])
+        )
+      ) %>%
+      prepare_right_labels(df$Year)
+    
+    p <- ggplot(
+      mapping = aes(
+        Year,
+        .data[[value_col]],
+        group = .data[[group_col]]
+      )
+    ) +
+      geom_line(
+        data      = df_bg,
+        color     = highlight_grey,
+        linewidth = LINE_WIDTH_LIGHT
       ) +
-      scale_x_years(df$Year, pad_right = pad_right) +
+      geom_line(
+        data      = df_hi,
+        aes(color = .data[[group_col]]),
+        linewidth = LINE_WIDTH
+      ) +
+      geom_right_label_connector_tpa(
+        data = labels,
+        mapping = aes(
+          x    = Year,
+          xend = .label_x,
+          y    = .data[[value_col]],
+          yend = .data[[value_col]],
+          color = .data[[group_col]]
+        )
+      ) +
+      geom_label_repel_tpa(
+        data = labels,
+        mapping = aes(
+          x     = .label_x,
+          label = .label,
+          color = .data[[group_col]]
+        ),
+        hjust        = 0,
+        direction    = "y",
+        with_segment = TRUE
+      ) +
+      scale_x_years(df$Year, pad_right = 0) +
       color_scale +
       guides(color = "none") +
       labs_meta(meta, y = y_label) +
-      theme_tpa()
+      coord_cartesian(clip = "off") +
+      theme_tpa() +
+      theme_right_labels(labels)
   }
   
   y_defaults <- list(labels = label_comma(), expand = EXPAND_LINE)
@@ -168,7 +237,11 @@ read_sector_employment <- function(name) {
 plot_sector_employment <- function(df, meta, y_label,
                                    y_limits = NULL,
                                    y_breaks = NULL) {
-  labels <- last_by_group(df, Year, Sector)
+  labels <- last_by_group(df, Year, Sector) %>%
+    mutate(
+      .label = paste0(Sector, ": ", fmt_pct_0(Share))
+    ) %>%
+    prepare_right_labels(df$Year)
   
   y_args <- list(labels = label_number(suffix = "%"), expand = EXPAND_BAR_TIGHT)
   if (!is.null(y_limits)) y_args$limits <- y_limits
@@ -176,20 +249,32 @@ plot_sector_employment <- function(df, meta, y_label,
   
   ggplot(df, aes(Year, Share, color = Sector, group = Sector)) +
     geom_line(linewidth = LINE_WIDTH) +
+    geom_right_label_connector_tpa(
+      data = labels,
+      mapping = aes(
+        x = Year, xend = .label_x,
+        y = Share, yend = Share,
+        color = Sector
+      )
+    ) +
     geom_label_repel_tpa(
-      data    = labels,
-      mapping = aes(label = paste0(Sector, ": ", fmt_pct_0(Share))),
-      nudge_x      = 0.5,
+      data = labels,
+      mapping = aes(
+        x = .label_x,
+        label = .label
+      ),
       hjust        = 0,
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = PAD_RIGHT_WIDE) +
+    scale_x_years(df$Year, pad_right = 0) +
     do.call(scale_y_continuous, y_args) +
     scale_color_tpa() +
     guides(color = "none") +
     labs_meta(meta, y = y_label) +
-    theme_tpa()
+    coord_cartesian(clip = "off") +
+    theme_tpa() +
+    theme_right_labels(labels)
 }
 
 # ---- Citizenship area charts --------------------------------
@@ -239,26 +324,44 @@ read_patents <- function(name) {
 }
 
 plot_patents <- function(df, meta, y_label = "Patents granted (log scale)") {
-  labels <- last_by_group(df, Year, Country)
+  labels <- last_by_group(df, Year, Country) %>%
+    mutate(
+      .label = paste0(Country, ": ", label_comma()(Count))
+    ) %>%
+    prepare_right_labels(df$Year)
   
   ggplot(df, aes(Year, Count, color = Country, group = Country)) +
     geom_line(linewidth = LINE_WIDTH) +
+    geom_right_label_connector_tpa(
+      data = labels,
+      mapping = aes(
+        x = Year, xend = .label_x,
+        y = Count, yend = Count,
+        color = Country
+      )
+    ) +
     geom_label_repel_tpa(
-      data    = labels,
-      mapping = aes(label = paste0(Country, ": ", label_comma()(Count))),
-      nudge_x      = 0.5,
+      data = labels,
+      mapping = aes(
+        x = .label_x,
+        label = .label
+      ),
       hjust        = 0,
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = PAD_RIGHT_STANDARD) +
-    scale_y_log10(labels = label_comma(),
-                  breaks = c(10, 100, 1000, 5000, 10000, 50000),
-                  expand = EXPAND_LINE) +
+    scale_x_years(df$Year, pad_right = 0) +
+    scale_y_log10(
+      labels = label_comma(),
+      breaks = c(10, 100, 1000, 5000, 10000, 50000),
+      expand = EXPAND_LINE
+    ) +
     scale_color_tpa() +
     guides(color = "none") +
     labs_meta(meta, y = y_label) +
-    theme_tpa()
+    coord_cartesian(clip = "off") +
+    theme_tpa() +
+    theme_right_labels(labels)
 }
 
 # ---- Discrete single-series bar ----
@@ -287,13 +390,13 @@ plot_discrete_bar <- function(df, meta, y_label,
   # as a factor for legacy code.
   d <- df %>%
     mutate(.year_plot = suppressWarnings(as.numeric(as.character(Year))))
-
+  
   if (any(!is.finite(d$.year_plot))) {
     stop("`Year` must contain numeric year labels for plot_discrete_bar().")
   }
-
+  
   labels <- first_last_peak(d, .year_plot, .data[[value_col]])
-
+  
   ggplot(d, aes(.year_plot, .data[[value_col]])) +
     geom_col(fill = fill, width = 0.7, alpha = ALPHA_COL) +
     geom_text_tpa(
@@ -370,25 +473,43 @@ read_nonresident_field <- function(name) {
 }
 
 plot_nonresident_field <- function(df, meta, y_label) {
-  labels <- last_by_group(df, Year, Field)
+  labels <- last_by_group(df, Year, Field) %>%
+    mutate(
+      .label = paste0(Field, ": ", fmt_pct_1(Share))
+    ) %>%
+    prepare_right_labels(df$Year)
   
   ggplot(df, aes(Year, Share, color = Field, group = Field)) +
     geom_line(linewidth = LINE_WIDTH) +
+    geom_right_label_connector_tpa(
+      data = labels,
+      mapping = aes(
+        x = Year, xend = .label_x,
+        y = Share, yend = Share,
+        color = Field
+      )
+    ) +
     geom_label_repel_tpa(
-      data    = labels,
-      mapping = aes(label = paste0(Field, ": ", fmt_pct_1(Share))),
-      nudge_x      = 0.5,
+      data = labels,
+      mapping = aes(
+        x = .label_x,
+        label = .label
+      ),
       hjust        = 0,
       direction    = "y",
       with_segment = TRUE
     ) +
-    scale_x_years(df$Year, pad_right = PAD_RIGHT_WIDE) +
-    scale_y_continuous(labels = label_number(suffix = "%"),
-                       expand = EXPAND_LINE) +
+    scale_x_years(df$Year, pad_right = 0) +
+    scale_y_continuous(
+      labels = label_number(suffix = "%"),
+      expand = EXPAND_LINE
+    ) +
     scale_color_fields() +
     guides(color = "none") +
     labs_meta(meta, y = y_label) +
-    theme_tpa()
+    coord_cartesian(clip = "off") +
+    theme_tpa() +
+    theme_right_labels(labels)
 }
 
 # ---- Title / source metadata --------------------------------

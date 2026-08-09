@@ -54,7 +54,7 @@ chart_height_from <- function(old_w, old_h, new_w = CHART_WIDTH_IN) {
 }
 
 # ---- Chart size presets -------------------------------------
-SIZE_STANDARD <- list(w = CHART_WIDTH_IN, h = chart_height_from(8.0,  5.5))
+SIZE_STANDARD <- list(w = CHART_WIDTH_IN, h = 4.8)
 SIZE_MEDIUM   <- list(w = CHART_WIDTH_IN, h = chart_height_from(8.0, 8.25))
 SIZE_LONG     <- list(w = CHART_WIDTH_IN, h = chart_height_from(8.0, 11.0))
 SIZE_TALL     <- list(w = CHART_WIDTH_IN, h = chart_height_from(6.0,  8.0))
@@ -259,8 +259,8 @@ scale_color_china_us <- function(...) {
 }
 
 # ---- Typography ---------------------------------------------
-# These point sizes are the document-facing sizes. When figures are saved
-# at CHART_WIDTH_IN = 7.5 inches, they should appear at these sizes in Word.
+# These point sizes are the document-facing sizes. Figures are saved at the
+# publication body width defined by CHART_WIDTH_IN and retain these sizes in Word.
 TITLE_SIZE           <- DOC_TITLE_PT
 SUBTITLE_SIZE        <- DOC_SUBTITLE_PT
 CAPTION_SIZE         <- DOC_CAPTION_PT
@@ -452,6 +452,10 @@ theme_dual_axis <- function() {
         margin = margin(l = PUB$spacing$axis_title_gap_pt),
         color  = "grey25",
         size   = AXIS_SIZE
+      ),
+      plot.margin = publication_margin(
+        left  = PUB$spacing$edge_wide_pt,
+        right = PUB$spacing$edge_wide_pt
       )
     )
 }
