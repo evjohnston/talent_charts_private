@@ -281,9 +281,9 @@ export_current_chapter <- function(
       subtitle = subtitle,
       notes = if (is_last_page) {
         paste0(
-          "**Source:** Derived only from the current report figures: ",
+          "**Source:** Derived from the current report figures and tables: ",
           paste(source_figures, collapse = ", "),
-          ". See those figures for full citations."
+          ". See the cited figures and tables for full source information."
         )
       } else {
         character()
@@ -355,6 +355,8 @@ field_share_metric <- function(
 
   if (!all(c(first_col, last_col) %in% names(row))) return(NULL)
 
+  # TAB101's source citation covers 1995–2024. metadata_year_range() now
+  # reads both endpoints from that citation rather than only the first year.
   source_range <- metadata_year_range(infographic_meta_id(tab101))
 
   first_year_candidates <- c(
@@ -1351,28 +1353,47 @@ us_spending_ratio <- fig405 %>%
   )
 
 
-# Field retention: compare the two cohorts in FIG407.
+# Field retention: compare the same two cohorts used in Figure 4.07.
+# IMPORTANT: use .env$field inside filter(). Without .env, dplyr can resolve
+# `field` as the data column rather than the function argument, which makes
+# every row pass the filter and repeats one field's values across all metrics.
 fig407_long <- fig407 %>%
   mutate(across(-field, as.numeric)) %>%
-  pivot_longer(-field, names_to = "cohort", values_to = "pct")
+  pivot_longer(-field, names_to = "cohort", values_to = "pct") %>%
+  mutate(
+    cohort = recode(
+      cohort,
+      entry_2003 = "2003/04 cohort",
+      entry_2011 = "2011/12 cohort"
+    ),
+    cohort = factor(
+      cohort,
+      levels = c("2003/04 cohort", "2011/12 cohort")
+    )
+  )
 
 retention_metric <- function(field, stat_id, emphasis = FALSE) {
   row <- fig407_long %>%
-    filter(.data$field == field) %>%
-    filter(is.finite(.data$pct))
+    filter(
+      .data$field == .env$field,
+      is.finite(.data$pct)
+    ) %>%
+    arrange(.data$cohort)
 
   if (nrow(row) < 2) return(NULL)
+
+  first <- row %>% slice_head(n = 1)
+  last  <- row %>% slice_tail(n = 1)
 
   metric_values(
     stat_id, "persistence", "Keeping STEM students in STEM",
     paste0(field, ": graduates remaining in entry field"),
-    row$pct[[1]], "2003/04 cohort",
-    row$pct[[nrow(row)]], "2011/12 cohort",
+    first$pct[[1]], as.character(first$cohort[[1]]),
+    last$pct[[1]],  as.character(last$cohort[[1]]),
     "percent_value", "pp_percent",
     emphasis = emphasis
   )
 }
-
 
 # Latest cohort early exits from FIG408.
 latest_cohort <- fig408 %>%

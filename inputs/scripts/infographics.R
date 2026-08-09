@@ -10,7 +10,9 @@
 # layout, and exact-size export. No observations or endpoint years live here.
 
 INFOGRAPHIC_SPEC <- list(
-  width_in = PUB$infographic$width_in,
+  # Keep infographics aligned to the same usable publication width as figures
+  # and tables. If page margins change in publication_spec.R, this updates too.
+  width_in = PUB$page$body_in,
   height_in = PUB$infographic$height_in,
   dpi = PUB$render$figure_dpi,
   css_dpi = PUB$infographic$css_dpi
@@ -30,14 +32,24 @@ INFOGRAPHIC_SPEC$output_height_px <- round(
 )
 INFOGRAPHIC_SPEC$zoom <- INFOGRAPHIC_SPEC$dpi / INFOGRAPHIC_SPEC$css_dpi
 
-# Chapter 1 is the layout default. The latest/projected value receives more
-# room because it often includes a projection qualifier or academic-year label.
-INFOGRAPHIC_COLUMNS <- c(
-  measure = 426,
-  earlier = 145,
-  latest = 220,
-  change = 145
+# All infographic pages use the same four physical column proportions.
+# The stub gets half the width so descriptive measures can remain on one line.
+# These proportions automatically follow INFOGRAPHIC_SPEC$width_in.
+INFOGRAPHIC_COLUMN_SHARES <- c(
+  measure = 0.50,
+  earlier = 0.16,
+  latest  = 0.22,
+  change  = 0.12
 )
+
+INFOGRAPHIC_COLUMNS <- round(
+  INFOGRAPHIC_SPEC$css_width_px * INFOGRAPHIC_COLUMN_SHARES
+)
+
+# Rounding can leave the total one or two pixels off. Put any residual pixel
+# into the measure column so the table width remains exact.
+INFOGRAPHIC_COLUMNS[["measure"]] <- INFOGRAPHIC_COLUMNS[["measure"]] +
+  (INFOGRAPHIC_SPEC$css_width_px - sum(INFOGRAPHIC_COLUMNS))
 
 # Reuse the report palette wherever a matching theme constant already exists.
 INFOGRAPHIC_PALETTE <- list(
@@ -172,11 +184,23 @@ extract_academic_year_pairs <- function(x) {
 
 metadata_years <- function(id) {
   text <- metadata_text(id)
-  full <- extract_year(text)
+
+  # metadata_text() is one combined citation string. The generic extract_year()
+  # helper intentionally returns one year per input label, so using it here
+  # previously retained only the FIRST year it encountered. A citation such as
+  # "1995–2024" was therefore interpreted as 1995–1995.
+  #
+  # Metadata ranges need every explicit four-digit year in the citation.
+  full <- stringr::str_extract_all(
+    as.character(text),
+    "(?<![0-9])(?:18|19|20|21)[0-9]{2}(?![0-9])"
+  )[[1]]
+  full <- suppressWarnings(as.numeric(full))
   full <- full[is.finite(full)]
+
   academic_pairs <- extract_academic_year_pairs(text)
   short_ranges <- extract_short_year_ranges(text)
-  
+
   sort(unique(c(
     full,
     academic_pairs$start,
@@ -719,16 +743,34 @@ infographic_pt_to_px <- function(pt) {
   pt * INFOGRAPHIC_SPEC$css_dpi / 72
 }
 
+# Data cells, column headers, and section headers share one reduced body size.
+# This scale is global: it does NOT change by chapter, page, or row count.
+# With a 90% publication font scale, 78% here yields ~7 pt infographic body type.
+INFOGRAPHIC_BODY_SCALE_PERCENT <- 78
+INFOGRAPHIC_BODY_SCALE <- INFOGRAPHIC_BODY_SCALE_PERCENT / 100
+
+INFOGRAPHIC_BODY_PT <- PUB$type$body_pt * INFOGRAPHIC_BODY_SCALE
+
 INFOGRAPHIC_FIXED_LAYOUT <- list(
-  data_font_px = infographic_pt_to_px(PUB$type$body_pt),
-  header_font_px = infographic_pt_to_px(PUB$type$body_pt),
+  data_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
+  header_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
   chapter_font_px = infographic_pt_to_px(PUB$type$small_pt),
   title_font_px = infographic_pt_to_px(PUB$type$title_pt),
   subtitle_font_px = infographic_pt_to_px(PUB$type$subtitle_pt),
-  panel_font_px = infographic_pt_to_px(PUB$type$body_pt),
-  group_font_px = infographic_pt_to_px(PUB$type$body_pt),
-  source_font_px = infographic_pt_to_px(PUB$type$source_pt),
+  panel_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
+  group_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
+
+  # Match the source/caption size used by figures and revised tables.
+  source_font_px = infographic_pt_to_px(PUB$type$caption_pt),
+
   row_padding_px = infographic_pt_to_px(PUB$spacing$infographic_row_pad_pt)
+)
+
+# One uniform data-row height for every chapter/page.
+INFOGRAPHIC_FIXED_LAYOUT$row_height_px <- ceiling(
+  INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
+    PUB$type_metrics$infographic_row_lineheight +
+    2 * INFOGRAPHIC_FIXED_LAYOUT$row_padding_px
 )
 
 # Retained as a compatibility alias. It is deliberately independent of n_rows.
@@ -808,7 +850,7 @@ build_infographic_table <- function(
     notes = character(),
     layout = INFOGRAPHIC_FIXED_LAYOUT,
     row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
-    nowrap_values = FALSE,
+    nowrap_values = TRUE,
     top_border = FALSE
 ) {
   sizes <- font_sizes(layout)
@@ -1022,7 +1064,7 @@ build_infographic_table <- function(
     if (nowrap_values) {
       paste0(
         "#", id,
-        " tbody td:not(.gt_stub):not(.gt_rowname) {white-space:nowrap !important;}"
+        " tbody td, #", id, " .gt_stub, #", id, " .gt_rowname {white-space:nowrap !important;}"
       )
     } else {
       ""
@@ -1113,7 +1155,7 @@ paginate_infographic_data <- function(
     if (n_remaining == 1L) {
       stop(
         "A single row plus the fixed title, headers, and notes does not fit on ",
-        "a 6.5 x 8.5 inch page. Shorten that row or its notes; typography and ",
+        "the fixed infographic page. Shorten that row or its notes; typography and ",
         "row spacing were not changed."
       )
     }
@@ -1143,7 +1185,7 @@ paginate_infographic_data <- function(
     if (best < 1L) {
       stop(
         "The first row on page ", page_number,
-        " does not fit with the fixed 12-point typography."
+        " does not fit with the fixed infographic typography."
       )
     }
     
