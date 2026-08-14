@@ -2857,28 +2857,107 @@ export_current_chapter(
 ```
 
 # Chapter 2
-
 ```{r infographic_ch2_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 
 # ============================================================================
 # CHAPTER 2: WHO COMES TO THE US TO STUDY?
 #
-# Editorial rule:
-#   - Code the full Chapter 2 source set so additional measures remain available.
-#   - Display ONLY the statistics selected in CH2_SELECTED_STATS.
-#   - Prefer longitudinal bookends whenever a time series exists.
-#   - Keep the 2015 recruitment-priority survey hard-coded as a historical
-#     comparison because it is not part of the current FIG207 source file.
+# Display convention:
+#   - Standard comparison = 2001 → 2025.
+#   - Years appear in column headers, not individual cells.
 #
-# Output structure mirrors the approved example:
-#   Page 1 = scale, geography, STEM concentration, economy, recruitment
-#   Page 2 = recruitment/barriers continuation
+#   - * means the left-column value is not 2001:
+#       • STEM-country rows use their first available observation.
+#       • Recruitment/barrier rows use 2015.
+#       • Enrollment-projection rows use 2025 actual.
+#
+#   - ᴾ marks a 2026 projected enrollment value.
+#
+# Recruitment:
+#   - Overall top recruitment target: 2015 → 2025.
+#   - Three countries with the largest absolute 2015–2025 changes.
+#
+# Barriers:
+#   - Three reasons cited by the largest share of institutions in Fall 2025.
+#   - Their change is measured from Fall 2015.
+#
+# Layout:
+#   - Same fixed layout, typography, row sizing, and widths as Chapter 1.
+#   - No chapter number, title, or subtitle is rendered.
 # ============================================================================
 
 
 # ----------------------------------------------------------------------------
-# 0. MAKE ALL CURRENT CHAPTER 2 TABLE INPUTS AVAILABLE
+# 0. INCLUDE / EXCLUDE CONTROLS
 # ----------------------------------------------------------------------------
+#
+# Set any statistic to FALSE to remove it.
+#
+# recruitment_top3:
+#   TRUE = three countries with the largest absolute 2015–2025 changes.
+#
+# barrier_top3:
+#   TRUE = three reasons cited by the largest share of institutions in 2025.
+#
+# Filtering occurs before pagination.
+
+CH2_INCLUDE <- c(
+
+  # Scale and academic level
+  total_international_students = TRUE,
+  international_undergraduates = TRUE,
+  international_graduates = TRUE,
+  international_masters = FALSE,
+  masters_share = TRUE,
+  doctorate_share = TRUE,
+  opt_share = TRUE,
+
+  # Geographic concentration
+  asia_count = TRUE,
+  asia_share = TRUE,
+  china_undergraduate_share = TRUE,
+  india_undergraduate_share = TRUE,
+  india_graduate_share = TRUE,
+  china_graduate_share = TRUE,
+  south_korea_graduate_share = TRUE,
+  india_china_graduate_share = FALSE,
+  europe_share = TRUE,
+  sub_saharan_africa_share = TRUE,
+
+  # Concentration by STEM field
+  math_cs_students = TRUE,
+  engineering_students = TRUE,
+  india_stem_students = TRUE,
+  china_stem_students = TRUE,
+  nepal_stem_students = FALSE,
+  south_korea_stem_students = FALSE,
+
+  # Projected changes to international enrollment, 2025–2026
+  enrollment_total = FALSE,
+  enrollment_undergraduate = TRUE,
+  enrollment_graduate = TRUE,
+  enrollment_nondegree = FALSE,
+  enrollment_opt = TRUE,
+
+  # Recruitment and barriers, 2015–2025
+  top_recruitment_target = TRUE,
+  recruitment_top3 = TRUE,
+  barrier_top3 = TRUE,
+
+  # Economic contribution
+  economic_contribution = TRUE
+)
+
+
+# ----------------------------------------------------------------------------
+# 1. MAKE CURRENT CHAPTER 2 INPUTS AVAILABLE
+# ----------------------------------------------------------------------------
+
+CURRENT_FIGURE_SOURCES <- unique(c(
+  CURRENT_FIGURE_SOURCES,
+  "FIG207"
+))
+
 
 CURRENT_TABLE_SOURCES <- unique(c(
   CURRENT_TABLE_SOURCES,
@@ -2887,167 +2966,303 @@ CURRENT_TABLE_SOURCES <- unique(c(
   "TAB204", "TAB204a", "TAB204b"
 ))
 
+
 CURRENT_REPORT_SOURCES <- unique(c(
   CURRENT_REPORT_SOURCES,
+  CURRENT_FIGURE_SOURCES,
   CURRENT_TABLE_SOURCES
 ))
 
 
 # ----------------------------------------------------------------------------
-# 1. CURRENT SOURCE DATA
+# 2. COMPARISON-YEAR RULES
 # ----------------------------------------------------------------------------
-# Current Chapter 2 figures.
-ch2_fig201 <- read_current_figure("FIG201")   # undergraduate origins
-ch2_fig202 <- read_current_figure("FIG202")   # graduate origins
-ch2_fig203 <- read_current_figure("FIG203")   # fields of study
-ch2_fig204 <- read_current_figure("FIG204")   # STEM students by origin
-ch2_fig205 <- read_current_figure("FIG205")   # economic contribution
-ch2_fig206 <- read_current_figure("FIG206")   # 2025 enrollment change
-ch2_fig207 <- read_current_figure("FIG207")   # 2025 recruitment priorities
-ch2_fig208 <- read_current_figure("FIG208")   # barriers
 
-# Current report academic-level series.
-# This is the same longitudinal international-enrollment-by-level series used
-# elsewhere in the report. Reusing the series here avoids hard-coding the
-# academic-level bookends.
+CH2_SECTION_HEADERS_PER_PAGE <- 6L
+CH2_BASELINE_YEAR <- 2001L
+CH2_TARGET_YEAR <- 2025L
+
+
+# ----------------------------------------------------------------------------
+# 3. CURRENT SOURCE DATA
+# ----------------------------------------------------------------------------
+
+ch2_fig201 <- read_current_figure("FIG201")
+ch2_fig202 <- read_current_figure("FIG202")
+ch2_fig203 <- read_current_figure("FIG203")
+ch2_fig204 <- read_current_figure("FIG204")
+ch2_fig205 <- read_current_figure("FIG205")
+ch2_fig206 <- read_current_figure("FIG206")
+
+
+# Updated recruitment series.
+# Retain FIG207 metadata/source treatment.
+ch2_fig207 <- read_current_figure(
+  "FIG207",
+  meta_id = "FIG207"
+)
+
+
+ch2_fig208 <- read_current_figure("FIG208")
+
+
+# Longitudinal international-enrollment-by-level series.
 ch2_levels_raw <- read_current_figure("FIG301")
+
 
 # Current Chapter 2 tables.
 ch2_tab201 <- read_current_table("TAB201")
 
-ch2_tab202a <- read_current_table("TAB202a", meta_id = "TAB202")
-ch2_tab202b <- read_current_table("TAB202b", meta_id = "TAB202")
-ch2_tab202c <- read_current_table("TAB202c", meta_id = "TAB202")
-ch2_tab202d <- read_current_table("TAB202d", meta_id = "TAB202")
-ch2_tab202e <- read_current_table("TAB202e", meta_id = "TAB202")
-ch2_tab202f <- read_current_table("TAB202f", meta_id = "TAB202")
-ch2_tab202g <- read_current_table("TAB202g", meta_id = "TAB202")
-ch2_tab202h <- read_current_table("TAB202h", meta_id = "TAB202")
-ch2_tab202i <- read_current_table("TAB202i", meta_id = "TAB202")
 
-ch2_tab203a <- read_current_table("TAB203a", meta_id = "TAB203")
-ch2_tab203b <- read_current_table("TAB203b", meta_id = "TAB203")
-ch2_tab203c <- read_current_table("TAB203c", meta_id = "TAB203")
+ch2_tab202a <- read_current_table(
+  "TAB202a",
+  meta_id = "TAB202"
+)
 
-ch2_tab204a <- read_current_table("TAB204a", meta_id = "TAB204")
-ch2_tab204b <- read_current_table("TAB204b", meta_id = "TAB204")
+ch2_tab202b <- read_current_table(
+  "TAB202b",
+  meta_id = "TAB202"
+)
+
+ch2_tab202c <- read_current_table(
+  "TAB202c",
+  meta_id = "TAB202"
+)
+
+ch2_tab202d <- read_current_table(
+  "TAB202d",
+  meta_id = "TAB202"
+)
+
+ch2_tab202e <- read_current_table(
+  "TAB202e",
+  meta_id = "TAB202"
+)
+
+ch2_tab202f <- read_current_table(
+  "TAB202f",
+  meta_id = "TAB202"
+)
+
+ch2_tab202g <- read_current_table(
+  "TAB202g",
+  meta_id = "TAB202"
+)
+
+ch2_tab202h <- read_current_table(
+  "TAB202h",
+  meta_id = "TAB202"
+)
+
+ch2_tab202i <- read_current_table(
+  "TAB202i",
+  meta_id = "TAB202"
+)
+
+
+ch2_tab203a <- read_current_table(
+  "TAB203a",
+  meta_id = "TAB203"
+)
+
+ch2_tab203b <- read_current_table(
+  "TAB203b",
+  meta_id = "TAB203"
+)
+
+ch2_tab203c <- read_current_table(
+  "TAB203c",
+  meta_id = "TAB203"
+)
+
+
+ch2_tab204a <- read_current_table(
+  "TAB204a",
+  meta_id = "TAB204"
+)
+
+ch2_tab204b <- read_current_table(
+  "TAB204b",
+  meta_id = "TAB204"
+)
 
 
 # ----------------------------------------------------------------------------
-# 2. HARD-CODED 2015 RECRUITMENT PRIORITIES
+# 4. HISTORICAL 2015 RECRUITMENT BASELINE
 # ----------------------------------------------------------------------------
-# Historical comparison supplied in the approved 2015 recruitment chart.
-# Keep ALL categories in code even though the displayed infographic uses only
-# the leading 2015 target as the baseline for the two current recruitment rows.
 
 CH2_RECRUITMENT_2015_ALL <- tibble::tribble(
-  ~Priority,          ~Percent,
-  "China",               65.8,
-  "India",               40.5,
-  "South Korea",         28.9,
-  "Japan",               14.2,
-  "Southeast Asia",      42.1,
-  "Latin America",       38.4,
-  "Brazil",              35.3,
-  "Europe",              23.7,
-  "Middle East",         34.2,
-  "Africa",               8.9,
-  "Other",               17.9
+  ~Priority,       ~Percent,
+  "China",             65.8,
+  "India",             40.5,
+  "South Korea",       28.9,
+  "Japan",             14.2,
+  "Southeast Asia",    42.1,
+  "Latin America",     38.4,
+  "Brazil",            35.3,
+  "Europe",            23.7,
+  "Middle East",       34.2,
+  "Africa",             8.9,
+  "Other",             17.9
 ) %>%
-  mutate(Year = 2015L)
-
-CH2_RECRUITMENT_2015_TOP <- CH2_RECRUITMENT_2015_ALL %>%
-  slice_max(
-    order_by = .data$Percent,
-    n = 1,
-    with_ties = FALSE
+  mutate(
+    Year = 2015L
   )
 
 
+# Recruitment-change rows should be individual countries, not regions.
+CH2_RECRUITMENT_COUNTRIES <- c(
+  "China",
+  "India",
+  "South Korea",
+  "Japan",
+  "Brazil"
+)
+
+
 # ----------------------------------------------------------------------------
-# 3. NORMALIZE CURRENT FIGURE DATA
+# 5. NORMALIZE CURRENT FIGURE DATA
 # ----------------------------------------------------------------------------
 
 ch2_fig201 <- ch2_fig201 %>%
   mutate(
     Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 ch2_fig202 <- ch2_fig202 %>%
   mutate(
     Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 ch2_fig203 <- ch2_fig203 %>%
   mutate(
     Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 ch2_fig204 <- ch2_fig204 %>%
   mutate(
     Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    across(
+      -Year,
+      numeric_clean
+    )
   )
 
+
 ch2_fig205 <- ch2_fig205 %>%
-  rename(value = 2) %>%
+  rename(
+    value = 2
+  ) %>%
   mutate(
     Year = year_number(.data$Year),
     value = numeric_clean(.data$value)
   )
 
+
+# FIG206 now directly contains:
+#
+#   Category | 2025 | 2026 | Change
+
 ch2_fig206 <- ch2_fig206 %>%
   mutate(
-    Change = numeric_clean(.data$Change)
-  )
+    `2025` = numeric_clean(
+      .data[["2025"]]
+    ),
 
-ch2_fig207 <- ch2_fig207 %>%
-  transmute(
-    Rank = as.integer(
-      str_remove(
-        as.character(.data$Rank),
-        "Rank "
-      )
+    `2026` = numeric_clean(
+      .data[["2026"]]
     ),
-    Undergraduate_Country = as.character(.data$`Undergraduate Country`),
-    Undergraduate_Value = numeric_clean(.data$`Undergraduate Percent`),
-    Graduate_Country = as.character(.data$`Graduate Country`),
-    Graduate_Value = numeric_clean(.data$`Graduate Percent`)
-  ) %>%
-  mutate(
-    Undergraduate_Value = if_else(
-      abs(.data$Undergraduate_Value) <= 1,
-      .data$Undergraduate_Value * 100,
-      .data$Undergraduate_Value
-    ),
-    Graduate_Value = if_else(
-      abs(.data$Graduate_Value) <= 1,
-      .data$Graduate_Value * 100,
-      .data$Graduate_Value
+
+    Change = numeric_clean(
+      .data$Change
     )
   )
 
+
+# FIG207new:
+#
+#   Priority | 2016 | ... | 2025
+#
+# Convert to long format and normalize proportions to percentages.
+
+ch2_fig207new_long <- ch2_fig207new %>%
+  pivot_longer(
+    -Priority,
+    names_to = "Year",
+    values_to = "Percent"
+  ) %>%
+  mutate(
+    Year = suppressWarnings(
+      as.integer(.data$Year)
+    ),
+
+    Percent = numeric_clean(
+      .data$Percent
+    ),
+
+    Percent = if_else(
+      is.finite(.data$Percent) &
+        abs(.data$Percent) <= 1,
+      .data$Percent * 100,
+      .data$Percent
+    )
+  ) %>%
+  filter(
+    is.finite(.data$Year),
+    is.finite(.data$Percent)
+  )
+
+
+# FIG208:
+#
+#   Reason | Fall 2015 | ... | Fall 2025
+
 ch2_fig208 <- ch2_fig208 %>%
-  rename(Reason = 1)
+  rename(
+    Reason = 1
+  ) %>%
+  mutate(
+    across(
+      -Reason,
+      numeric_clean
+    )
+  )
 
 
 # ----------------------------------------------------------------------------
-# 4. LONGITUDINAL SCALE / ACADEMIC-LEVEL SERIES
+# 6. LONGITUDINAL SCALE / ACADEMIC-LEVEL SERIES
 # ----------------------------------------------------------------------------
 
 ch2_levels <- ch2_levels_raw %>%
   mutate(
     Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 ch2_level_columns <- setdiff(
   names(ch2_levels),
   "Year"
 )
+
 
 ch2_undergraduate_columns <- intersect(
   c(
@@ -3059,6 +3274,7 @@ ch2_undergraduate_columns <- intersect(
   ),
   names(ch2_levels)
 )
+
 
 ch2_graduate_columns <- intersect(
   c(
@@ -3074,6 +3290,7 @@ ch2_graduate_columns <- intersect(
   names(ch2_levels)
 )
 
+
 ch2_masters_col <- intersect(
   c(
     "Masters",
@@ -3083,6 +3300,7 @@ ch2_masters_col <- intersect(
   names(ch2_levels)
 )[1]
 
+
 ch2_doctorate_col <- intersect(
   c(
     "Doctorate",
@@ -3090,6 +3308,7 @@ ch2_doctorate_col <- intersect(
   ),
   names(ch2_levels)
 )[1]
+
 
 ch2_opt_col <- intersect(
   c(
@@ -3099,56 +3318,334 @@ ch2_opt_col <- intersect(
   names(ch2_levels)
 )[1]
 
+
 if (
   length(ch2_undergraduate_columns) == 0 ||
-  length(ch2_graduate_columns) == 0 ||
-  is.na(ch2_masters_col) ||
-  is.na(ch2_doctorate_col) ||
-  is.na(ch2_opt_col)
+    length(ch2_graduate_columns) == 0 ||
+    is.na(ch2_masters_col) ||
+    is.na(ch2_doctorate_col) ||
+    is.na(ch2_opt_col)
 ) {
+
   stop(
     "FIG301 does not contain the expected academic-level columns for ",
     "the Chapter 2 scale section."
   )
 }
 
+
 ch2_levels <- ch2_levels %>%
   mutate(
+
     Total = rowSums(
       across(
         all_of(ch2_level_columns)
       ),
       na.rm = TRUE
     ),
+
     Undergraduate = rowSums(
       across(
         all_of(ch2_undergraduate_columns)
       ),
       na.rm = TRUE
     ),
+
     Graduate = rowSums(
       across(
         all_of(ch2_graduate_columns)
       ),
       na.rm = TRUE
     ),
-    Masters = .data[[ch2_masters_col]],
-    MastersShare = .data[[ch2_masters_col]] / .data$Total,
-    DoctorateShare = .data[[ch2_doctorate_col]] / .data$Total,
-    OPTShare = .data[[ch2_opt_col]] / .data$Total
+
+    Masters =
+      .data[[ch2_masters_col]],
+
+    MastersShare =
+      .data[[ch2_masters_col]] /
+      .data$Total,
+
+    DoctorateShare =
+      .data[[ch2_doctorate_col]] /
+      .data$Total,
+
+    OPTShare =
+      .data[[ch2_opt_col]] /
+      .data$Total
   )
 
 
 # ----------------------------------------------------------------------------
-# 5. DERIVED GEOGRAPHIC SERIES
+# 7. DERIVED GEOGRAPHIC SERIES
 # ----------------------------------------------------------------------------
 
 ch2_india_china_grad <- ch2_fig202 %>%
   transmute(
     Year = .data$Year,
-    India_China = .data$India + .data$China
+
+    India_China =
+      .data$India +
+      .data$China
   )
 
+
+# Visually indent selected country-share rows under Asia's share.
+#
+# Unicode em spaces survive HTML whitespace collapsing and make the rows look
+# nested without changing shared table CSS.
+
+ch2_nested_label <- function(x) {
+  paste0(
+    "\u2003\u2003",
+    x
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 8. STANDARD 2001 / 2025 ENDPOINT HELPERS
+# ----------------------------------------------------------------------------
+
+ch2_baseline_endpoint <- function(
+    df,
+    column,
+    year_column = "Year",
+    academic = FALSE,
+    allow_earliest_fallback = FALSE
+) {
+
+  series <- series_data(
+    df,
+    column,
+    year_column
+  )
+
+
+  baseline <- series %>%
+    filter(
+      .data$Year ==
+        CH2_BASELINE_YEAR
+    ) %>%
+    slice_head(
+      n = 1
+    )
+
+
+  used_fallback <- FALSE
+
+
+  if (
+    nrow(baseline) != 1L
+  ) {
+
+    if (
+      !isTRUE(
+        allow_earliest_fallback
+      )
+    ) {
+
+      stop(
+        "Chapter 2 requires a usable ",
+        CH2_BASELINE_YEAR,
+        " observation for `",
+        column,
+        "`.",
+        call. = FALSE
+      )
+    }
+
+
+    baseline <- series %>%
+      slice_head(
+        n = 1
+      )
+
+
+    used_fallback <- TRUE
+  }
+
+
+  list(
+    value =
+      baseline$Value[[1]],
+
+    year =
+      baseline$Year[[1]],
+
+    used_fallback =
+      used_fallback,
+
+    label = if (
+      academic
+    ) {
+      academic_period_label(
+        df,
+        baseline$Year[[1]]
+      )
+    } else {
+      calendar_year_label(
+        baseline$Year[[1]]
+      )
+    }
+  )
+}
+
+
+ch2_current_endpoint <- function(
+    df,
+    column,
+    year_column = "Year",
+    academic = FALSE
+) {
+
+  series <- series_data(
+    df,
+    column,
+    year_column
+  )
+
+
+  current <- series %>%
+    filter(
+      .data$Year ==
+        CH2_TARGET_YEAR
+    ) %>%
+    slice_head(
+      n = 1
+    )
+
+
+  if (
+    nrow(current) != 1L
+  ) {
+
+    stop(
+      "Chapter 2 requires a usable ",
+      CH2_TARGET_YEAR,
+      " observation for `",
+      column,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  list(
+    value =
+      current$Value[[1]],
+
+    year =
+      CH2_TARGET_YEAR,
+
+    label = if (
+      academic
+    ) {
+      academic_period_label(
+        df,
+        CH2_TARGET_YEAR
+      )
+    } else {
+      calendar_year_label(
+        CH2_TARGET_YEAR
+      )
+    }
+  )
+}
+
+
+ch2_metric_series <- function(
+    stat_id,
+    section_id,
+    section,
+    measure,
+    df,
+    column,
+    value_type,
+    change_type,
+    year_column = "Year",
+    academic = FALSE,
+    emphasis = FALSE,
+    transform = identity,
+    allow_earliest_fallback = FALSE
+) {
+
+  first <- ch2_baseline_endpoint(
+    df,
+    column,
+    year_column = year_column,
+    academic = academic,
+    allow_earliest_fallback =
+      allow_earliest_fallback
+  )
+
+
+  last <- ch2_current_endpoint(
+    df,
+    column,
+    year_column = year_column,
+    academic = academic
+  )
+
+
+  first$value <- transform(
+    first$value
+  )
+
+
+  last$value <- transform(
+    last$value
+  )
+
+
+  out <- metric_values(
+    stat_id = stat_id,
+    section_id = section_id,
+    section = section,
+    measure = measure,
+
+    first_value = first$value,
+    first_label = first$label,
+
+    last_value = last$value,
+    last_label = last$label,
+
+    value_type = value_type,
+    change_type = change_type,
+    emphasis = emphasis
+  )
+
+
+  # Column header already says 2001.
+  out$Earlier <- paste0(
+    format_value(
+      first$value,
+      value_type
+    ),
+
+    if (
+      first$used_fallback
+    ) {
+      "*"
+    } else {
+      ""
+    }
+  )
+
+
+  # Column header already says 2025.
+  out$Latest <- format_value(
+    last$value,
+    value_type
+  )
+
+
+  out
+}
+
+
+# ----------------------------------------------------------------------------
+# 9. REGION-SHARE HELPER
+# ----------------------------------------------------------------------------
 
 ch2_region_share_metric <- function(
     region_column,
@@ -3156,6 +3653,7 @@ ch2_region_share_metric <- function(
     stat_id,
     emphasis = FALSE
 ) {
+
   region_columns <- setdiff(
     names(ch2_tab201),
     c(
@@ -3164,27 +3662,35 @@ ch2_region_share_metric <- function(
     )
   )
 
+
   tmp <- ch2_tab201 %>%
     mutate(
-      Year = year_number(.data$Year),
+      Year =
+        year_number(.data$Year),
+
       across(
         -Year,
         numeric_clean
       ),
+
       Total = rowSums(
         across(
           all_of(region_columns)
         ),
         na.rm = TRUE
       ),
-      Value = .data[[region_column]] / .data$Total
+
+      Value =
+        .data[[region_column]] /
+        .data$Total
     ) %>%
     filter(
       is.finite(.data$Year),
       is.finite(.data$Value)
     )
 
-  metric_series(
+
+  ch2_metric_series(
     stat_id = stat_id,
     section_id = "geography",
     section = "Geographic concentration",
@@ -3199,41 +3705,8 @@ ch2_region_share_metric <- function(
 
 
 # ----------------------------------------------------------------------------
-# 6. 2025/26 ENROLLMENT PROJECTION HELPERS
+# 10. FIG206 — DIRECT 2025 ACTUAL / 2026 PROJECTION
 # ----------------------------------------------------------------------------
-# The snapshot reports 2025 year-over-year changes. Apply those changes to the
-# actual 2024/25 category counts to reproduce the approved 2025/26 comparison.
-
-CH2_ENROLLMENT_2025 <- c(
-  Total = 1177766,
-  Undergraduate = 357231,
-  Graduate = 488481,
-  `Non-Degree` = 37801,
-  OPT = 294253
-)
-
-ch2_snapshot_change <- function(category) {
-  value <- ch2_fig206 %>%
-    filter(
-      normalize_label(.data$Category) ==
-        normalize_label(.env$category)
-    ) %>%
-    pull(.data$Change)
-
-  if (
-    length(value) != 1 ||
-    !is.finite(value[[1]])
-  ) {
-    stop(
-      "Expected one current enrollment-change value for `",
-      category,
-      "`."
-    )
-  }
-
-  value[[1]]
-}
-
 
 ch2_projection_metric <- function(
     category,
@@ -3241,226 +3714,553 @@ ch2_projection_metric <- function(
     measure,
     emphasis = FALSE
 ) {
-  first_value <- unname(
-    CH2_ENROLLMENT_2025[[category]]
-  )
 
-  change <- ch2_snapshot_change(
-    category
-  )
-
-  last_value <- first_value *
-    (
-      1 +
-      change / 100
+  row <- ch2_fig206 %>%
+    filter(
+      normalize_label(.data$Category) ==
+        normalize_label(.env$category)
     )
 
-  metric_values(
+
+  if (
+    nrow(row) != 1L
+  ) {
+
+    stop(
+      "Expected exactly one FIG206 row for `",
+      category,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  first_value <-
+    row[["2025"]][[1]]
+
+  last_value <-
+    row[["2026"]][[1]]
+
+  reported_change <-
+    row$Change[[1]]
+
+
+  if (
+    !is.finite(first_value) ||
+      !is.finite(last_value) ||
+      !is.finite(reported_change)
+  ) {
+
+    stop(
+      "FIG206 contains an unusable 2025, 2026, or Change value for `",
+      category,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  out <- metric_values(
     stat_id = stat_id,
-    section_id = "economy",
-    section = "Economic contribution and 2025/26 enrollment",
-    measure = measure,
-    first_value = first_value,
-    first_label = 2025,
-    last_value = last_value,
-    last_label = 2026,
-    value_type = "count",
-    change_type = "percent",
-    emphasis = emphasis,
-    projected = TRUE
+
+    section_id =
+      "projected_enrollment",
+
+    section =
+      "Projected Changes to International Enrollment Between 2025 and 2026",
+
+    measure =
+      measure,
+
+    first_value =
+      first_value,
+
+    first_label =
+      2025,
+
+    last_value =
+      last_value,
+
+    last_label =
+      2026,
+
+    value_type =
+      "count",
+
+    change_type =
+      "percent",
+
+    emphasis =
+      emphasis,
+
+    projected =
+      TRUE
   )
+
+
+  # * = left-column value is 2025 actual rather than 2001.
+  out$Earlier <- paste0(
+    format_value(
+      first_value,
+      "count"
+    ),
+    "*"
+  )
+
+
+  # Small P = 2026 projection.
+  out$Latest <- paste0(
+    format_value(
+      last_value,
+      "count"
+    ),
+    "ᴾ"
+  )
+
+
+  # Use FIG206's reported change directly.
+  out$Change <- paste0(
+    if (
+      reported_change > 0
+    ) {
+      "+"
+    } else {
+      ""
+    },
+
+    scales::number(
+      reported_change,
+      accuracy = 1
+    ),
+
+    "%"
+  )
+
+
+  out
 }
 
 
 # ----------------------------------------------------------------------------
-# 7. RECRUITMENT HELPERS
+# 11. RECRUITMENT — 2015 / 2025
 # ----------------------------------------------------------------------------
 
-CH2_RECRUITMENT_2025_ALL <- bind_rows(
-  ch2_fig207 %>%
-    transmute(
-      Rank = .data$Rank,
-      Level = "Undergraduate",
-      Priority = .data$Undergraduate_Country,
-      Percent = .data$Undergraduate_Value
-    ),
-  ch2_fig207 %>%
-    transmute(
-      Rank = .data$Rank,
-      Level = "Graduate",
-      Priority = .data$Graduate_Country,
-      Percent = .data$Graduate_Value
+ch2_slug <- function(x) {
+
+  x %>%
+    stringr::str_to_lower() %>%
+    stringr::str_replace_all(
+      "[^a-z0-9]+",
+      "_"
+    ) %>%
+    stringr::str_remove(
+      "^_"
+    ) %>%
+    stringr::str_remove(
+      "_$"
     )
-) %>%
+}
+
+
+# 2025 endpoint from updated FIG207new.
+
+ch2_recruitment_2025 <- ch2_fig207new_long %>%
   filter(
-    !is.na(.data$Priority),
-    nzchar(trimws(.data$Priority)),
-    is.finite(.data$Percent)
+    .data$Year ==
+      2025L
+  ) %>%
+  transmute(
+    Priority =
+      as.character(.data$Priority),
+
+    Value2025 =
+      .data$Percent
+  )
+
+
+# Like-for-like country comparisons only.
+
+ch2_recruitment_changes <- CH2_RECRUITMENT_2015_ALL %>%
+  filter(
+    .data$Priority %in%
+      CH2_RECRUITMENT_COUNTRIES
+  ) %>%
+  transmute(
+    Priority =
+      as.character(.data$Priority),
+
+    Value2015 =
+      .data$Percent
+  ) %>%
+  inner_join(
+    ch2_recruitment_2025,
+    by = "Priority"
   ) %>%
   mutate(
-    Year = 2025L
-  )
+    Change =
+      .data$Value2025 -
+      .data$Value2015,
 
-
-ch2_recruitment_top_2025 <- function(
-    level = c(
-      "Undergraduate",
-      "Graduate"
-    )
-) {
-  level <- match.arg(level)
-
-  CH2_RECRUITMENT_2025_ALL %>%
-    filter(
-      .data$Level == .env$level
-    ) %>%
-    slice_min(
-      order_by = .data$Rank,
-      n = 1,
-      with_ties = FALSE
-    )
-}
-
-
-ch2_recruitment_metric <- function(
-    level = c(
-      "Undergraduate",
-      "Graduate"
-    ),
-    stat_id,
-    emphasis = TRUE
-) {
-  level <- match.arg(level)
-
-  current <- ch2_recruitment_top_2025(
-    level
-  )
-
-  baseline <- CH2_RECRUITMENT_2015_TOP
-
-  metric_text(
-    stat_id = stat_id,
-    section_id = "recruitment",
-    section = "Recruitment and barriers",
-    measure = paste0(
-      "Top ",
-      tolower(level),
-      " recruitment target"
-    ),
-    earlier = paste0(
-      "CN: ",
-      scales::number(
-        baseline$Percent[[1]],
-        accuracy = 0.1
-      ),
-      "% (2015)"
-    ),
-    latest = paste0(
-      current$Priority[[1]],
-      ": ",
-      scales::number(
-        current$Percent[[1]],
-        accuracy = 0.1
-      ),
-      "% (2025)"
-    ),
-    change = paste0(
-      "CN \u2192 ",
-      current$Priority[[1]]
-    ),
-    emphasis = emphasis
-  )
-}
-
-
-# ----------------------------------------------------------------------------
-# 8. BARRIER HELPERS
-# ----------------------------------------------------------------------------
-
-ch2_reason_metric <- function(
-    reason,
-    stat_id,
-    measure = reason,
-    emphasis = FALSE
-) {
-  row <- ch2_fig208 %>%
-    filter(
-      normalize_label(.data$Reason) ==
-        normalize_label(.env$reason)
-    )
-
-  if (
-    nrow(row) != 1
-  ) {
-    return(NULL)
-  }
-
-  periods <- temporal_columns(
-    row,
-    exclude = "Reason"
-  )
-
-  values <- numeric_clean(
-    unlist(
-      row[periods$column],
-      use.names = FALSE
-    )
-  )
-
-  keep <- is.finite(values)
-
-  periods <- periods[
-    keep,
-    ,
-    drop = FALSE
-  ]
-
-  values <- values[keep]
-
-  if (
-    length(values) == 0
-  ) {
-    return(NULL)
-  }
-
-  if (
-    length(values) == 1
-  ) {
-    return(
-      metric_snapshot(
-        stat_id = stat_id,
-        section_id = "recruitment",
-        section = "Recruitment and barriers",
-        measure = measure,
-        value = values[[1]],
-        label = periods$column[[1]],
-        value_type = "percent_value",
-        emphasis = emphasis
+    StatID = paste0(
+      "recruitment_",
+      ch2_slug(
+        .data$Priority
       )
     )
-  }
+  )
 
-  metric_values(
-    stat_id = stat_id,
-    section_id = "recruitment",
-    section = "Recruitment and barriers",
-    measure = measure,
-    first_value = values[[1]],
-    first_label = periods$column[[1]],
-    last_value = values[[length(values)]],
-    last_label = periods$column[[nrow(periods)]],
-    value_type = "percent_value",
-    change_type = "pp_percent",
-    emphasis = emphasis
+
+# Three countries with the largest absolute changes.
+
+ch2_recruitment_top3 <- ch2_recruitment_changes %>%
+  arrange(
+    desc(
+      abs(.data$Change)
+    ),
+    .data$Priority
+  ) %>%
+  slice_head(
+    n = 3
+  )
+
+
+ch2_recruitment_top3_stats <- purrr::pmap_dfr(
+  ch2_recruitment_top3,
+
+  function(
+      Priority,
+      Value2015,
+      Value2025,
+      Change,
+      StatID,
+      ...
+  ) {
+
+    out <- metric_values(
+      stat_id =
+        StatID,
+
+      section_id =
+        "recruitment",
+
+      section =
+        "Recruitment and barriers (2015–2025)",
+
+      measure = paste0(
+        "Institutions citing ",
+        Priority,
+        " as a recruitment priority"
+      ),
+
+      first_value =
+        Value2015,
+
+      first_label =
+        2015,
+
+      last_value =
+        Value2025,
+
+      last_label =
+        2025,
+
+      value_type =
+        "percent_value",
+
+      change_type =
+        "pp_percent"
+    )
+
+
+    # * = left-column value is 2015 rather than 2001.
+    out$Earlier <- paste0(
+      format_value(
+        Value2015,
+        "percent_value"
+      ),
+      "*"
+    )
+
+
+    out$Latest <- format_value(
+      Value2025,
+      "percent_value"
+    )
+
+
+    out
+  }
+)
+
+
+ch2_recruitment_top3_ids <-
+  ch2_recruitment_top3_stats$StatID
+
+
+# ----------------------------------------------------------------------------
+# Overall top recruitment target
+# ----------------------------------------------------------------------------
+
+ch2_comparable_priorities <- intersect(
+  CH2_RECRUITMENT_COUNTRIES,
+  intersect(
+    CH2_RECRUITMENT_2015_ALL$Priority,
+    ch2_recruitment_2025$Priority
+  )
+)
+
+
+ch2_top_target_2015 <- CH2_RECRUITMENT_2015_ALL %>%
+  filter(
+    .data$Priority %in%
+      ch2_comparable_priorities
+  ) %>%
+  slice_max(
+    order_by = .data$Percent,
+    n = 1,
+    with_ties = FALSE
+  )
+
+
+ch2_top_target_2025 <- ch2_recruitment_2025 %>%
+  filter(
+    .data$Priority %in%
+      ch2_comparable_priorities
+  ) %>%
+  slice_max(
+    order_by = .data$Value2025,
+    n = 1,
+    with_ties = FALSE
+  )
+
+
+ch2_top_recruitment_target <- metric_text(
+  stat_id =
+    "top_recruitment_target",
+
+  section_id =
+    "recruitment",
+
+  section =
+    "Recruitment and barriers (2015–2025)",
+
+  measure =
+    "Top recruitment target",
+
+  earlier = paste0(
+    ch2_top_target_2015$Priority[[1]],
+    ": ",
+    scales::number(
+      ch2_top_target_2015$Percent[[1]],
+      accuracy = 0.1
+    ),
+    "%*"
+  ),
+
+  latest = paste0(
+    ch2_top_target_2025$Priority[[1]],
+    ": ",
+    scales::number(
+      ch2_top_target_2025$Value2025[[1]],
+      accuracy = 0.1
+    ),
+    "%"
+  ),
+
+  change = paste0(
+    ch2_top_target_2015$Priority[[1]],
+    " → ",
+    ch2_top_target_2025$Priority[[1]]
+  ),
+
+  emphasis =
+    TRUE
+)
+
+
+# ----------------------------------------------------------------------------
+# 12. FIG208 — TOP THREE REASONS CITED IN 2025
+# ----------------------------------------------------------------------------
+#
+# Rank by the Fall 2025 share of institutions citing each reason.
+#
+# Only reasons with a valid 2015 and 2025 observation are eligible so every
+# displayed row has a valid 2015–2025 comparison.
+
+ch2_barrier_changes <- ch2_fig208 %>%
+  transmute(
+    Reason =
+      as.character(.data$Reason),
+
+    Value2015 =
+      .data[["Fall 2015"]],
+
+    Value2025 =
+      .data[["Fall 2025"]]
+  ) %>%
+  filter(
+    is.finite(.data$Value2015),
+    is.finite(.data$Value2025)
+  ) %>%
+  mutate(
+    Change =
+      .data$Value2025 -
+      .data$Value2015,
+
+    StatID = paste0(
+      "barrier_",
+      ch2_slug(
+        .data$Reason
+      )
+    )
+  )
+
+
+ch2_barrier_top3 <- ch2_barrier_changes %>%
+  arrange(
+    desc(
+      .data$Value2025
+    ),
+    .data$Reason
+  ) %>%
+  slice_head(
+    n = 3
+  )
+
+
+ch2_barrier_display_label <- function(reason) {
+
+  dplyr::case_when(
+
+    reason ==
+      "Visa application process" ~
+      "Institutions citing visa application process",
+
+    reason ==
+      "Potential problems at the port of entry" ~
+      "Institutions citing potential problems at the port of entry",
+
+    reason ==
+      "Enroll in another country's institutions" ~
+      "Institutions citing enrollment in another country",
+
+    reason ==
+      "Securing a job in the United States after their studies" ~
+      "Institutions citing difficulty securing a US job after study",
+
+    reason ==
+      "Cost of tuition/fees at U.S. host institution" ~
+      "Institutions citing cost of tuition and fees",
+
+    reason ==
+      "U.S. travel restrictions" ~
+      "Institutions citing US travel restrictions",
+
+    reason ==
+      "Feeling unwelcome in the United States" ~
+      "Institutions citing students feeling unwelcome",
+
+    reason ==
+      "Social and political environment in the United States" ~
+      "Institutions citing US social and political environment",
+
+    reason ==
+      "Visa status while in the United States" ~
+      "Institutions citing visa status while in the US",
+
+    reason ==
+      "Stay home and enroll in their own country's higher education institutions" ~
+      "Institutions citing students staying home to enroll",
+
+    TRUE ~
+      paste0(
+        "Institutions citing ",
+        stringr::str_to_lower(
+          reason
+        )
+      )
   )
 }
 
 
+ch2_barrier_top3_stats <- purrr::pmap_dfr(
+  ch2_barrier_top3,
+
+  function(
+      Reason,
+      Value2015,
+      Value2025,
+      Change,
+      StatID,
+      ...
+  ) {
+
+    out <- metric_values(
+      stat_id =
+        StatID,
+
+      section_id =
+        "recruitment",
+
+      section =
+        "Recruitment and barriers (2015–2025)",
+
+      measure =
+        ch2_barrier_display_label(
+          Reason
+        ),
+
+      first_value =
+        Value2015,
+
+      first_label =
+        2015,
+
+      last_value =
+        Value2025,
+
+      last_label =
+        2025,
+
+      value_type =
+        "percent_value",
+
+      change_type =
+        "pp_percent"
+    )
+
+
+    # * = left-column value is 2015 rather than 2001.
+    out$Earlier <- paste0(
+      format_value(
+        Value2015,
+        "percent_value"
+      ),
+      "*"
+    )
+
+
+    out$Latest <- format_value(
+      Value2025,
+      "percent_value"
+    )
+
+
+    out
+  }
+)
+
+
+ch2_barrier_top3_ids <-
+  ch2_barrier_top3_stats$StatID
+
+
 # ----------------------------------------------------------------------------
-# 9. CODE THE ADDITIONAL TABLE 2.02–2.04 STATISTICS
+# 13. ADDITIONAL TABLE 2.02–2.04 STATISTICS
 # ----------------------------------------------------------------------------
-# These remain available in ch2_all_stats, but they are intentionally NOT in
-# CH2_SELECTED_STATS because the approved example does not display them.
+#
+# Keep these coded and available in ch2_all_stats, but they are not selected
+# for the current infographic.
 
 CH2_TAB202_FIELD_FILES <- list(
   "Engineering" = ch2_tab202a,
@@ -3473,18 +4273,27 @@ CH2_TAB202_FIELD_FILES <- list(
   "Social Sciences" = ch2_tab202h
 )
 
+
 CH2_TAB202_PROPORTION_FIELDS <- c(
   "Engineering",
   "Math & Computer Science",
   "Physical & Life Sciences"
 )
 
+
 ch2_tab202_long <- purrr::imap_dfr(
   CH2_TAB202_FIELD_FILES,
-  function(df, field_name) {
+
+  function(
+      df,
+      field_name
+  ) {
+
     df %>%
       mutate(
-        Year = year_number(.data$Year),
+        Year =
+          year_number(.data$Year),
+
         across(
           -Year,
           numeric_clean
@@ -3500,16 +4309,20 @@ ch2_tab202_long <- purrr::imap_dfr(
       ) %>%
       mutate(
         Share = if (
-          field_name %in% CH2_TAB202_PROPORTION_FIELDS
+          field_name %in%
+            CH2_TAB202_PROPORTION_FIELDS
         ) {
           .data$Share * 100
         } else {
           .data$Share
         },
-        Field = field_name
+
+        Field =
+          field_name
       )
   }
 )
+
 
 ch2_tab202_changes <- ch2_tab202_long %>%
   group_by(
@@ -3524,12 +4337,24 @@ ch2_tab202_changes <- ch2_tab202_long %>%
     n() >= 2
   ) %>%
   summarise(
-    FirstYear = first(.data$Year),
-    LastYear = last(.data$Year),
-    First = first(.data$Share),
-    Last = last(.data$Share),
-    Change = .data$Last - .data$First,
-    .groups = "drop"
+    FirstYear =
+      first(.data$Year),
+
+    LastYear =
+      last(.data$Year),
+
+    First =
+      first(.data$Share),
+
+    Last =
+      last(.data$Share),
+
+    Change =
+      .data$Last -
+      .data$First,
+
+    .groups =
+      "drop"
   )
 
 
@@ -3539,34 +4364,57 @@ ch2_tab202_example_metric <- function(
     stat_id,
     emphasis = FALSE
 ) {
+
   row <- ch2_tab202_changes %>%
     filter(
-      .data$Country == .env$country,
-      .data$Field == .env$field
+      .data$Country ==
+        .env$country,
+
+      .data$Field ==
+        .env$field
     )
+
 
   if (
     nrow(row) != 1
   ) {
-    return(NULL)
+    return(
+      NULL
+    )
   }
+
 
   metric_values(
     stat_id = stat_id,
     section_id = "field_shift",
     section = "How the field mix is shifting",
+
     measure = paste0(
       country,
       " — ",
       tolower(field)
     ),
-    first_value = row$First[[1]],
-    first_label = row$FirstYear[[1]],
-    last_value = row$Last[[1]],
-    last_label = row$LastYear[[1]],
-    value_type = "percent_value",
-    change_type = "pp_percent",
-    emphasis = emphasis
+
+    first_value =
+      row$First[[1]],
+
+    first_label =
+      row$FirstYear[[1]],
+
+    last_value =
+      row$Last[[1]],
+
+    last_label =
+      row$LastYear[[1]],
+
+    value_type =
+      "percent_value",
+
+    change_type =
+      "pp_percent",
+
+    emphasis =
+      emphasis
   )
 }
 
@@ -3577,21 +4425,28 @@ ch2_grad_tvh_metric <- function(
     stat_id,
     emphasis = FALSE
 ) {
+
   tmp <- df %>%
     transmute(
-      Year = year_number(.data$Year),
-      Temporary = numeric_clean(
-        .data$`Temporary visa holders`
-      ),
-      Domestic = numeric_clean(
-        .data$`U.S. citizens and permanent residents`
-      )
+      Year =
+        year_number(.data$Year),
+
+      Temporary =
+        numeric_clean(
+          .data$`Temporary visa holders`
+        ),
+
+      Domestic =
+        numeric_clean(
+          .data$`U.S. citizens and permanent residents`
+        )
     ) %>%
     mutate(
-      Share = .data$Temporary /
+      Share =
+        .data$Temporary /
         (
           .data$Temporary +
-          .data$Domestic
+            .data$Domestic
         )
     ) %>%
     filter(
@@ -3599,10 +4454,12 @@ ch2_grad_tvh_metric <- function(
       is.finite(.data$Share)
     )
 
+
   metric_series(
     stat_id = stat_id,
     section_id = "graduate_tvh",
-    section = "Temporary-visa share of graduate enrollment",
+    section =
+      "Temporary-visa share of graduate enrollment",
     measure = field,
     df = tmp,
     column = "Share",
@@ -3620,41 +4477,60 @@ ch2_tab204b_normalized <- ch2_tab204b %>%
     )
   )
 
+
 ch2_doctorate_tvh_metric <- function(
     field,
     stat_id,
     display_name = field,
     emphasis = FALSE
 ) {
+
   if (
-    !field %in% names(ch2_tab204a) ||
-    !field %in% names(ch2_tab204b_normalized)
+    !field %in%
+      names(ch2_tab204a) ||
+      !field %in%
+        names(ch2_tab204b_normalized)
   ) {
-    return(NULL)
+
+    return(
+      NULL
+    )
   }
 
+
   tmp <- inner_join(
+
     ch2_tab204a %>%
       transmute(
-        Year = year_number(.data$Year),
-        Domestic = numeric_clean(
-          .data[[field]]
-        )
+        Year =
+          year_number(.data$Year),
+
+        Domestic =
+          numeric_clean(
+            .data[[field]]
+          )
       ),
+
     ch2_tab204b_normalized %>%
       transmute(
-        Year = year_number(.data$Year),
-        Temporary = numeric_clean(
-          .data[[field]]
-        )
+        Year =
+          year_number(.data$Year),
+
+        Temporary =
+          numeric_clean(
+            .data[[field]]
+          )
       ),
+
     by = "Year"
+
   ) %>%
     mutate(
-      Share = .data$Temporary /
+      Share =
+        .data$Temporary /
         (
           .data$Temporary +
-          .data$Domestic
+            .data$Domestic
         )
     ) %>%
     filter(
@@ -3662,10 +4538,12 @@ ch2_doctorate_tvh_metric <- function(
       is.finite(.data$Share)
     )
 
+
   metric_series(
     stat_id = stat_id,
     section_id = "doctorate_tvh",
-    section = "Temporary-visa share of research doctorates",
+    section =
+      "Temporary-visa share of research doctorates",
     measure = display_name,
     df = tmp,
     column = "Share",
@@ -3677,16 +4555,17 @@ ch2_doctorate_tvh_metric <- function(
 
 
 # ----------------------------------------------------------------------------
-# 10. BUILD ALL AVAILABLE CHAPTER 2 STATISTICS
+# 14. BUILD ALL AVAILABLE CHAPTER 2 STATISTICS
 # ----------------------------------------------------------------------------
 
 ch2_all_stats <- bind_rows(
+
 
   # ==========================================================================
   # SCALE AND ACADEMIC LEVEL
   # ==========================================================================
 
-  metric_series(
+  ch2_metric_series(
     "total_international_students",
     "academic_level",
     "Scale and academic level",
@@ -3699,7 +4578,8 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "international_undergraduates",
     "academic_level",
     "Scale and academic level",
@@ -3711,7 +4591,8 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "international_graduates",
     "academic_level",
     "Scale and academic level",
@@ -3724,7 +4605,8 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "international_masters",
     "academic_level",
     "Scale and academic level",
@@ -3736,7 +4618,8 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "masters_share",
     "academic_level",
     "Scale and academic level",
@@ -3748,7 +4631,8 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "doctorate_share",
     "academic_level",
     "Scale and academic level",
@@ -3760,7 +4644,8 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "opt_share",
     "academic_level",
     "Scale and academic level",
@@ -3774,11 +4659,12 @@ ch2_all_stats <- bind_rows(
   ),
 
 
+
   # ==========================================================================
   # GEOGRAPHIC CONCENTRATION
   # ==========================================================================
 
-  metric_series(
+  ch2_metric_series(
     "asia_count",
     "geography",
     "Geographic concentration",
@@ -3791,7 +4677,8 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "asia_share",
     "geography",
     "Geographic concentration",
@@ -3804,23 +4691,16 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  ch2_region_share_metric(
-    "Europe",
-    "Europe’s share of international students",
-    "europe_share"
-  ),
 
-  ch2_region_share_metric(
-    "Africa, Sub-Saharan",
-    "Sub-Saharan Africa’s share of international students",
-    "sub_saharan_africa_share"
-  ),
+  # Nested directly beneath Asia's share.
 
-  metric_series(
+  ch2_metric_series(
     "china_undergraduate_share",
     "geography",
     "Geographic concentration",
-    "CN’s share of international undergraduates",
+    ch2_nested_label(
+      "China’s share of international undergraduates"
+    ),
     ch2_fig201,
     "China",
     "share",
@@ -3828,36 +4708,13 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
-    "india_undergraduate_share",
-    "geography",
-    "Geographic concentration",
-    "India’s share of international undergraduates",
-    ch2_fig201,
-    "India",
-    "share",
-    "pp_share",
-    academic = TRUE
-  ),
-
-  metric_series(
-    "india_graduate_share",
-    "geography",
-    "Geographic concentration",
-    "India’s share of international graduate students",
-    ch2_fig202,
-    "India",
-    "share",
-    "pp_share",
-    academic = TRUE,
-    emphasis = TRUE
-  ),
-
-  metric_series(
+  ch2_metric_series(
     "china_graduate_share",
     "geography",
     "Geographic concentration",
-    "CN’s share of international graduate students",
+    ch2_nested_label(
+      "China’s share of international graduate students"
+    ),
     ch2_fig202,
     "China",
     "share",
@@ -3866,24 +4723,45 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
-    "india_china_graduate_share",
+
+  ch2_metric_series(
+    "india_undergraduate_share",
     "geography",
     "Geographic concentration",
-    "Combined India-CN share of graduate students",
-    ch2_india_china_grad,
-    "India_China",
+    ch2_nested_label(
+      "India’s share of international undergraduates"
+    ),
+    ch2_fig201,
+    "India",
+    "share",
+    "pp_share",
+    academic = TRUE
+  ),
+
+
+  ch2_metric_series(
+    "india_graduate_share",
+    "geography",
+    "Geographic concentration",
+    ch2_nested_label(
+      "India’s share of international graduate students"
+    ),
+    ch2_fig202,
+    "India",
     "share",
     "pp_share",
     academic = TRUE,
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "south_korea_graduate_share",
     "geography",
     "Geographic concentration",
-    "South Korea’s share of international graduate students",
+    ch2_nested_label(
+      "South Korea’s share of international graduate students"
+    ),
     ch2_fig202,
     "South Korea",
     "share",
@@ -3892,11 +4770,40 @@ ch2_all_stats <- bind_rows(
   ),
 
 
+  ch2_metric_series(
+    "india_china_graduate_share",
+    "geography",
+    "Geographic concentration",
+    "Combined India-China share of graduate students",
+    ch2_india_china_grad,
+    "India_China",
+    "share",
+    "pp_share",
+    academic = TRUE,
+    emphasis = TRUE
+  ),
+
+
+  ch2_region_share_metric(
+    "Europe",
+    "Europe’s share of international students",
+    "europe_share"
+  ),
+
+
+  ch2_region_share_metric(
+    "Africa, Sub-Saharan",
+    "Sub-Saharan Africa’s share of international students",
+    "sub_saharan_africa_share"
+  ),
+
+
+
   # ==========================================================================
   # CONCENTRATION BY STEM FIELD
   # ==========================================================================
 
-  metric_series(
+  ch2_metric_series(
     "math_cs_students",
     "fields",
     "Concentration by STEM field",
@@ -3909,7 +4816,8 @@ ch2_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "engineering_students",
     "fields",
     "Concentration by STEM field",
@@ -3921,7 +4829,11 @@ ch2_all_stats <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  # Country-specific STEM series do not extend to 2001.
+  # Use the first available observation and mark with *.
+
+  ch2_metric_series(
     "india_stem_students",
     "fields",
     "Concentration by STEM field",
@@ -3930,22 +4842,26 @@ ch2_all_stats <- bind_rows(
     "India",
     "count",
     "percent",
-    emphasis = TRUE
+    emphasis = TRUE,
+    allow_earliest_fallback = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "china_stem_students",
     "fields",
     "Concentration by STEM field",
-    "STEM students from CN",
+    "STEM students from China",
     ch2_fig204,
     "China",
     "count",
     "percent",
-    emphasis = TRUE
+    emphasis = TRUE,
+    allow_earliest_fallback = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "nepal_stem_students",
     "fields",
     "Concentration by STEM field",
@@ -3953,10 +4869,12 @@ ch2_all_stats <- bind_rows(
     ch2_fig204,
     "Nepal",
     "count",
-    "percent"
+    "percent",
+    allow_earliest_fallback = TRUE
   ),
 
-  metric_series(
+
+  ch2_metric_series(
     "south_korea_stem_students",
     "fields",
     "Concentration by STEM field",
@@ -3964,25 +4882,15 @@ ch2_all_stats <- bind_rows(
     ch2_fig204,
     "South Korea",
     "count",
-    "percent"
+    "percent",
+    allow_earliest_fallback = TRUE
   ),
 
 
-  # ==========================================================================
-  # ECONOMIC CONTRIBUTION AND 2025/26 ENROLLMENT
-  # ==========================================================================
 
-  metric_series(
-    "economic_contribution",
-    "economy",
-    "Economic contribution and 2025/26 enrollment",
-    "International-student contribution to the US economy",
-    ch2_fig205,
-    "value",
-    "currency_billions_from_dollars",
-    "multiple",
-    emphasis = TRUE
-  ),
+  # ==========================================================================
+  # PROJECTED CHANGES TO INTERNATIONAL ENROLLMENT BETWEEN 2025 AND 2026
+  # ==========================================================================
 
   ch2_projection_metric(
     "Total",
@@ -3991,11 +4899,13 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_projection_metric(
     "Undergraduate",
     "enrollment_undergraduate",
     "Undergraduate enrollment"
   ),
+
 
   ch2_projection_metric(
     "Graduate",
@@ -4004,11 +4914,13 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_projection_metric(
     "Non-Degree",
     "enrollment_nondegree",
     "Non-degree enrollment"
   ),
+
 
   ch2_projection_metric(
     "OPT",
@@ -4018,82 +4930,35 @@ ch2_all_stats <- bind_rows(
   ),
 
 
+
   # ==========================================================================
-  # RECRUITMENT AND BARRIERS
+  # RECRUITMENT AND BARRIERS (2015–2025)
   # ==========================================================================
 
-  ch2_recruitment_metric(
-    "Undergraduate",
-    "top_recruitment_target_undergrad"
+  ch2_top_recruitment_target,
+
+  ch2_recruitment_top3_stats,
+
+  ch2_barrier_top3_stats,
+
+
+
+  # ==========================================================================
+  # ECONOMIC CONTRIBUTION
+  # ==========================================================================
+
+  ch2_metric_series(
+    "economic_contribution",
+    "economic_contribution",
+    "Economic contribution",
+    "International-student contribution to the US economy",
+    ch2_fig205,
+    "value",
+    "currency_billions_from_dollars",
+    "multiple",
+    emphasis = TRUE
   ),
 
-  ch2_recruitment_metric(
-    "Graduate",
-    "top_recruitment_target_grad"
-  ),
-
-  # Code ALL FIG208 barrier rows.
-  ch2_reason_metric(
-    "Visa application process",
-    "visa_application_process",
-    "Institutions citing the visa application process",
-    TRUE
-  ),
-
-  ch2_reason_metric(
-    "U.S. travel restrictions",
-    "travel_restrictions",
-    "Institutions citing US travel restrictions"
-  ),
-
-  ch2_reason_metric(
-    "Feeling unwelcome in the United States",
-    "feeling_unwelcome",
-    "Institutions citing students feeling unwelcome",
-    TRUE
-  ),
-
-  ch2_reason_metric(
-    "Social and political environment in the United States",
-    "social_political_environment",
-    "Institutions citing the US social and political environment"
-  ),
-
-  ch2_reason_metric(
-    "Potential problems at the port of entry",
-    "port_of_entry",
-    "Institutions citing problems at the port of entry"
-  ),
-
-  ch2_reason_metric(
-    "Visa status while in the United States",
-    "visa_status",
-    "Institutions citing visa status while in the US"
-  ),
-
-  ch2_reason_metric(
-    "Stay home and enroll in their own country's higher education institutions",
-    "stay_home",
-    "Students staying home to enroll"
-  ),
-
-  ch2_reason_metric(
-    "Enroll in another country's institutions",
-    "another_country",
-    "Students enrolling in another country"
-  ),
-
-  ch2_reason_metric(
-    "Securing a job in the United States after their studies",
-    "us_job",
-    "Securing a US job after study"
-  ),
-
-  ch2_reason_metric(
-    "Cost of tuition/fees at U.S. host institution",
-    "tuition_cost",
-    "Cost of tuition and fees"
-  ),
 
 
   # ==========================================================================
@@ -4107,6 +4972,7 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_tab202_example_metric(
     "China",
     "Math & Computer Science",
@@ -4114,17 +4980,20 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_tab202_example_metric(
     "India",
     "Engineering",
     "tab202_india_engineering"
   ),
 
+
   ch2_grad_tvh_metric(
     ch2_tab203a,
     "Science",
     "tab203_science"
   ),
+
 
   ch2_grad_tvh_metric(
     ch2_tab203b,
@@ -4133,11 +5002,13 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_grad_tvh_metric(
     ch2_tab203c,
     "Health",
     "tab203_health"
   ),
+
 
   ch2_doctorate_tvh_metric(
     "Computer Sciences",
@@ -4146,12 +5017,14 @@ ch2_all_stats <- bind_rows(
     TRUE
   ),
 
+
   ch2_doctorate_tvh_metric(
     "Engineering",
     "tab204_engineering",
     "Engineering",
     TRUE
   ),
+
 
   ch2_doctorate_tvh_metric(
     "Mathematics",
@@ -4163,72 +5036,232 @@ ch2_all_stats <- bind_rows(
 
 
 # ----------------------------------------------------------------------------
-# 11. SELECT ONLY THE APPROVED EXAMPLE STATISTICS
+# 15. APPLY INCLUDE / EXCLUDE CONTROLS
 # ----------------------------------------------------------------------------
-# Everything above remains coded and available.
 #
-# IMPORTANT:
-# Do NOT manually define Page 1 / Page 2 here. Keep one ordered vector of
-# selected statistics and let infographics.R apply the global:
-#
-#   INFOGRAPHIC_ROWS_PER_PAGE <- 30L
-#
-# This guarantees Chapter 2 uses the same 30-body-row pagination rule as the
-# other chapter infographics.
+# recruitment_top3 and barrier_top3 are group controls because their individual
+# rows are selected dynamically from the current data.
 
-CH2_SELECTED_STATS <- c(
-  # Scale and academic level
-  "total_international_students",
-  "international_undergraduates",
-  "international_graduates",
-  "international_masters",
-  "masters_share",
-  "doctorate_share",
-  "opt_share",
-
-  # Geographic concentration
-  "asia_count",
-  "asia_share",
-  "europe_share",
-  "sub_saharan_africa_share",
-  "china_undergraduate_share",
-  "india_undergraduate_share",
-  "india_graduate_share",
-  "china_graduate_share",
-  "india_china_graduate_share",
-  "south_korea_graduate_share",
-
-  # Concentration by STEM field
-  "math_cs_students",
-  "engineering_students",
-  "india_stem_students",
-  "china_stem_students",
-  "nepal_stem_students",
-  "south_korea_stem_students",
-
-  # Economic contribution and 2025/26 enrollment
-  "economic_contribution",
-  "enrollment_total",
-  "enrollment_undergraduate",
-  "enrollment_graduate",
-  "enrollment_nondegree",
-  "enrollment_opt",
-
-  # Recruitment comparison
-  "top_recruitment_target_undergrad",
-  "top_recruitment_target_grad",
-
-  # Selected barriers
-  "visa_application_process",
-  "travel_restrictions",
-  "feeling_unwelcome",
-  "social_political_environment"
+ch2_group_controls <- c(
+  "recruitment_top3",
+  "barrier_top3"
 )
 
 
+ch2_fixed_controls <- setdiff(
+  names(CH2_INCLUDE),
+  ch2_group_controls
+)
+
+
+ch2_available_fixed_ids <- unique(
+  ch2_all_stats$StatID
+)
+
+
+missing_ch2_controls <- setdiff(
+  ch2_fixed_controls,
+  ch2_available_fixed_ids
+)
+
+
+if (
+  length(
+    missing_ch2_controls
+  )
+) {
+
+  stop(
+    paste0(
+      "CH2_INCLUDE contains controls that do not correspond to a Chapter 2 ",
+      "statistic: ",
+      paste(
+        missing_ch2_controls,
+        collapse = ", "
+      ),
+      "."
+    ),
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# Build ordered list of displayed statistics
+# ----------------------------------------------------------------------------
+
+CH2_SELECTED_STATS <- c(
+
+  # Scale and academic level
+  if (isTRUE(CH2_INCLUDE[["total_international_students"]])) {
+    "total_international_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["international_undergraduates"]])) {
+    "international_undergraduates"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["international_graduates"]])) {
+    "international_graduates"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["international_masters"]])) {
+    "international_masters"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["masters_share"]])) {
+    "masters_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["doctorate_share"]])) {
+    "doctorate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["opt_share"]])) {
+    "opt_share"
+  },
+
+
+  # Geographic concentration
+  if (isTRUE(CH2_INCLUDE[["asia_count"]])) {
+    "asia_count"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["asia_share"]])) {
+    "asia_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["china_undergraduate_share"]])) {
+    "china_undergraduate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["china_graduate_share"]])) {
+    "china_graduate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["india_undergraduate_share"]])) {
+    "india_undergraduate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["india_graduate_share"]])) {
+    "india_graduate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["south_korea_graduate_share"]])) {
+    "south_korea_graduate_share"
+  },
+  
+  if (isTRUE(CH2_INCLUDE[["india_china_graduate_share"]])) {
+    "india_china_graduate_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["europe_share"]])) {
+    "europe_share"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["sub_saharan_africa_share"]])) {
+    "sub_saharan_africa_share"
+  },
+
+
+  # Concentration by STEM field
+  if (isTRUE(CH2_INCLUDE[["math_cs_students"]])) {
+    "math_cs_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["engineering_students"]])) {
+    "engineering_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["india_stem_students"]])) {
+    "india_stem_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["china_stem_students"]])) {
+    "china_stem_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["nepal_stem_students"]])) {
+    "nepal_stem_students"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["south_korea_stem_students"]])) {
+    "south_korea_stem_students"
+  },
+
+
+  # Projected changes to international enrollment, 2025–2026
+  if (isTRUE(CH2_INCLUDE[["enrollment_total"]])) {
+    "enrollment_total"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["enrollment_undergraduate"]])) {
+    "enrollment_undergraduate"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["enrollment_graduate"]])) {
+    "enrollment_graduate"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["enrollment_nondegree"]])) {
+    "enrollment_nondegree"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["enrollment_opt"]])) {
+    "enrollment_opt"
+  },
+
+
+  # Recruitment and barriers, 2015–2025
+  if (isTRUE(CH2_INCLUDE[["top_recruitment_target"]])) {
+    "top_recruitment_target"
+  },
+
+  if (isTRUE(CH2_INCLUDE[["recruitment_top3"]])) {
+    ch2_recruitment_top3_ids
+  },
+
+  if (isTRUE(CH2_INCLUDE[["barrier_top3"]])) {
+    ch2_barrier_top3_ids
+  },
+
+
+  # Economic contribution — deliberately last
+  if (isTRUE(CH2_INCLUDE[["economic_contribution"]])) {
+    "economic_contribution"
+  }
+)
+
+
+CH2_SELECTED_STATS <- unique(
+  CH2_SELECTED_STATS[
+    !is.na(CH2_SELECTED_STATS) &
+      nzchar(CH2_SELECTED_STATS)
+  ]
+)
+
+
+if (
+  length(
+    CH2_SELECTED_STATS
+  ) == 0L
+) {
+
+  stop(
+    "CH2_INCLUDE excludes every Chapter 2 statistic.",
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# Filter BEFORE pagination
+# ----------------------------------------------------------------------------
+
 ch2_selected <- ch2_all_stats %>%
   filter(
-    .data$StatID %in% CH2_SELECTED_STATS
+    .data$StatID %in%
+      CH2_SELECTED_STATS
   ) %>%
   mutate(
     DisplayOrder = match(
@@ -4242,7 +5275,7 @@ ch2_selected <- ch2_all_stats %>%
 
 
 # ----------------------------------------------------------------------------
-# 12. BUILD AND EXPORT USING THE GLOBAL 30-BODY-ROW / 5-HEADER PAGE CONTRACT
+# 16. BUILD AND EXPORT
 # ----------------------------------------------------------------------------
 
 build_ch2_page <- function(
@@ -4252,193 +5285,2048 @@ build_ch2_page <- function(
     is_last_page
 ) {
 
-  final_notes <- if (is_last_page) {
+  final_notes <- if (
+    is_last_page
+  ) {
+
     c(
+
       paste0(
-        "**Note:** Academic-level rows use longitudinal bookends from the ",
-        "current international-enrollment-by-level series. The 2025/26 ",
-        "enrollment rows apply the reported 2025 year-over-year change to ",
-        "the 2024/25 actual category count. The 2015 recruitment priorities ",
-        "are hard-coded from the historical recruitment-priorities chart; ",
-        "the 2025 priorities and barrier measures use the current snapshot."
+        "\\* Marked rows use a baseline other than 2001, see note below. ",
+        "ᴾ marks 2026 projected enrollment."
       ),
+
       paste0(
-        "**Source:** Current report data underlying Figures 2.01–2.08 and ",
-        "Table 2.01, plus the report’s current international-enrollment-by-",
-        "academic-level series. Historical 2015 recruitment values are from ",
-        "the supplied recruitment-priorities chart."
+        "**Note:** Unless otherwise indicated rows compare 2001 and 2025.",
+        "STEM-country rows compare 2010 and 2025. Recruitment and barrier rows compare 2015 and 2025.",
+        "Arrow colors indicate direction of change only."
+      ),
+
+      paste0(
+        "**Source:** Derived from the current report Figures and Tables: ",
+        "Figures 2.01–2.08, Tables 2.01-2.02."
       )
     )
+
   } else {
+
     character()
   }
 
+
   build_infographic_table(
-    data = page_data,
+    data =
+      page_data,
+
     id = paste0(
       "infographic_ch2_by_the_numbers_page_",
-      sprintf("%02d", page_number)
+      sprintf(
+        "%02d",
+        page_number
+      )
     ),
-    chapter_number = 2,
-    title = "WHO COMES TO THE US TO STUDY?",
-    subtitle = "The changing sources of America’s international STEM talent",
+
+    chapter_number =
+      2,
+
+    title =
+      "WHO COMES TO THE US TO STUDY?",
+
+    subtitle =
+      "The changing sources of America’s international STEM talent",
+
     column_labels = c(
-      Earlier = "Earlier or<br>baseline",
-      Latest = "Latest or<br>projected value",
+      Earlier = "2001",
+      Latest = "2025",
       Change = "Change"
     ),
-    notes = final_notes,
-    layout = INFOGRAPHIC_FIXED_LAYOUT,
-    row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
-    nowrap_values = TRUE
+
+    notes =
+      final_notes,
+
+    layout =
+      INFOGRAPHIC_FIXED_LAYOUT,
+
+    row_padding_px =
+      INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+
+    nowrap_values =
+      TRUE,
+
+    trend_right_padding_px =
+      5,
+
+    show_header =
+      FALSE
   )
 }
 
 
 ch2_exports <- export_paginated_infographic(
-  data = ch2_selected,
-  build_page = build_ch2_page,
-  name = "infographic_ch2_by_the_numbers"
-)
+  data =
+    ch2_selected,
 
+  build_page =
+    build_ch2_page,
 
-knitr::include_graphics(
-  vapply(
-    ch2_exports,
-    `[[`,
-    character(1),
-    "png_path"
-  )
+  name =
+    "infographic_ch2_by_the_numbers",
+
+  rows_per_page =
+    INFOGRAPHIC_ROWS_PER_PAGE,
+
+  section_headers_per_page =
+    CH2_SECTION_HEADERS_PER_PAGE
 )
 
 ```
 
-# Chapter 3
 
+# Chapter 3
 ```{r infographic_ch3_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 
 # ============================================================================
 # CHAPTER 3: FROM EDUCATION TO THE WORKFORCE — BY THE NUMBERS
 #
-# Editorial rule:
-#   - Code the full current Chapter 3 source set so additional measures remain
-#     available.
-#   - Display a selective set of the most chapter-relevant statistics.
-#   - Prefer longitudinal bookends whenever a time series exists.
-#   - Use the global INFOGRAPHIC_ROWS_PER_PAGE rule from infographics.R.
+# Display convention:
 #
-# Under the uniform page contract:
-#   Page 1 = 30 body rows + 5 section headers
-#   Page 2 = 6 AI-research-geography rows + 1 section header
+#   MEASURE | 2000 | 2025 | CHANGE
+#
+#   - 2000 is the preferred historical comparison year.
+#   - If 2000 is unavailable, use the usable observation closest to 2000
+#     and show its actual year as a superscript.
+#   - 2025 is the preferred latest comparison year.
+#   - If the source ends before 2025, use the latest available observation
+#     and show its actual year as a superscript.
+#
+# Degree-to-work averages:
+#
+#   OVERALL
+#     Source: INF3-02
+#     NSCG custom tabulation of relationship between field of highest degree
+#     and occupational field.
+#
+#     Weighted average =
+#
+#       all bachelor's + master's + doctorate STEM-degree holders
+#       working in S&E occupations
+#       ---------------------------------------------------------
+#       all employed bachelor's + master's + doctorate
+#       STEM-degree holders
+#
+#   US-BORN / FOREIGN-BORN
+#     Source: INF3-01
+#     NCSES Table 6-4.
+#
+#     Weighted average =
+#
+#       all bachelor's + master's + doctorate graduates working
+#       in S&E OR S&E-related occupations
+#       ---------------------------------------------------------
+#       all employed bachelor's + master's + doctorate graduates
+#
+#     This exactly preserves the definition used for FIG304a / FIG304b.
+#
+# H-1B:
+#   - Top-10 employer concentration uses its longitudinal source through 2025.
+#   - Individual employers compare 2017 with 2025.
+#   - Display the two largest risers and two largest fallers.
+#
+# Editorial:
+#   - No immigrant-founder or AI-company snapshot material.
+#   - No snapshot rows.
+#   - Exactly 32 statistics are displayed by default.
+#
+# Layout:
+#   - 32 body rows permitted.
+#   - 5 section headers permitted.
+#   - Same shared typography / sizing as Chapters 1 and 2.
+#   - No chapter title or subtitle is rendered.
 # ============================================================================
 
 
 # ----------------------------------------------------------------------------
-# 1. CURRENT SOURCE DATA
+# 0. INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
+
+CH3_INCLUDE <- c(
+
+  # ==========================================================================
+  # WHERE INTERNATIONAL STUDENTS SIT IN THE TALENT PIPELINE
+  # ==========================================================================
+  #
+  # 6 TRUE / 8 coded
+
+  pipeline_associates = FALSE,
+  pipeline_bachelors = TRUE,
+  pipeline_masters = TRUE,
+  pipeline_doctorate = TRUE,
+  pipeline_professional = TRUE,
+  pipeline_grad_unspecified = FALSE,
+  pipeline_nondegree = TRUE,
+  pipeline_opt = TRUE,
+
+
+  # ==========================================================================
+  # INTERNATIONAL TALENT IN RESEARCH
+  # ==========================================================================
+  #
+  # 4 TRUE / 4 coded
+
+  postdoc_science = TRUE,
+  postdoc_engineering = TRUE,
+  postdoc_health = TRUE,
+  ffrdc_international_share = TRUE,
+
+
+  # ==========================================================================
+  # STEM DEGREE TO STEM JOB CONVERSION RATES
+  # ==========================================================================
+  #
+  # 12 TRUE / 12 coded
+
+  work_overall_average = TRUE,
+  work_all_bachelors = TRUE,
+  work_all_masters = TRUE,
+  work_all_doctorates = TRUE,
+
+  work_us_average = TRUE,
+  work_us_bachelors = TRUE,
+  work_us_masters = TRUE,
+  work_us_doctorate = TRUE,
+
+  work_foreign_average = TRUE,
+  work_foreign_bachelors = TRUE,
+  work_foreign_masters = TRUE,
+  work_foreign_doctorate = TRUE,
+
+
+  # ==========================================================================
+  # TEMPORARY-VISA CONCENTRATION BY OCCUPATION
+  # ==========================================================================
+  #
+  # 5 TRUE / 7 coded
+
+  visa_computer_math = TRUE,
+  visa_engineers = TRUE,
+  visa_biological = TRUE,
+  visa_physical = TRUE,
+  visa_social = TRUE,
+  visa_se_related = FALSE,
+  visa_nonse = FALSE,
+
+
+  # ==========================================================================
+  # H-1B EMPLOYER CONCENTRATION
+  # ==========================================================================
+  #
+  # 5 TRUE
+
+  h1b_top10 = TRUE,
+  h1b_riser_1 = TRUE,
+  h1b_riser_2 = TRUE,
+  h1b_faller_1 = TRUE,
+  h1b_faller_2 = TRUE
+)
+
+
+# ----------------------------------------------------------------------------
+# 1. PAGE / EDITORIAL RULES
+# ----------------------------------------------------------------------------
+
+CH3_DEFAULT_TRUE_COUNT <- 32L
+
+CH3_ROWS_PER_PAGE <- 32L
+
+CH3_SECTION_HEADERS_PER_PAGE <- 5L
+
+
+if (
+  sum(CH3_INCLUDE) !=
+    CH3_DEFAULT_TRUE_COUNT
+) {
+
+  stop(
+    paste0(
+      "CH3_INCLUDE currently has ",
+      sum(CH3_INCLUDE),
+      " TRUE statistics; expected ",
+      CH3_DEFAULT_TRUE_COUNT,
+      "."
+    ),
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 2. DISPLAY-YEAR RULES
+# ----------------------------------------------------------------------------
+
+CH3_BASELINE_YEAR <- 2000L
+
+CH3_TARGET_YEAR <- 2025L
+
+
+# ----------------------------------------------------------------------------
+# 3. CURRENT REPORT SOURCE DATA
 # ----------------------------------------------------------------------------
 
 fig301 <- read_current_figure("FIG301") %>%
   rename(
-    `Graduate (unspecified)` = `Graduate - Unspecified`,
-    `Non-degree`             = `Non-Degree`,
-    OPT                      = `Optional Practical Training (OPT)`
+    `Graduate (unspecified)` =
+      `Graduate - Unspecified`,
+
+    `Non-degree` =
+      `Non-Degree`,
+
+    OPT =
+      `Optional Practical Training (OPT)`
   ) %>%
   mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    Year =
+      year_number(.data$Year),
+
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 fig302 <- read_current_figure("FIG302") %>%
   rename(
-    Year        = 1,
-    Science     = 2,
+    Year = 1,
+    Science = 2,
     Engineering = 3,
-    Health      = 4
+    Health = 4
   ) %>%
   mutate(
-    across(everything(), numeric_clean)
+    across(
+      everything(),
+      numeric_clean
+    )
   )
+
 
 fig303 <- read_current_figure("FIG303") %>%
   rename(
     Year = 1,
+
     `U.S. citizens and permanent residents` = 2,
+
     `Temporary visa holders` = 3
   ) %>%
   mutate(
-    across(everything(), numeric_clean)
+    across(
+      everything(),
+      numeric_clean
+    )
   )
+
 
 fig304_us <- read_current_figure(
   "FIG304a",
   meta_id = "FIG304"
 ) %>%
   mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    Year =
+      year_number(.data$Year),
+
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 fig304_foreign <- read_current_figure(
   "FIG304b",
   meta_id = "FIG304"
 ) %>%
   mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
-  )
+    Year =
+      year_number(.data$Year),
 
-# FIG305 supplies the employer-level H-1B data used by Figures 3.05–3.06
-# and the current Table 3.03.
-fig305 <- read_current_figure("FIG305")
-
-fig307 <- read_current_figure("FIG307") %>%
-  mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
-  )
-
-fig308 <- read_current_figure("FIG308") %>%
-  rename(
-    Country = 1,
-    Count = 2
-  ) %>%
-  mutate(
-    Count = numeric_clean(.data$Count)
-  ) %>%
-  filter(
-    !is.na(.data$Country),
-    is.finite(.data$Count)
-  )
-
-fig309 <- read_current_figure("FIG309")
-
-fig310 <- read_current_figure("FIG310") %>%
-  mutate(
     across(
-      c(
-        `China`,
-        `United States`,
-        `Rest of World`
-      ),
+      -Year,
       numeric_clean
     )
   )
 
+
+fig305 <- read_current_figure("FIG305")
+
+
 tab301 <- read_current_table("TAB301") %>%
   mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    Year =
+      year_number(.data$Year),
+
+    across(
+      -Year,
+      numeric_clean
+    )
   )
+
 
 tab302 <- read_current_table("TAB302") %>%
   mutate(
-    Year = year_number(.data$Year),
-    across(-Year, numeric_clean)
+    Year =
+      year_number(.data$Year),
+
+    across(
+      -Year,
+      numeric_clean
+    )
   )
 
 
 # ----------------------------------------------------------------------------
-# 2. GENERIC HELPERS
+# 4. READ RAW SUPPLEMENTARY SOURCES DIRECTLY FROM DATA_DIR
+# ----------------------------------------------------------------------------
+#
+# INF3-01
+#   NCSES Table 6-4:
+#   Employed college graduates, by place of birth, level of highest degree,
+#   and major occupation: 2003–23
+#
+# INF3-02
+#   NSCG custom tabulation:
+#   Relationship between field of highest degree and occupational field
+#
+# These are raw multi-header files, so read them without treating the first
+# row as a conventional CSV header.
+
+inf3_01 <- readr::read_csv(
+  file.path(
+    DATA_DIR,
+    "INF3-01.csv"
+  ),
+  col_names = FALSE,
+  col_types = readr::cols(
+    .default =
+      readr::col_character()
+  ),
+  show_col_types = FALSE,
+  name_repair = "minimal"
+)
+
+
+inf3_02 <- readr::read_csv(
+  file.path(
+    DATA_DIR,
+    "INF3-02.csv"
+  ),
+  col_names = FALSE,
+  col_types = readr::cols(
+    .default =
+      readr::col_character()
+  ),
+  show_col_types = FALSE,
+  name_repair = "minimal"
+)
+
+
+# ----------------------------------------------------------------------------
+# 5. RAW-DATA HELPERS
+# ----------------------------------------------------------------------------
+
+ch3_norm <- function(x) {
+
+  x <- as.character(x)
+
+  x[
+    is.na(x)
+  ] <- ""
+
+
+  normalize_label(
+    x
+  )
+}
+
+
+ch3_raw_number <- function(x) {
+
+  x <- trimws(
+    as.character(x)
+  )
+
+
+  # Explicit zero-style cells in the NSCG custom table.
+
+  zero_cells <- x %in%
+    c(
+      "-",
+      "–",
+      "—"
+    )
+
+
+  out <- suppressWarnings(
+    readr::parse_number(
+      x,
+      na = c(
+        "",
+        "NA",
+        "N/A",
+        "S",
+        "D",
+        "*"
+      )
+    )
+  )
+
+
+  out[
+    zero_cells
+  ] <- 0
+
+
+  out
+}
+
+
+# ----------------------------------------------------------------------------
+# 6. WEIGHTED OVERALL RATE FROM INF3-02
+# ----------------------------------------------------------------------------
+#
+# TAB301 itself contains degree-level conversion rates.
+#
+# For the new "Overall, average" row, return to the raw counts in INF3-02
+# and calculate a true population-weighted conversion rate across:
+#
+#   bachelor's
+#   master's
+#   doctorate
+#
+# We use the same definition as TAB301:
+#
+#   denominator =
+#     employed people whose highest degree field is one of the five
+#     core S&E fields
+#
+#   numerator =
+#     those people working in one of the five core S&E occupations
+#
+# S&E-related degree fields and S&E-related occupations are NOT included
+# in this TAB301-style conversion rate.
+
+ch3_build_overall_weighted_series <- function(raw) {
+
+  first_column <- ch3_norm(
+    raw[[1]]
+  )
+
+
+  year_rows <- which(
+    stringr::str_detect(
+      trimws(
+        as.character(
+          raw[[1]]
+        )
+      ),
+      "^[0-9]{4}$"
+    )
+  )
+
+
+  schema_rows <- which(
+    first_column ==
+      ch3_norm(
+        "Year"
+      )
+  )
+
+
+  if (
+    length(year_rows) == 0L ||
+      length(schema_rows) == 0L
+  ) {
+
+    stop(
+      "Could not identify year/schema rows in INF3-02.",
+      call. = FALSE
+    )
+  }
+
+
+  degree_names <- c(
+    "Bachelor's",
+    "Master's",
+    "Doctorate"
+  )
+
+
+  all_degree_names <- c(
+    degree_names,
+    "Professional"
+  )
+
+
+  purrr::map_dfr(
+
+    seq_along(
+      year_rows
+    ),
+
+    function(i) {
+
+      year_row <-
+        year_rows[[i]]
+
+
+      year <- suppressWarnings(
+        as.integer(
+          raw[[1]][[year_row]]
+        )
+      )
+
+
+      # Use the most recent schema/header block above this year.
+      #
+      # INF3-02 repeats the schema when occupational classifications change,
+      # but not before every individual year.
+
+      schema_row <- max(
+        schema_rows[
+          schema_rows <
+            year_row
+        ]
+      )
+
+
+      if (
+        !is.finite(
+          schema_row
+        ) ||
+          schema_row <=
+            1L
+      ) {
+
+        stop(
+          paste0(
+            "Could not identify the degree header for INF3-02 year ",
+            year,
+            "."
+          ),
+          call. = FALSE
+        )
+      }
+
+
+      degree_header <- ch3_norm(
+        unlist(
+          raw[
+            schema_row - 1L,
+            ,
+            drop = FALSE
+          ],
+          use.names = FALSE
+        )
+      )
+
+
+      occupation_header <- ch3_norm(
+        unlist(
+          raw[
+            schema_row,
+            ,
+            drop = FALSE
+          ],
+          use.names = FALSE
+        )
+      )
+
+
+      # Determine the rows containing the five core S&E degree fields.
+
+      next_year_rows <- year_rows[
+        year_rows >
+          year_row
+      ]
+
+
+      candidate_end <- if (
+        length(
+          next_year_rows
+        )
+      ) {
+
+        min(
+          next_year_rows
+        ) - 1L
+
+      } else {
+
+        nrow(raw)
+      }
+
+
+      candidate_rows <- seq.int(
+        year_row + 1L,
+        candidate_end
+      )
+
+
+      field_labels <- ch3_norm(
+        raw[[2]][
+          candidate_rows
+        ]
+      )
+
+
+      valid_field <- nzchar(
+        field_labels
+      ) &
+
+        !stringr::str_detect(
+          field_labels,
+          stringr::regex(
+            "field of study|highest degree|occupation|labor force",
+            ignore_case = TRUE
+          )
+        ) &
+
+        !stringr::str_detect(
+          field_labels,
+          stringr::regex(
+            "s&e[- ]related fields|non-s&e",
+            ignore_case = TRUE
+          )
+        )
+
+
+      field_rows <- candidate_rows[
+        valid_field
+      ]
+
+
+      if (
+        length(
+          field_rows
+        ) !=
+          5L
+      ) {
+
+        stop(
+          paste0(
+            "Expected five core S&E degree-field rows in INF3-02 for ",
+            year,
+            "; found ",
+            length(field_rows),
+            "."
+          ),
+          call. = FALSE
+        )
+      }
+
+
+      degree_parts <- purrr::map(
+
+        degree_names,
+
+        function(degree_name) {
+
+          degree_norm <- ch3_norm(
+            degree_name
+          )
+
+
+          # The first appearance of each degree header belongs to the
+          # EMPLOYED portion of the table.
+
+          degree_start <- which(
+            degree_header ==
+              degree_norm
+          )[1]
+
+
+          if (
+            is.na(
+              degree_start
+            )
+          ) {
+
+            stop(
+              paste0(
+                "Could not find ",
+                degree_name,
+                " employed columns in INF3-02 for ",
+                year,
+                "."
+              ),
+              call. = FALSE
+            )
+          }
+
+
+          all_degree_starts <- which(
+            degree_header %in%
+              ch3_norm(
+                all_degree_names
+              )
+          )
+
+
+          later_degree_starts <- all_degree_starts[
+            all_degree_starts >
+              degree_start
+          ]
+
+
+          degree_end <- if (
+            length(
+              later_degree_starts
+            )
+          ) {
+
+            min(
+              later_degree_starts
+            ) - 1L
+
+          } else {
+
+            ncol(raw)
+          }
+
+
+          block_cols <- seq.int(
+            degree_start,
+            degree_end
+          )
+
+
+          block_occupations <-
+            occupation_header[
+              block_cols
+            ]
+
+
+          total_position <- which(
+            block_occupations ==
+              ch3_norm(
+                "Total"
+              )
+          )[1]
+
+
+          if (
+            is.na(
+              total_position
+            )
+          ) {
+
+            stop(
+              paste0(
+                "Could not identify ",
+                degree_name,
+                " employed total in INF3-02 for ",
+                year,
+                "."
+              ),
+              call. = FALSE
+            )
+          }
+
+
+          total_col <-
+            block_cols[
+              total_position
+            ]
+
+
+          # Core S&E occupations:
+          #
+          #   computer/math
+          #   biological/life
+          #   physical
+          #   social
+          #   engineering
+          #
+          # Exclude Total, S&E-related, and Non-S&E.
+
+          se_cols <- block_cols[
+            nzchar(
+              block_occupations
+            ) &
+
+              block_occupations !=
+                ch3_norm(
+                  "Total"
+                ) &
+
+              !stringr::str_detect(
+                block_occupations,
+                stringr::regex(
+                  "non-s&e|s&e[- ]related",
+                  ignore_case = TRUE
+                )
+              )
+          ]
+
+
+          if (
+            length(
+              se_cols
+            ) !=
+              5L
+          ) {
+
+            stop(
+              paste0(
+                "Expected five core S&E occupation columns for ",
+                degree_name,
+                " in INF3-02 year ",
+                year,
+                "; found ",
+                length(se_cols),
+                "."
+              ),
+              call. = FALSE
+            )
+          }
+
+
+          denominator <- sum(
+            ch3_raw_number(
+              unlist(
+                raw[
+                  field_rows,
+                  total_col,
+                  drop = FALSE
+                ],
+                use.names = FALSE
+              )
+            ),
+            na.rm = TRUE
+          )
+
+
+          numerator <- sum(
+            vapply(
+
+              se_cols,
+
+              function(j) {
+
+                sum(
+                  ch3_raw_number(
+                    unlist(
+                      raw[
+                        field_rows,
+                        j,
+                        drop = FALSE
+                      ],
+                      use.names = FALSE
+                    )
+                  ),
+                  na.rm = TRUE
+                )
+              },
+
+              numeric(1)
+            )
+          )
+
+
+          list(
+            denominator =
+              denominator,
+
+            numerator =
+              numerator
+          )
+        }
+      )
+
+
+      total_denominator <- sum(
+        vapply(
+          degree_parts,
+          `[[`,
+          numeric(1),
+          "denominator"
+        )
+      )
+
+
+      total_numerator <- sum(
+        vapply(
+          degree_parts,
+          `[[`,
+          numeric(1),
+          "numerator"
+        )
+      )
+
+
+      if (
+        !is.finite(
+          total_denominator
+        ) ||
+          total_denominator <=
+            0
+      ) {
+
+        stop(
+          paste0(
+            "Invalid weighted denominator in INF3-02 for ",
+            year,
+            "."
+          ),
+          call. = FALSE
+        )
+      }
+
+
+      tibble::tibble(
+        Year =
+          year,
+
+        Average =
+          total_numerator /
+          total_denominator
+      )
+    }
+  ) %>%
+    filter(
+      is.finite(.data$Year),
+      is.finite(.data$Average)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+}
+
+
+ch3_overall_weighted_average <-
+  ch3_build_overall_weighted_series(
+    inf3_02
+  )
+
+
+# ----------------------------------------------------------------------------
+# 7. WEIGHTED US-BORN / FOREIGN-BORN RATES FROM INF3-01
+# ----------------------------------------------------------------------------
+#
+# FIG304a and FIG304b come from NCSES Table 6-4.
+#
+# The displayed degree-level rates correspond to:
+#
+#   S&E occupations + S&E-related occupations
+#   ------------------------------------------
+#            all employed graduates
+#
+# The weighted average therefore sums the underlying counts across
+# bachelor's + master's + doctorate BEFORE calculating the percentage.
+
+ch3_build_birthplace_weighted_series <- function(
+    raw,
+    place_label
+) {
+
+  row_labels <- ch3_norm(
+    raw[[1]]
+  )
+
+
+  # Row 3 in INF3-01 contains the years, but identify it by its label rather
+  # than hard-coding a row number.
+
+  year_header_row <- which(
+    stringr::str_detect(
+      as.character(
+        raw[[1]]
+      ),
+      stringr::regex(
+        "^Place.*birth",
+        ignore_case = TRUE
+      )
+    )
+  )[1]
+
+
+  if (
+    is.na(
+      year_header_row
+    )
+  ) {
+
+    stop(
+      "Could not identify the year-header row in INF3-01.",
+      call. = FALSE
+    )
+  }
+
+
+  raw_years <- suppressWarnings(
+    as.integer(
+      unlist(
+        raw[
+          year_header_row,
+          ,
+          drop = FALSE
+        ],
+        use.names = FALSE
+      )
+    )
+  )
+
+
+  year_cols <- which(
+    is.finite(
+      raw_years
+    )
+  )
+
+
+  years <- raw_years[
+    year_cols
+  ]
+
+
+  if (
+    length(
+      year_cols
+    ) <
+      2L
+  ) {
+
+    stop(
+      "Could not identify usable year columns in INF3-01.",
+      call. = FALSE
+    )
+  }
+
+
+  place_norm <- ch3_norm(
+    place_label
+  )
+
+
+  group_start <- which(
+    row_labels ==
+      place_norm
+  )[1]
+
+
+  if (
+    is.na(
+      group_start
+    )
+  ) {
+
+    stop(
+      paste0(
+        "Could not find `",
+        place_label,
+        "` in INF3-01."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  place_groups <- ch3_norm(
+    c(
+      "All places of birth",
+      "Foreign-born college graduates",
+      "U.S.-born college graduates"
+    )
+  )
+
+
+  later_groups <- which(
+    seq_along(
+      row_labels
+    ) >
+      group_start &
+
+      row_labels %in%
+        place_groups
+  )
+
+
+  group_end <- if (
+    length(
+      later_groups
+    )
+  ) {
+
+    min(
+      later_groups
+    ) - 1L
+
+  } else {
+
+    nrow(raw)
+  }
+
+
+  degree_names <- c(
+    "Bachelor's",
+    "Master's",
+    "Doctorate"
+  )
+
+
+  all_degree_names <- ch3_norm(
+    c(
+      degree_names,
+      "Professional"
+    )
+  )
+
+
+  degree_parts <- purrr::map(
+
+    degree_names,
+
+    function(degree_name) {
+
+      degree_norm <- ch3_norm(
+        degree_name
+      )
+
+
+      degree_row <- which(
+        seq_along(
+          row_labels
+        ) >=
+          group_start &
+
+          seq_along(
+            row_labels
+          ) <=
+            group_end &
+
+          row_labels ==
+            degree_norm
+      )[1]
+
+
+      if (
+        is.na(
+          degree_row
+        )
+      ) {
+
+        stop(
+          paste0(
+            "Could not find ",
+            degree_name,
+            " for ",
+            place_label,
+            " in INF3-01."
+          ),
+          call. = FALSE
+        )
+      }
+
+
+      later_degree_rows <- which(
+        seq_along(
+          row_labels
+        ) >
+          degree_row &
+
+          seq_along(
+            row_labels
+          ) <=
+            group_end &
+
+          row_labels %in%
+            all_degree_names
+      )
+
+
+      degree_end <- if (
+        length(
+          later_degree_rows
+        )
+      ) {
+
+        min(
+          later_degree_rows
+        ) - 1L
+
+      } else {
+
+        group_end
+      }
+
+
+      degree_block_rows <- seq.int(
+        degree_row,
+        degree_end
+      )
+
+
+      se_row <- degree_block_rows[
+        row_labels[
+          degree_block_rows
+        ] ==
+          ch3_norm(
+            "S&E occupations"
+          )
+      ][1]
+
+
+      se_related_row <- degree_block_rows[
+        row_labels[
+          degree_block_rows
+        ] ==
+          ch3_norm(
+            "S&E-related occupations"
+          )
+      ][1]
+
+
+      if (
+        is.na(
+          se_row
+        ) ||
+          is.na(
+            se_related_row
+          )
+      ) {
+
+        stop(
+          paste0(
+            "Could not find S&E and S&E-related occupation rows for ",
+            degree_name,
+            ", ",
+            place_label,
+            " in INF3-01."
+          ),
+          call. = FALSE
+        )
+      }
+
+
+      denominator <- ch3_raw_number(
+        unlist(
+          raw[
+            degree_row,
+            year_cols,
+            drop = FALSE
+          ],
+          use.names = FALSE
+        )
+      )
+
+
+      numerator <-
+        ch3_raw_number(
+          unlist(
+            raw[
+              se_row,
+              year_cols,
+              drop = FALSE
+            ],
+            use.names = FALSE
+          )
+        ) +
+
+        ch3_raw_number(
+          unlist(
+            raw[
+              se_related_row,
+              year_cols,
+              drop = FALSE
+            ],
+            use.names = FALSE
+          )
+        )
+
+
+      list(
+        denominator =
+          denominator,
+
+        numerator =
+          numerator
+      )
+    }
+  )
+
+
+  denominator <- Reduce(
+    `+`,
+    lapply(
+      degree_parts,
+      `[[`,
+      "denominator"
+    )
+  )
+
+
+  numerator <- Reduce(
+    `+`,
+    lapply(
+      degree_parts,
+      `[[`,
+      "numerator"
+    )
+  )
+
+
+  tibble::tibble(
+    Year =
+      years,
+
+    Average =
+      numerator /
+      denominator
+  ) %>%
+    filter(
+      is.finite(.data$Year),
+      is.finite(.data$Average)
+    ) %>%
+    arrange(
+      .data$Year
+    )
+}
+
+
+ch3_us_weighted_average <-
+  ch3_build_birthplace_weighted_series(
+    raw =
+      inf3_01,
+
+    place_label =
+      "U.S.-born college graduates"
+  )
+
+
+ch3_foreign_weighted_average <-
+  ch3_build_birthplace_weighted_series(
+    raw =
+      inf3_01,
+
+    place_label =
+      "Foreign-born college graduates"
+  )
+
+
+# ----------------------------------------------------------------------------
+# 8. OPTIONAL DATA-CONSISTENCY CHECKS
+# ----------------------------------------------------------------------------
+#
+# These ensure that INF3-01 reproduces the published FIG304 degree-level
+# definitions before we use it to create the new weighted averages.
+#
+# The raw 2003 rates should match the existing FIG304 source to within
+# rounding error.
+
+ch3_check_birthplace_rate <- function(
+    raw,
+    place_label,
+    degree_label,
+    expected_value,
+    tolerance = 0.002
+) {
+
+  rows <- ch3_norm(
+    raw[[1]]
+  )
+
+
+  place_row <- which(
+    rows ==
+      ch3_norm(
+        place_label
+      )
+  )[1]
+
+
+  next_place <- which(
+    seq_along(rows) >
+      place_row &
+
+      rows %in%
+        ch3_norm(
+          c(
+            "All places of birth",
+            "Foreign-born college graduates",
+            "U.S.-born college graduates"
+          )
+        )
+  )
+
+
+  place_end <- if (
+    length(next_place)
+  ) {
+
+    min(next_place) - 1L
+
+  } else {
+
+    nrow(raw)
+  }
+
+
+  degree_row <- which(
+    seq_along(rows) >=
+      place_row &
+
+      seq_along(rows) <=
+        place_end &
+
+      rows ==
+        ch3_norm(
+          degree_label
+        )
+  )[1]
+
+
+  next_degree <- which(
+    seq_along(rows) >
+      degree_row &
+
+      seq_along(rows) <=
+        place_end &
+
+      rows %in%
+        ch3_norm(
+          c(
+            "Bachelor's",
+            "Master's",
+            "Doctorate",
+            "Professional"
+          )
+        )
+  )
+
+
+  degree_end <- if (
+    length(next_degree)
+  ) {
+
+    min(next_degree) - 1L
+
+  } else {
+
+    place_end
+  }
+
+
+  block_rows <- seq.int(
+    degree_row,
+    degree_end
+  )
+
+
+  se_row <- block_rows[
+    rows[
+      block_rows
+    ] ==
+      ch3_norm(
+        "S&E occupations"
+      )
+  ][1]
+
+
+  related_row <- block_rows[
+    rows[
+      block_rows
+    ] ==
+      ch3_norm(
+        "S&E-related occupations"
+      )
+  ][1]
+
+
+  # 2003 is column 2 in INF3-01.
+
+  denominator <-
+    ch3_raw_number(
+      raw[[2]][[degree_row]]
+    )
+
+
+  numerator <-
+    ch3_raw_number(
+      raw[[2]][[se_row]]
+    ) +
+    ch3_raw_number(
+      raw[[2]][[related_row]]
+    )
+
+
+  calculated <-
+    numerator /
+    denominator
+
+
+  if (
+    !is.finite(calculated) ||
+      abs(
+        calculated -
+          expected_value
+      ) >
+        tolerance
+  ) {
+
+    stop(
+      paste0(
+        "INF3-01 consistency check failed for ",
+        place_label,
+        ", ",
+        degree_label,
+        "."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  invisible(
+    TRUE
+  )
+}
+
+
+# FIG304a 2003 bachelor's = 0.2496
+ch3_check_birthplace_rate(
+  inf3_01,
+  "U.S.-born college graduates",
+  "Bachelor's",
+  0.2496
+)
+
+
+# FIG304b 2003 bachelor's = 0.3433
+ch3_check_birthplace_rate(
+  inf3_01,
+  "Foreign-born college graduates",
+  "Bachelor's",
+  0.3433
+)
+
+
+# ----------------------------------------------------------------------------
+# 9. DERIVED FFRDC RESEARCH SERIES
+# ----------------------------------------------------------------------------
+#
+# Replace the two FFRDC count rows with a single international-share measure.
+
+fig303_share <- fig303 %>%
+  transmute(
+    Year =
+      .data$Year,
+
+    InternationalShare =
+      .data$`Temporary visa holders` /
+      (
+        .data$`Temporary visa holders` +
+          .data$`U.S. citizens and permanent residents`
+      )
+  ) %>%
+  filter(
+    is.finite(.data$Year),
+    is.finite(.data$InternationalShare)
+  )
+
+
+# ----------------------------------------------------------------------------
+# 10. SUPERSCRIPT-YEAR DISPLAY
+# ----------------------------------------------------------------------------
+
+ch3_superscript_year <- function(year) {
+
+  year <- as.character(
+    as.integer(year)
+  )
+
+
+  chartr(
+    "0123456789",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹",
+    year
+  )
+}
+
+
+ch3_display_value <- function(
+    value,
+    value_type,
+    year,
+    column = c(
+      "baseline",
+      "latest"
+    )
+) {
+
+  column <- match.arg(
+    column
+  )
+
+
+  core <- format_value(
+    value,
+    value_type
+  )
+
+
+  expected_year <- if (
+    column ==
+      "baseline"
+  ) {
+
+    CH3_BASELINE_YEAR
+
+  } else {
+
+    CH3_TARGET_YEAR
+  }
+
+
+  if (
+    as.integer(year) !=
+      expected_year
+  ) {
+
+    paste0(
+      core,
+      ch3_superscript_year(
+        year
+      )
+    )
+
+  } else {
+
+    core
+  }
+}
+
+
+# ----------------------------------------------------------------------------
+# 11. LONGITUDINAL ENDPOINT SELECTION
+# ----------------------------------------------------------------------------
+#
+# Baseline:
+#
+#   1. Use 2000 if present.
+#   2. Otherwise use the available observation closest to 2000.
+#   3. If equally close, choose the later year.
+#
+# Latest:
+#
+#   1. Use 2025 if present.
+#   2. Otherwise use the latest observation before 2025.
+
+ch3_series_endpoints <- function(
+    df,
+    column,
+    year_column = "Year"
+) {
+
+  series <- series_data(
+    df,
+    column,
+    year_column
+  ) %>%
+    filter(
+      .data$Year <=
+        CH3_TARGET_YEAR
+    ) %>%
+    arrange(
+      .data$Year
+    )
+
+
+  if (
+    nrow(series) <
+      2L
+  ) {
+
+    stop(
+      paste0(
+        "Chapter 3 requires at least two usable observations for `",
+        column,
+        "`."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  exact_baseline <- series %>%
+    filter(
+      .data$Year ==
+        CH3_BASELINE_YEAR
+    )
+
+
+  if (
+    nrow(
+      exact_baseline
+    ) >=
+      1L
+  ) {
+
+    first <- exact_baseline %>%
+      slice_head(
+        n = 1
+      )
+
+  } else {
+
+    first <- series %>%
+      mutate(
+        Distance =
+          abs(
+            .data$Year -
+              CH3_BASELINE_YEAR
+          )
+      ) %>%
+      arrange(
+        .data$Distance,
+        desc(.data$Year)
+      ) %>%
+      slice_head(
+        n = 1
+      ) %>%
+      select(
+        -.data$Distance
+      )
+  }
+
+
+  exact_latest <- series %>%
+    filter(
+      .data$Year ==
+        CH3_TARGET_YEAR
+    )
+
+
+  if (
+    nrow(
+      exact_latest
+    ) >=
+      1L
+  ) {
+
+    last <- exact_latest %>%
+      slice_head(
+        n = 1
+      )
+
+  } else {
+
+    last <- series %>%
+      slice_tail(
+        n = 1
+      )
+  }
+
+
+  if (
+    first$Year[[1]] ==
+      last$Year[[1]]
+  ) {
+
+    stop(
+      paste0(
+        "Chapter 3 baseline and latest endpoint resolve to the same year for `",
+        column,
+        "`."
+      ),
+      call. = FALSE
+    )
+  }
+
+
+  list(
+    first =
+      first,
+
+    last =
+      last
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 12. GENERIC METRIC HELPERS
+# ----------------------------------------------------------------------------
+
+ch3_metric_values <- function(
+    stat_id,
+    section_id,
+    section,
+    measure,
+    first_value,
+    first_year,
+    last_value,
+    last_year,
+    value_type,
+    change_type,
+    emphasis = FALSE
+) {
+
+  out <- metric_values(
+    stat_id =
+      stat_id,
+
+    section_id =
+      section_id,
+
+    section =
+      section,
+
+    measure =
+      measure,
+
+    first_value =
+      first_value,
+
+    first_label =
+      first_year,
+
+    last_value =
+      last_value,
+
+    last_label =
+      last_year,
+
+    value_type =
+      value_type,
+
+    change_type =
+      change_type,
+
+    emphasis =
+      emphasis
+  )
+
+
+  out$Earlier <- ch3_display_value(
+    value =
+      first_value,
+
+    value_type =
+      value_type,
+
+    year =
+      first_year,
+
+    column =
+      "baseline"
+  )
+
+
+  out$Latest <- ch3_display_value(
+    value =
+      last_value,
+
+    value_type =
+      value_type,
+
+    year =
+      last_year,
+
+    column =
+      "latest"
+  )
+
+
+  out
+}
+
+
+ch3_metric_series <- function(
+    stat_id,
+    section_id,
+    section,
+    measure,
+    df,
+    column,
+    value_type,
+    change_type,
+    year_column = "Year",
+    emphasis = FALSE,
+    transform = identity
+) {
+
+  endpoints <- ch3_series_endpoints(
+    df =
+      df,
+
+    column =
+      column,
+
+    year_column =
+      year_column
+  )
+
+
+  first_value <- transform(
+    endpoints$first$Value[[1]]
+  )
+
+
+  last_value <- transform(
+    endpoints$last$Value[[1]]
+  )
+
+
+  ch3_metric_values(
+    stat_id =
+      stat_id,
+
+    section_id =
+      section_id,
+
+    section =
+      section,
+
+    measure =
+      measure,
+
+    first_value =
+      first_value,
+
+    first_year =
+      endpoints$first$Year[[1]],
+
+    last_value =
+      last_value,
+
+    last_year =
+      endpoints$last$Year[[1]],
+
+    value_type =
+      value_type,
+
+    change_type =
+      change_type,
+
+    emphasis =
+      emphasis
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 13. NESTED LABELS
+# ----------------------------------------------------------------------------
+
+ch3_nested_label <- function(x) {
+
+  paste0(
+    "\u2003\u2003",
+    x
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 14. DEGREE-TO-WORK HELPERS
 # ----------------------------------------------------------------------------
 
 ch3_degree_population_metric <- function(
@@ -4449,360 +7337,549 @@ ch3_degree_population_metric <- function(
     stat_id,
     emphasis = FALSE
 ) {
-  if (!degree %in% names(df)) {
-    return(NULL)
+
+  if (
+    !degree %in%
+      names(df)
+  ) {
+
+    return(
+      NULL
+    )
   }
 
-  metric_series(
-    stat_id = stat_id,
-    section_id = "degree_work",
-    section = "From degree to STEM work",
-    measure = paste0(
-      population,
-      " ",
-      display_degree,
-      " holders employed in STEM"
-    ),
-    df = df,
-    column = degree,
-    value_type = "share",
-    change_type = "pp_share",
-    emphasis = emphasis
+
+  ch3_metric_series(
+    stat_id =
+      stat_id,
+
+    section_id =
+      "degree_work",
+
+    section =
+      "STEM Degree to STEM Job Conversion Rates",
+
+    measure =
+      ch3_nested_label(
+        paste0(
+          population,
+          " ",
+          display_degree,
+          " degree holders in STEM jobs"
+        )
+      ),
+
+    df =
+      df,
+
+    column =
+      degree,
+
+    value_type =
+      "share",
+
+    change_type =
+      "pp_share",
+
+    emphasis =
+      emphasis
+  )
+}
+
+
+ch3_weighted_average_metric <- function(
+    df,
+    stat_id,
+    measure
+) {
+
+  ch3_metric_series(
+    stat_id =
+      stat_id,
+
+    section_id =
+      "degree_work",
+
+    section =
+      "STEM Degree to STEM Job Conversion Rates",
+
+    measure =
+      measure,
+
+    df =
+      df,
+
+    column =
+      "Average",
+
+    value_type =
+      "share",
+
+    change_type =
+      "pp_share",
+
+    emphasis =
+      TRUE
   )
 }
 
 
 # ----------------------------------------------------------------------------
-# 3. H-1B EMPLOYER SHARES
+# 15. H-1B EMPLOYER SHARES
 # ----------------------------------------------------------------------------
-# The Grand Total row is the denominator used in the current Figure 3.05,
-# Figure 3.06, and Table 3.03 calculations.
 
 fig305 <- fig305 %>%
   mutate(
     Company = trimws(
-      as.character(.data$Company)
+      as.character(
+        .data$Company
+      )
     )
   )
 
-ch3_h1b_year_columns <- names(fig305)[
+
+ch3_h1b_year_columns <- names(
+  fig305
+)[
   grepl(
     "^[0-9]{4}$",
     names(fig305)
   )
 ]
 
+
 ch3_h1b_year_columns <- ch3_h1b_year_columns[
-  as.integer(ch3_h1b_year_columns) <= 2025
+  as.integer(
+    ch3_h1b_year_columns
+  ) <=
+    CH3_TARGET_YEAR
 ]
+
 
 ch3_h1b_total <- fig305 %>%
   filter(
-    normalize_label(.data$Company) ==
-      normalize_label("Grand Total")
+    normalize_label(
+      .data$Company
+    ) ==
+      normalize_label(
+        "Grand Total"
+      )
   ) %>%
   select(
-    all_of(ch3_h1b_year_columns)
+    all_of(
+      ch3_h1b_year_columns
+    )
   ) %>%
   pivot_longer(
     everything(),
-    names_to = "Year",
-    values_to = "Total"
+    names_to =
+      "Year",
+    values_to =
+      "Total"
   ) %>%
   mutate(
-    Year = as.integer(.data$Year),
-    Total = numeric_clean(.data$Total)
+    Year =
+      as.integer(
+        .data$Year
+      ),
+
+    Total =
+      numeric_clean(
+        .data$Total
+      )
   )
 
 
 ch3_h1b_company_long <- fig305 %>%
   filter(
-    normalize_label(.data$Company) !=
-      normalize_label("Grand Total")
+    normalize_label(
+      .data$Company
+    ) !=
+      normalize_label(
+        "Grand Total"
+      )
   ) %>%
   select(
     .data$Company,
-    all_of(ch3_h1b_year_columns)
+    all_of(
+      ch3_h1b_year_columns
+    )
   ) %>%
   pivot_longer(
     -.data$Company,
-    names_to = "Year",
-    values_to = "Approvals"
+    names_to =
+      "Year",
+    values_to =
+      "Approvals"
   ) %>%
   mutate(
-    Year = as.integer(.data$Year),
+    Year =
+      as.integer(
+        .data$Year
+      ),
+
     Approvals = replace_na(
-      numeric_clean(.data$Approvals),
+      numeric_clean(
+        .data$Approvals
+      ),
       0
     )
   ) %>%
   left_join(
     ch3_h1b_total,
-    by = "Year"
+    by =
+      "Year"
   ) %>%
   mutate(
-    Share = .data$Approvals / .data$Total
+    Share =
+      .data$Approvals /
+      .data$Total
+  ) %>%
+  filter(
+    is.finite(
+      .data$Share
+    )
   )
 
+
+# ----------------------------------------------------------------------------
+# Top 10 employers' combined share
+# ----------------------------------------------------------------------------
 
 ch3_h1b_top10 <- ch3_h1b_company_long %>%
-  group_by(.data$Year) %>%
+  group_by(
+    .data$Year
+  ) %>%
   slice_max(
-    order_by = .data$Approvals,
-    n = 10,
-    with_ties = FALSE
+    order_by =
+      .data$Approvals,
+
+    n =
+      10,
+
+    with_ties =
+      FALSE
   ) %>%
   summarise(
-    Share = sum(
-      .data$Approvals,
-      na.rm = TRUE
-    ) /
-      first(.data$Total),
-    .groups = "drop"
+    Share =
+      sum(
+        .data$Approvals,
+        na.rm = TRUE
+      ) /
+      first(
+        .data$Total
+      ),
+
+    .groups =
+      "drop"
   )
 
 
-ch3_h1b_company_metric <- function(
-    company,
-    display_name,
-    stat_id,
-    emphasis = FALSE
-) {
-  row <- ch3_h1b_company_long %>%
-    filter(
-      normalize_label(.data$Company) ==
-        normalize_label(.env$company),
-      .data$Year %in% c(
-        2017,
-        2025
-      )
-    ) %>%
-    arrange(.data$Year)
+# ----------------------------------------------------------------------------
+# Table 3.03 company pool
+# ----------------------------------------------------------------------------
 
-  if (
-    nrow(row) != 2
-  ) {
-    return(NULL)
-  }
-
-  metric_values(
-    stat_id = stat_id,
-    section_id = "h1b",
-    section = "H-1B employer concentration",
-    measure = display_name,
-    first_value = row$Share[[1]],
-    first_label = row$Year[[1]],
-    last_value = row$Share[[2]],
-    last_label = row$Year[[2]],
-    value_type = "share",
-    change_type = "pp_share",
-    emphasis = emphasis
-  )
-}
-
-
-# Code every firm shown in current Table 3.03.
 CH3_H1B_TABLE303_FIRMS <- list(
-  "Google" = "GOOGLE INC",
-  "LTIMindtree" = "LTIMINDTREE LIMITED",
-  "Deloitte" = "Deloitte and Subsidiaries",
-  "Ernst & Young" = "ERNST & YOUNG LLP",
-  "Capgemini" = "CAPGEMINI AMERICA INC",
-  "IBM" = "IBM and subsidiaries",
-  "HCL Technologies" = "HCL Technologies Limited and Subsidiaries",
-  "Tata Consultancy Services" = "TATA CONSULTANCY SERVICES LIMITED",
-  "Larsen & Toubro Infotech" = "LARSEN & TOUBRO INFOTECH LIMITED",
-  "Tech Mahindra" = "TECH MAHINDRA AMERICAS INC",
-  "Wipro" = "WIPRO LIMITED",
-  "Infosys" = "INFOSYS LIMITED",
-  "Cognizant" = "COGNIZANT TECHNOLOGY SOLUTIONS US CORP"
+
+  "Google" =
+    "GOOGLE INC",
+
+  "LTIMindtree" =
+    "LTIMINDTREE LIMITED",
+
+  "Deloitte" =
+    "Deloitte and Subsidiaries",
+
+  "Ernst & Young" =
+    "ERNST & YOUNG LLP",
+
+  "Capgemini" =
+    "CAPGEMINI AMERICA INC",
+
+  "IBM" =
+    "IBM and subsidiaries",
+
+  "HCL Technologies" =
+    "HCL Technologies Limited and Subsidiaries",
+
+  "Tata Consultancy Services" =
+    "TATA CONSULTANCY SERVICES LIMITED",
+
+  "Larsen & Toubro Infotech" =
+    "LARSEN & TOUBRO INFOTECH LIMITED",
+
+  "Tech Mahindra" =
+    "TECH MAHINDRA AMERICAS INC",
+
+  "Wipro" =
+    "WIPRO LIMITED",
+
+  "Infosys" =
+    "INFOSYS LIMITED",
+
+  "Cognizant" =
+    "COGNIZANT TECHNOLOGY SOLUTIONS US CORP"
 )
 
-ch3_h1b_table303_stats <- purrr::imap_dfr(
+
+# ----------------------------------------------------------------------------
+# Calculate 2017 -> 2025 change for every Table 3.03 firm
+# ----------------------------------------------------------------------------
+
+ch3_h1b_company_changes <- purrr::imap_dfr(
+
   CH3_H1B_TABLE303_FIRMS,
-  function(company, display_name) {
-    ch3_h1b_company_metric(
-      company = company,
-      display_name = display_name,
-      stat_id = paste0(
-        "h1b_",
-        str_replace_all(
-          tolower(display_name),
-          "[^a-z0-9]+",
-          "_"
-        )
-      ),
-      emphasis = display_name %in%
-        c(
-          "Google",
-          "Cognizant"
-        )
+
+  function(
+      source_company,
+      display_name
+  ) {
+
+    row <- ch3_h1b_company_long %>%
+      filter(
+        normalize_label(
+          .data$Company
+        ) ==
+          normalize_label(
+            .env$source_company
+          ),
+
+        .data$Year %in%
+          c(
+            2017L,
+            2025L
+          )
+      ) %>%
+      arrange(
+        .data$Year
+      )
+
+
+    if (
+      nrow(row) !=
+        2L
+    ) {
+
+      return(
+        tibble::tibble()
+      )
+    }
+
+
+    tibble::tibble(
+      DisplayName =
+        display_name,
+
+      SourceCompany =
+        source_company,
+
+      FirstYear =
+        row$Year[[1]],
+
+      LastYear =
+        row$Year[[2]],
+
+      FirstShare =
+        row$Share[[1]],
+
+      LastShare =
+        row$Share[[2]],
+
+      Change =
+        row$Share[[2]] -
+        row$Share[[1]]
     )
   }
 )
 
 
 # ----------------------------------------------------------------------------
-# 4. AI FOUNDER / COMPANY HELPERS
+# Two largest actual risers / two largest actual fallers
 # ----------------------------------------------------------------------------
 
-fig308_top <- fig308 %>%
+ch3_h1b_risers <- ch3_h1b_company_changes %>%
+  filter(
+    .data$Change >
+      0
+  ) %>%
   arrange(
-    desc(.data$Count)
+    desc(.data$Change),
+    .data$DisplayName
+  ) %>%
+  slice_head(
+    n = 2
   )
 
 
-ch3_founder_origin_metric <- function(
-    country,
-    stat_id,
-    emphasis = FALSE
+ch3_h1b_fallers <- ch3_h1b_company_changes %>%
+  filter(
+    .data$Change <
+      0
+  ) %>%
+  arrange(
+    .data$Change,
+    .data$DisplayName
+  ) %>%
+  slice_head(
+    n = 2
+  )
+
+
+if (
+  nrow(ch3_h1b_risers) <
+    2L ||
+    nrow(ch3_h1b_fallers) <
+      2L
 ) {
-  row <- fig308 %>%
-    filter(
-      normalize_label(.data$Country) ==
-        normalize_label(.env$country)
-    )
 
-  if (
-    nrow(row) != 1
-  ) {
-    return(NULL)
-  }
-
-  metric_text(
-    stat_id = stat_id,
-    section_id = "ai_founders",
-    section = "Immigrant founders and AI",
-    measure = country,
-    earlier = "—",
-    latest = paste0(
-      scales::comma(
-        row$Count[[1]]
-      ),
-      " founders"
+  stop(
+    paste0(
+      "Chapter 3 requires at least two H-1B employer risers and ",
+      "two fallers with usable 2017 and 2025 observations."
     ),
-    change = "—",
-    emphasis = emphasis
+    call. = FALSE
   )
 }
 
 
-# FIG309 contains separate foreign-founded and domestic-founded arrays.
-# Code summary statistics from the source even though they are not selected
-# for display in the approved Chapter 3 page.
-ch3_fig309_foreign <- fig309 %>%
-  filter(
-    !is.na(.data$`Founder Makeup Binary`)
-  )
+ch3_h1b_rank_metric <- function(
+    row,
+    stat_id,
+    rank_label
+) {
 
-ch3_fig309_domestic <- fig309 %>%
-  filter(
-    !is.na(.data$`Founder Makeup Binary.1`)
-  )
+  ch3_metric_values(
+    stat_id =
+      stat_id,
 
-ch3_fig309_summary <- bind_rows(
-  metric_text(
-    stat_id = "ai_company_count_foreign_founded",
-    section_id = "ai_company",
-    section = "Leading AI companies founded by immigrants",
-    measure = "Companies with a confirmed foreign founder",
-    earlier = "—",
-    latest = scales::comma(
-      nrow(ch3_fig309_foreign)
+    section_id =
+      "h1b",
+
+    section =
+      "H-1B Employer Concentration",
+
+    measure = paste0(
+      rank_label,
+      " — ",
+      row$DisplayName[[1]]
     ),
-    change = "—"
+
+    first_value =
+      row$FirstShare[[1]],
+
+    first_year =
+      row$FirstYear[[1]],
+
+    last_value =
+      row$LastShare[[1]],
+
+    last_year =
+      row$LastYear[[1]],
+
+    value_type =
+      "share",
+
+    change_type =
+      "pp_share"
+  )
+}
+
+
+ch3_h1b_rank_stats <- bind_rows(
+
+  ch3_h1b_rank_metric(
+    row =
+      ch3_h1b_risers %>%
+      slice(1),
+
+    stat_id =
+      "h1b_riser_1",
+
+    rank_label =
+      "Largest riser"
   ),
-  metric_text(
-    stat_id = "ai_company_count_domestic_founded",
-    section_id = "ai_company",
-    section = "Leading AI companies founded by immigrants",
-    measure = "Companies with no confirmed foreign founder",
-    earlier = "—",
-    latest = scales::comma(
-      nrow(ch3_fig309_domestic)
-    ),
-    change = "—"
+
+
+  ch3_h1b_rank_metric(
+    row =
+      ch3_h1b_risers %>%
+      slice(2),
+
+    stat_id =
+      "h1b_riser_2",
+
+    rank_label =
+      "Second-largest riser"
+  ),
+
+
+  ch3_h1b_rank_metric(
+    row =
+      ch3_h1b_fallers %>%
+      slice(1),
+
+    stat_id =
+      "h1b_faller_1",
+
+    rank_label =
+      "Largest faller"
+  ),
+
+
+  ch3_h1b_rank_metric(
+    row =
+      ch3_h1b_fallers %>%
+      slice(2),
+
+    stat_id =
+      "h1b_faller_2",
+
+    rank_label =
+      "Second-largest faller"
   )
 )
 
 
-# Figure 3.10: preserve all three geography shares for every company.
-ch3_ai_staffing_metric <- function(
-    company,
-    stat_id,
-    emphasis = FALSE
-) {
-  row <- fig310 %>%
-    filter(
-      normalize_label(.data$Company) ==
-        normalize_label(.env$company)
-    )
-
-  if (
-    nrow(row) != 1
-  ) {
-    return(NULL)
-  }
-
-  metric_text(
-    stat_id = stat_id,
-    section_id = "ai_staffing",
-    section = "Where leading AI companies staff research",
-    measure = company,
-    earlier = scales::percent(
-      row$`United States`[[1]],
-      accuracy = 1
-    ),
-    latest = scales::percent(
-      row$China[[1]],
-      accuracy = 1
-    ),
-    change = scales::percent(
-      row$`Rest of World`[[1]],
-      accuracy = 1
-    ),
-    emphasis = emphasis
-  )
-}
-
-
 # ----------------------------------------------------------------------------
-# 5. CODE THE FULL CURRENT CHAPTER 3 STATISTIC SET
+# 16. BUILD ALL CHAPTER 3 STATISTICS
 # ----------------------------------------------------------------------------
 
 ch3_all_stats <- bind_rows(
 
+
   # ==========================================================================
-  # INTERNATIONAL TALENT PIPELINE
+  # WHERE INTERNATIONAL STUDENTS SIT IN THE TALENT PIPELINE
   # ==========================================================================
 
-  metric_series(
+  ch3_metric_series(
     "pipeline_associates",
     "pipeline",
-    "International talent pipeline",
-    "Associate-level students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in associate-degree programs",
     fig301,
     "Associates",
     "count",
     "percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_bachelors",
     "pipeline",
-    "International talent pipeline",
-    "Bachelor’s students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in bachelor’s programs",
     fig301,
     "Bachelors",
     "count",
     "percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_masters",
     "pipeline",
-    "International talent pipeline",
-    "Master’s students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in master’s programs",
     fig301,
     "Masters",
     "count",
@@ -4810,11 +7887,12 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_doctorate",
     "pipeline",
-    "International talent pipeline",
-    "Doctorate students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in doctoral programs",
     fig301,
     "Doctorate",
     "count",
@@ -4822,44 +7900,48 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_professional",
     "pipeline",
-    "International talent pipeline",
-    "Professional students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in professional programs",
     fig301,
     "Professional",
     "count",
     "percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_grad_unspecified",
     "pipeline",
-    "International talent pipeline",
-    "Graduate students, unspecified",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in graduate programs, unspecified",
     fig301,
     "Graduate (unspecified)",
     "count",
     "percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_nondegree",
     "pipeline",
-    "International talent pipeline",
-    "Non-degree students",
+    "Where International Students Sit in the Talent Pipeline",
+    "Enrolled in non-degree programs",
     fig301,
     "Non-degree",
     "count",
     "percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "pipeline_opt",
     "pipeline",
-    "International talent pipeline",
-    "OPT participants",
+    "Where International Students Sit in the Talent Pipeline",
+    "Participating in Optional Practical Training (OPT)",
     fig301,
     "OPT",
     "count",
@@ -4868,15 +7950,16 @@ ch3_all_stats <- bind_rows(
   ),
 
 
+
   # ==========================================================================
   # INTERNATIONAL TALENT IN RESEARCH
   # ==========================================================================
 
-  metric_series(
+  ch3_metric_series(
     "postdoc_science",
     "postdoc",
-    "International talent in research",
-    "Science postdocs",
+    "International Talent in Research",
+    "International share of science postdocs",
     fig302,
     "Science",
     "percent_value",
@@ -4884,22 +7967,24 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "postdoc_engineering",
     "postdoc",
-    "International talent in research",
-    "Engineering postdocs",
+    "International Talent in Research",
+    "International share of engineering postdocs",
     fig302,
     "Engineering",
     "percent_value",
     "pp_percent"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "postdoc_health",
     "postdoc",
-    "International talent in research",
-    "Health postdocs",
+    "International Talent in Research",
+    "International share of health postdocs",
     fig302,
     "Health",
     "percent_value",
@@ -4907,67 +7992,123 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
-    "ffrdc_temp_visa",
+
+  ch3_metric_series(
+    "ffrdc_international_share",
     "postdoc",
-    "International talent in research",
-    "Temporary-visa postdocs at FFRDCs",
-    fig303,
-    "Temporary visa holders",
-    "count",
-    "percent",
+    "International Talent in Research",
+    "International share of postdocs at FFRDCs*",
+    fig303_share,
+    "InternationalShare",
+    "share",
+    "pp_share",
     emphasis = TRUE
   ),
 
-  metric_series(
-    "ffrdc_domestic",
-    "postdoc",
-    "International talent in research",
-    "US citizens/permanent residents at FFRDCs",
-    fig303,
-    "U.S. citizens and permanent residents",
-    "count",
-    "percent"
+
+
+  # ==========================================================================
+  # STEM DEGREE TO STEM JOB CONVERSION RATES
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  # OVERALL
+  #
+  # INF3-02:
+  # STEM-degree holders -> S&E occupations
+  # --------------------------------------------------------------------------
+
+  ch3_weighted_average_metric(
+    df =
+      ch3_overall_weighted_average,
+
+    stat_id =
+      "work_overall_average",
+
+    measure =
+      "Overall, average"
   ),
 
 
-  # ==========================================================================
-  # FROM DEGREE TO STEM WORK
-  # ==========================================================================
-
-  metric_series(
+  ch3_metric_series(
     "work_all_bachelors",
     "degree_work",
-    "From degree to STEM work",
-    "Bachelor’s degree holders employed in STEM",
+    "STEM Degree to STEM Job Conversion Rates",
+    ch3_nested_label(
+      "Bachelor’s STEM degree holders in STEM jobs"
+    ),
     tab301,
     "bachelors",
     "share",
     "pp_share"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "work_all_masters",
     "degree_work",
-    "From degree to STEM work",
-    "Master’s degree holders employed in STEM",
+    "STEM Degree to STEM Job Conversion Rates",
+    ch3_nested_label(
+      "Master’s STEM degree holders in STEM jobs"
+    ),
     tab301,
     "masters",
     "share",
     "pp_share"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "work_all_doctorates",
     "degree_work",
-    "From degree to STEM work",
-    "Doctorate holders employed in STEM",
+    "STEM Degree to STEM Job Conversion Rates",
+    ch3_nested_label(
+      "Doctorate STEM degree holders in STEM jobs"
+    ),
     tab301,
     "doctors",
     "share",
     "pp_share",
     emphasis = TRUE
   ),
+
+
+  # --------------------------------------------------------------------------
+  # US-BORN
+  #
+  # INF3-01 / FIG304a:
+  # all degree holders -> S&E + S&E-related occupations
+  # --------------------------------------------------------------------------
+
+  ch3_weighted_average_metric(
+    df =
+      ch3_us_weighted_average,
+
+    stat_id =
+      "work_us_average",
+
+    measure =
+      "US-born, average"
+  ),
+
+
+  ch3_degree_population_metric(
+    fig304_us,
+    "US-born",
+    "bachelors",
+    "bachelor’s",
+    "work_us_bachelors"
+  ),
+
+
+  ch3_degree_population_metric(
+    fig304_us,
+    "US-born",
+    "masters",
+    "master’s",
+    "work_us_masters"
+  ),
+
 
   ch3_degree_population_metric(
     fig304_us,
@@ -4976,6 +8117,44 @@ ch3_all_stats <- bind_rows(
     "doctorate",
     "work_us_doctorate"
   ),
+
+
+  # --------------------------------------------------------------------------
+  # FOREIGN-BORN
+  #
+  # INF3-01 / FIG304b:
+  # all degree holders -> S&E + S&E-related occupations
+  # --------------------------------------------------------------------------
+
+  ch3_weighted_average_metric(
+    df =
+      ch3_foreign_weighted_average,
+
+    stat_id =
+      "work_foreign_average",
+
+    measure =
+      "Foreign-born, average"
+  ),
+
+
+  ch3_degree_population_metric(
+    fig304_foreign,
+    "Foreign-born",
+    "bachelors",
+    "bachelor’s",
+    "work_foreign_bachelors"
+  ),
+
+
+  ch3_degree_population_metric(
+    fig304_foreign,
+    "Foreign-born",
+    "masters",
+    "master’s",
+    "work_foreign_masters"
+  ),
+
 
   ch3_degree_population_metric(
     fig304_foreign,
@@ -4986,64 +8165,16 @@ ch3_all_stats <- bind_rows(
     TRUE
   ),
 
-  # Code the remaining Figure 3.04 degree levels too.
-  ch3_degree_population_metric(
-    fig304_us,
-    "US-born",
-    "bachelors",
-    "bachelor’s",
-    "work_us_bachelors"
-  ),
-
-  ch3_degree_population_metric(
-    fig304_foreign,
-    "Foreign-born",
-    "bachelors",
-    "bachelor’s",
-    "work_foreign_bachelors"
-  ),
-
-  ch3_degree_population_metric(
-    fig304_us,
-    "US-born",
-    "masters",
-    "master’s",
-    "work_us_masters"
-  ),
-
-  ch3_degree_population_metric(
-    fig304_foreign,
-    "Foreign-born",
-    "masters",
-    "master’s",
-    "work_foreign_masters"
-  ),
-
-  ch3_degree_population_metric(
-    fig304_us,
-    "US-born",
-    "professional",
-    "professional-degree",
-    "work_us_professional"
-  ),
-
-  ch3_degree_population_metric(
-    fig304_foreign,
-    "Foreign-born",
-    "professional",
-    "professional-degree",
-    "work_foreign_professional"
-  ),
 
 
   # ==========================================================================
   # TEMPORARY-VISA CONCENTRATION BY OCCUPATION
   # ==========================================================================
 
-  metric_series(
+  ch3_metric_series(
     "visa_computer_math",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Computer and mathematical scientists",
     tab302,
     "Computer and mathematical scientists",
@@ -5052,10 +8183,11 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_engineers",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Engineers",
     tab302,
     "Engineers",
@@ -5063,10 +8195,11 @@ ch3_all_stats <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_biological",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Biological and life scientists",
     tab302,
     "Biological, agricultural, and other life scientists",
@@ -5075,10 +8208,11 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_physical",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Physical scientists",
     tab302,
     "Physical and related scientists",
@@ -5086,10 +8220,11 @@ ch3_all_stats <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_social",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Social scientists",
     tab302,
     "Social and related scientists",
@@ -5098,10 +8233,11 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_se_related",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "S&E-related occupations",
     tab302,
     "S&E-related occupations",
@@ -5109,27 +8245,29 @@ ch3_all_stats <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch3_metric_series(
     "visa_nonse",
     "visa_occupation",
-    "Temporary-visa concentration by occupation",
+    "Temporary-Visa Concentration by Occupation",
     "Non-S&E occupations",
     tab302,
     "Non-S&E occupations",
     "share",
     "pp_share"
   ),
+
 
 
   # ==========================================================================
   # H-1B EMPLOYER CONCENTRATION
   # ==========================================================================
 
-  metric_series(
+  ch3_metric_series(
     "h1b_top10",
     "h1b",
-    "H-1B employer concentration",
-    "Top 10 employers’ share of approvals",
+    "H-1B Employer Concentration",
+    "Top 10 employers’ share of H-1B approvals",
     ch3_h1b_top10,
     "Share",
     "share",
@@ -5137,178 +8275,107 @@ ch3_all_stats <- bind_rows(
     emphasis = TRUE
   ),
 
-  ch3_h1b_table303_stats,
+
+  ch3_h1b_rank_stats
+)
 
 
-  # ==========================================================================
-  # IMMIGRANT FOUNDERS AND AI
-  # ==========================================================================
+# ----------------------------------------------------------------------------
+# 17. VALIDATE INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
 
-  metric_series(
-    "ai_all_foreign",
-    "ai_founders",
-    "Immigrant founders and AI",
-    "All-foreign-born founder teams",
-    fig307,
-    "all foreign",
-    "share",
-    "pp_share",
-    emphasis = TRUE
-  ),
-
-  metric_series(
-    "ai_some_foreign",
-    "ai_founders",
-    "Immigrant founders and AI",
-    "Some foreign-born founders",
-    fig307,
-    "some foreign",
-    "share",
-    "pp_share",
-    emphasis = TRUE
-  ),
-
-  metric_series(
-    "ai_all_us",
-    "ai_founders",
-    "Immigrant founders and AI",
-    "All-US-born founder teams",
-    fig307,
-    "all us",
-    "share",
-    "pp_share"
-  ),
-
-  ch3_founder_origin_metric(
-    "India",
-    "founder_origin_india",
-    TRUE
-  ),
-
-  ch3_founder_origin_metric(
-    "Israel",
-    "founder_origin_israel"
-  ),
-
-  ch3_founder_origin_metric(
-    "China",
-    "founder_origin_china",
-    TRUE
-  ),
-
-  ch3_founder_origin_metric(
-    "Canada",
-    "founder_origin_canada"
-  ),
-
-  ch3_founder_origin_metric(
-    "United Kingdom",
-    "founder_origin_uk"
-  ),
-
-  ch3_fig309_summary,
+ch3_stat_ids <- unique(
+  ch3_all_stats$StatID
+)
 
 
-  # ==========================================================================
-  # WHERE LEADING AI COMPANIES STAFF RESEARCH
-  # ==========================================================================
-
-  ch3_ai_staffing_metric(
-    "Anthropic",
-    "ai_staffing_anthropic",
-    TRUE
-  ),
-
-  ch3_ai_staffing_metric(
-    "Alphabet",
-    "ai_staffing_alphabet"
-  ),
-
-  ch3_ai_staffing_metric(
-    "OpenAI",
-    "ai_staffing_openai",
-    TRUE
-  ),
-
-  ch3_ai_staffing_metric(
-    "Alibaba",
-    "ai_staffing_alibaba"
-  ),
-
-  ch3_ai_staffing_metric(
-    "DeepSeek",
-    "ai_staffing_deepseek",
-    TRUE
-  ),
-
-  ch3_ai_staffing_metric(
-    "Moonshot",
-    "ai_staffing_moonshot"
+missing_controls <- setdiff(
+  ch3_stat_ids,
+  names(
+    CH3_INCLUDE
   )
 )
 
 
-# ----------------------------------------------------------------------------
-# 6. SELECT THE EDITORIAL CHAPTER 3 STATISTICS
-# ----------------------------------------------------------------------------
-# Everything above remains coded and available. These are the measures that
-# actually appear in the By-the-Numbers pages.
-#
-# The first 30 rows end exactly at the end of "Immigrant founders and AI,"
-# so Page 2 begins cleanly with the AI research-geography section.
-
-CH3_SELECTED_STATS <- c(
-
-  # International talent pipeline — 4
-  "pipeline_bachelors",
-  "pipeline_masters",
-  "pipeline_doctorate",
-  "pipeline_opt",
-
-  # International talent in research — 5
-  "postdoc_science",
-  "postdoc_engineering",
-  "postdoc_health",
-  "ffrdc_temp_visa",
-  "ffrdc_domestic",
-
-  # From degree to STEM work — 5
-  "work_all_bachelors",
-  "work_all_masters",
-  "work_all_doctorates",
-  "work_us_doctorate",
-  "work_foreign_doctorate",
-
-  # Temporary-visa concentration by occupation — 5
-  "visa_computer_math",
-  "visa_engineers",
-  "visa_biological",
-  "visa_physical",
-  "visa_social",
-
-  # H-1B employer concentration — 6
-  "h1b_top10",
-  "h1b_google",
-  "h1b_cognizant",
-  "h1b_tata_consultancy_services",
-  "h1b_infosys",
-  "h1b_deloitte",
-
-  # Immigrant founders and AI — 5
-  "ai_all_foreign",
-  "ai_some_foreign",
-  "ai_all_us",
-  "founder_origin_india",
-  "founder_origin_china",
-
-  # AI research geography — 6
-  "ai_staffing_anthropic",
-  "ai_staffing_alphabet",
-  "ai_staffing_openai",
-  "ai_staffing_alibaba",
-  "ai_staffing_deepseek",
-  "ai_staffing_moonshot"
+unknown_controls <- setdiff(
+  names(
+    CH3_INCLUDE
+  ),
+  ch3_stat_ids
 )
+
+
+if (
+  length(
+    missing_controls
+  ) ||
+    length(
+      unknown_controls
+    )
+) {
+
+  stop(
+    paste0(
+
+      "CH3_INCLUDE is out of sync with ch3_all_stats. ",
+
+      if (
+        length(
+          missing_controls
+        )
+      ) {
+
+        paste0(
+          "Missing controls: ",
+          paste(
+            missing_controls,
+            collapse = ", "
+          ),
+          ". "
+        )
+
+      } else {
+
+        ""
+      },
+
+
+      if (
+        length(
+          unknown_controls
+        )
+      ) {
+
+        paste0(
+          "Unknown controls: ",
+          paste(
+            unknown_controls,
+            collapse = ", "
+          ),
+          "."
+        )
+
+      } else {
+
+        ""
+      }
+    ),
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 18. APPLY INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
+#
+# CH3_INCLUDE is also the authoritative display order.
+
+CH3_SELECTED_STATS <- names(
+  CH3_INCLUDE
+)[
+  CH3_INCLUDE
+]
 
 
 ch3_selected <- ch3_all_stats %>%
@@ -5317,31 +8384,54 @@ ch3_selected <- ch3_all_stats %>%
       CH3_SELECTED_STATS
   ) %>%
   mutate(
-    DisplayOrder = match(
-      .data$StatID,
-      CH3_SELECTED_STATS
-    ),
-
-    # Publication pagination: merge the two adjacent workforce subsections so
-    # Page 1 contains exactly 30 body rows + 5 visible section headers.
-    Section = dplyr::case_when(
-      .data$SectionID %in% c(
-        "degree_work",
-        "visa_occupation"
-      ) ~ "From degree to workforce",
-
-      TRUE ~ as.character(
-        .data$Section
+    DisplayOrder =
+      match(
+        .data$StatID,
+        CH3_SELECTED_STATS
       )
-    )
   ) %>%
   arrange(
     .data$DisplayOrder
   )
 
 
+if (
+  nrow(
+    ch3_selected
+  ) == 0L
+) {
+
+  stop(
+    "CH3_INCLUDE excludes every Chapter 3 statistic.",
+    call. = FALSE
+  )
+}
+
+
+if (
+  nrow(
+    ch3_selected
+  ) !=
+    sum(
+      CH3_INCLUDE
+    )
+) {
+
+  stop(
+    paste0(
+      "Expected ",
+      sum(CH3_INCLUDE),
+      " selected Chapter 3 statistics but built ",
+      nrow(ch3_selected),
+      "."
+    ),
+    call. = FALSE
+  )
+}
+
+
 # ----------------------------------------------------------------------------
-# 7. BUILD PAGES
+# 19. BUILD PAGE
 # ----------------------------------------------------------------------------
 
 build_ch3_page <- function(
@@ -5351,48 +8441,39 @@ build_ch3_page <- function(
     is_last_page
 ) {
 
-  # Page 2 is not a time comparison. Figure 3.10 is a geographic composition
-  # chart, so relabel the three value columns accordingly.
-  page_column_labels <- if (
-    page_number == 2
-  ) {
-    c(
-      Earlier = "United<br>States",
-      Latest  = "China",
-      Change  = "Rest of<br>world"
-    )
-  } else {
-    c(
-      Earlier = "Earlier or<br>baseline",
-      Latest  = "Latest value",
-      Change  = "Change"
-    )
-  }
-
   final_notes <- if (
     is_last_page
   ) {
+
     c(
+
+      "\\* FFRDCs = federally funded research and development centers.",
+
       paste0(
-        "**Note:** Longitudinal rows compare the first and latest available ",
-        "observations in the current source series. H-1B company rows compare ",
-        "2017 with 2025, matching current Table 3.03. Figure 3.10 rows are a ",
-        "geographic composition snapshot rather than a time comparison; the ",
-        "three value columns therefore report the United States, China, and ",
-        "rest-of-world shares."
+        "**Note:** Most rows compare 2000 and 2025; superscript years mark ",
+        "different endpoints. Average rows are population-weighted across ",
+        "bachelor’s, master’s, and doctorate levels. ", 
+        "Arrow colors indicate direction of change only."
       ),
+
       paste0(
-        "**Source:** Current report data underlying Figures 3.01–3.10 and ",
-        "Tables 3.01–3.03. Figure 3.06 and Table 3.03 are derived from the ",
-        "same employer-level H-1B source used for Figure 3.05."
+        "**Source:** Derived from the current report Figures and Tables: ",
+        "Figures 3.01–3.06 and Tables 3.01–3.03. Additional weighted-average ",
+        "calculations use the underlying NSCG custom tabulation and NCSES ",
+        "Table 6-4."
       )
     )
+
   } else {
+
     character()
   }
 
+
   build_infographic_table(
-    data = page_data,
+    data =
+      page_data,
+
     id = paste0(
       "infographic_ch3_by_the_numbers_page_",
       sprintf(
@@ -5400,26 +8481,67 @@ build_ch3_page <- function(
         page_number
       )
     ),
-    chapter_number = 3,
-    title = "FROM EDUCATION TO THE WORKFORCE: BY THE NUMBERS",
-    subtitle = "International talent across research, employment, and AI",
-    column_labels = page_column_labels,
-    notes = final_notes,
-    layout = INFOGRAPHIC_FIXED_LAYOUT,
-    row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
-    nowrap_values = TRUE
+
+    chapter_number =
+      3,
+
+    title =
+      "FROM EDUCATION TO THE WORKFORCE: BY THE NUMBERS",
+
+    subtitle =
+      "International talent across education, research, and employment",
+
+    column_labels = c(
+      Earlier =
+        "2000",
+
+      Latest =
+        "2025",
+
+      Change =
+        "Change"
+    ),
+
+    notes =
+      final_notes,
+
+    layout =
+      INFOGRAPHIC_FIXED_LAYOUT,
+
+    row_padding_px =
+      INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+
+    nowrap_values =
+      TRUE,
+
+    trend_right_padding_px =
+      5,
+
+    show_header =
+      FALSE
   )
 }
 
 
 # ----------------------------------------------------------------------------
-# 8. EXPORT THROUGH THE GLOBAL 30-BODY-ROW / 5-HEADER PAGE CONTRACT
+# 20. EXPORT
 # ----------------------------------------------------------------------------
 
 ch3_exports <- export_paginated_infographic(
-  data = ch3_selected,
-  build_page = build_ch3_page,
-  name = "infographic_ch3_by_the_numbers"
+  data =
+    ch3_selected,
+
+  build_page =
+    build_ch3_page,
+
+  name =
+    "infographic_ch3_by_the_numbers",
+
+  rows_per_page =
+    CH3_ROWS_PER_PAGE,
+
+  section_headers_per_page =
+    CH3_SECTION_HEADERS_PER_PAGE
 )
 
 
@@ -5431,6 +8553,7 @@ knitr::include_graphics(
     "png_path"
   )
 )
+
 ```
 
 # Chapter 4

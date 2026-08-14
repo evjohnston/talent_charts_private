@@ -223,9 +223,8 @@ save_table(tab_202, "tab_2_02", profile = "ultrawide", stub_width_px = 170)
 
 ### Table 3.01 - Which STEM Graduates Work in STEM Occupations
 ```{r tab_14}
-meta <- get_meta("TAB301")   # or reuse TAB301's meta
+meta <- get_meta("TAB301")
 change_type <- "ppt"  # choose "relative" or "ppt"
-
 df_029t <- read_fig("TAB301") %>%
   mutate(across(-Year, as.numeric)) %>%
   pivot_longer(-Year, names_to = "Level", values_to = "Share") %>%
@@ -240,37 +239,29 @@ df_029t <- read_fig("TAB301") %>%
   ) %>%
   pivot_wider(names_from = Year, values_from = Share, names_prefix = "Y") %>%
   mutate(
-    Chg2003 = table_change(Y1993, Y2003, change_type),
-    Chg2013 = table_change(Y2003, Y2013, change_type),
-    Chg2023 = table_change(Y2013, Y2023, change_type),
-    Change  = table_change(Y1993, Y2023, change_type),
+    Change     = table_change(Y1993, Y2023, change_type),
     Occupation = factor(Level, levels = c("Bachelors", "Masters", "Doctorate"))
   ) %>%
   arrange(Occupation) %>%
-  select(Occupation, Y1993, Chg2003, Chg2013, Chg2023, Y2023, Change)
-
+  select(Occupation, Y1993, Y2003, Y2013, Y2023, Change)
 tab_014 <- build_occupation_share_table(
   df_029t, "tab_014", meta,
-  level_cols    = c("Y1993", "Y2023"),
-  chg_cols      = c("Chg2003", "Chg2013", "Chg2023"),
+  level_cols    = c("Y1993", "Y2003", "Y2013", "Y2023"),
   spanner_label = "Share employed in STEM",
   change_type   = change_type,
   footnote = end_sentence(
-    "1993 is the share of graduates at each degree level employed in a STEM",
-    "occupation. 2003, 2013, and 2023 show the", change_phrase(change_type),
-    "from the prior period shown rather than the share itself.",
-    change_col_label(TRUE), "uses the same change type from 1993 to 2023"
+    "Each year column is the share of graduates at each degree level employed",
+    "in a STEM occupation.", change_col_label(TRUE), "is the",
+    change_phrase(change_type), "from 1993 to 2023"
   )
 )
-
 save_table(tab_014, "tab_3_01", profile = "wide", stub_width_px = 260)
 ```
 
 ### Table 3.02 - How Concentrated Are Temporary Visa Holders in STEM Occupations 
 ```{r}
 meta <- get_meta("TAB302")
-change_type <- "ppt"  # choose "relative" or "ppt"
-
+change_type <- "ppt"
 short_names <- c(
   "Biological, agricultural, and other life scientists" = "Biological scientists",
   "Computer and mathematical scientists"                = "Computer/math scientists",
@@ -280,11 +271,9 @@ short_names <- c(
   "S&E-related occupations"                               = "S&E-related occupations",
   "Non-S&E occupations"                                   = "Non-S&E occupations"
 )
-
 row_order <- c("Computer/math scientists", "Engineers", "Biological scientists",
                "Physical scientists", "Social scientists",
                "S&E-related occupations", "Non-S&E occupations")
-
 df_011 <- read_fig("TAB302") %>%
   mutate(across(-Year, as.numeric)) %>%
   pivot_longer(-Year, names_to = "Occupation", values_to = "Rate") %>%
@@ -293,22 +282,16 @@ df_011 <- read_fig("TAB302") %>%
          Occupation = recode(Occupation, !!!short_names)) %>%
   pivot_wider(names_from = Year, values_from = Rate, names_prefix = "Y") %>%
   mutate(
-    Chg2019 = table_change(Y2017, Y2019, change_type),
-    Chg2021 = table_change(Y2019, Y2021, change_type),
-    Chg2023 = table_change(Y2021, Y2023, change_type),
-    Change  = table_change(Y2017, Y2023, change_type),
+    Change     = table_change(Y2017, Y2023, change_type),
     Occupation = factor(Occupation, levels = row_order)
   ) %>%
   arrange(Occupation) %>%
-  select(Occupation, Y2017, Chg2019, Chg2021, Chg2023, Y2023, Change)
-
+  select(Occupation, Y2017, Y2019, Y2021, Y2023, Change)
 TAB302 <- build_occupation_share_table(
   df_011, "TAB302", meta,
-  level_cols  = c("Y2017", "Y2023"),
-  chg_cols    = c("Chg2019", "Chg2021", "Chg2023"),
+  level_cols  = c("Y2017", "Y2019", "Y2021", "Y2023"),
   change_type = change_type
 )
-
 save_table(TAB302, "tab_3_02", profile = "wide", stub_width_px = 300)
 ```
 
@@ -375,7 +358,7 @@ wide <- shares %>%
 
 df_012 <- wide %>%
   mutate(
-    Company = proper_case(recode(Company, !!!short_names)),
+    Company = proper_case(Company),
     Y1 = Y2017, Y2 = Y2025,
     Change = if_else(Y2017 > 0 | change_type == "ppt",
                      table_change(Y2017, Y2025, change_type), NA_real_)

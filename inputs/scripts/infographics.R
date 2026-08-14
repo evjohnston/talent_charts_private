@@ -764,7 +764,7 @@ INFOGRAPHIC_FIXED_LAYOUT <- list(
   # Match the source/caption size used by figures and revised tables.
   source_font_px = infographic_pt_to_px(PUB$type$caption_pt),
   
-  row_padding_px = infographic_pt_to_px(2.8)
+  row_padding_px = infographic_pt_to_px(2.78)
 )
 
 # One uniform data-row height for every chapter/page.

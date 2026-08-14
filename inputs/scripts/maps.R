@@ -31,17 +31,27 @@ geom_choropleth <- function(data, mapping,
 }
 
 geom_country_labels <- function(data, value_col = "Count",
-                                color = "white", min_value = 1, ...) {
+                                color = "white", min_value = 1,
+                                color_threshold = NULL,
+                                dark_color = "white", light_color = "black",
+                                size = DATA_LABEL_SIZE / .pt,
+                                ...) {
   labeled <- data %>%
     filter(.data[[value_col]] >= min_value)
+  
+  label_color <- if (is.null(color_threshold)) {
+    color
+  } else {
+    ifelse(labeled[[value_col]] >= color_threshold, dark_color, light_color)
+  }
   
   geom_sf_text(
     data = labeled,
     aes(label = .data[[value_col]]),
-    color = color,
+    color = label_color,
     fontface = "bold",
     family = FONT_FAMILY,
-    size = DATA_LABEL_SIZE / .pt,
+    size = size,
     ...
   )
 }

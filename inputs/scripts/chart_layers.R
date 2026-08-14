@@ -556,6 +556,7 @@ block_arrow_layers <- function(df, category_col, value_col, fills,
                                pad         = 3,
                                x_spacing   = 1,      # <1 packs categories closer
                                x_expand    = 0.08,   # was 0.6: outer whitespace
+                               x_expand_left = 0.08,
                                base_over   = 0.3) {  # was 0.45: baseline stub past ends
   d <- df %>%
     mutate(
@@ -590,9 +591,10 @@ block_arrow_layers <- function(df, category_col, value_col, fills,
     list(
       geom_polygon(data = poly,
                    aes(vx, vy, group = .aid, fill = .cat)),
-      geom_segment(aes(x = min(.x) - base_over, xend = max(.x) + base_over,
-                       y = 0, yend = 0),
-                   data = d, color = "grey10", linewidth = 1.4),
+      annotate("segment",
+               x = min(d$.x) - base_over, xend = max(d$.x) + base_over,
+               y = 0, yend = 0,
+               color = "grey10", linewidth = 1.4),
       geom_label(data = d,
                  aes(x = .x, y = 0, label = .cat),
                  fill = "white", label.size = NA,
@@ -606,7 +608,7 @@ block_arrow_layers <- function(df, category_col, value_col, fills,
       scale_fill_manual(values = fills),
       scale_color_manual(values = fills),
       scale_x_continuous(breaks = NULL,
-                         expand = expansion(add = c(x_expand, x_expand))),
+                         expand = expansion(add = c(x_expand_left, x_expand))),
       scale_y_continuous(expand = expansion(mult = c(0, 0))),
       coord_cartesian(ylim = c(y_lo, y_hi), clip = "off"),
       guides(fill = "none", color = "none")

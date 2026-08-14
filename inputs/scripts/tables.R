@@ -1229,7 +1229,7 @@ build_h1b_top10_table <- function(df, name, meta, first_year, last_year,
 # and row ordering happen upstream in the calculation chunk -- this
 # function only builds and styles. spanner_label and footnote are
 # parametrized; defaults reproduce tab_011.
-build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
+build_occupation_share_table <- function(df, name, meta, level_cols,
                                          spanner_label = "Temporary visa holder share",
                                          change_type = c("ppt", "relative"),
                                          footnote = NULL) {
@@ -1237,49 +1237,38 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
   change_type <- resolve_change_type(change_type)
   if (is.null(footnote)) {
     footnote = end_sentence(
-      "2017 and 2023 are the temporary visa holder share of employment within",
-      "each STEM occupation category. 2019, 2021, and 2023 show the",
-      change_phrase(change_type), "from the prior survey year.",
-      change_col_label(TRUE), "uses the same change type from 2017 to 2023.",
+      "Each year column is the temporary visa holder share of employment within",
+      "each STEM occupation category.",
+      change_col_label(TRUE), "is the", change_phrase(change_type),
+      "from", gsub("^Y", "", level_cols[1]), "to",
+      gsub("^Y", "", level_cols[length(level_cols)]), ".",
       "Rows are ordered from occupations most directly tied to science and",
       "engineering to those least tied")
   }
   
-  all_chg_cols <- c(chg_cols, "Change")
-  span_order   <- c(level_cols[1], chg_cols, level_cols[2])
-  numeric_cols <- c(level_cols, all_chg_cols)   # every non-stub column
-  
+  span_order  <- level_cols
   level_labels <- setNames(gsub("^Y", "", level_cols), level_cols)
-  chg_labels   <- setNames(delta_col_label(gsub("^Chg", "", chg_cols)), chg_cols)
   
-  # No column widths are set here. Builders own content; save_table() owns
-  # geometry. These widths used to be computed against TABLE_CSS_WIDTH_PX (the
-  # STANDARD profile) while tables 3.01 and 3.02 export at the WIDE profile, so
-  # the stub was pinned at one width and the data columns distributed around
-  # another -- the sum ran past the table box and the right-hand columns fell
-  # outside the exported PNG.
   tbl <- df %>%
     gt(rowname_col = "Occupation", id = name) %>%
     fmt_number(columns = all_of(level_cols), decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = all_of(all_chg_cols), decimals = 1,
+    fmt_number(columns = "Change", decimals = 1,
                force_sign = TRUE,
                pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
     tab_spanner(label = spanner_label,
                 columns = all_of(span_order)) %>%
-    cols_label(!!!level_labels, !!!chg_labels,
-               Change = change_col_label(length(chg_cols) > 0))
+    cols_label(!!!level_labels,
+               Change = change_col_label(TRUE))
   
-  for (col in all_chg_cols) {
-    lim <- max(abs(df[[col]]), na.rm = TRUE)
-    tbl <- tbl %>%
-      data_color(
-        columns = all_of(col),
-        fn = scales::col_numeric(
-          palette = c(tpa_colors[2], "white", tpa_colors[1]),
-          domain  = c(-lim, lim)
-        )
+  lim <- max(abs(df[["Change"]]), na.rm = TRUE)
+  tbl <- tbl %>%
+    data_color(
+      columns = "Change",
+      fn = scales::col_numeric(
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
+        domain  = c(-lim, lim)
       )
-  }
+    )
   
   tbl <- tbl %>%
     tab_style(
@@ -1290,7 +1279,7 @@ build_occupation_share_table <- function(df, name, meta, level_cols, chg_cols,
       style     = cell_text(align = "left"),
       locations = cells_stub(rows = TRUE)
     ) %>%
-    cols_align(align = "right", columns = c(all_of(level_cols), all_of(all_chg_cols)))
+    cols_align(align = "right", columns = c(all_of(level_cols), "Change"))
   
   tbl %>%
     tab_style(

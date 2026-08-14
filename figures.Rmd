@@ -533,7 +533,7 @@ labels_109 <- last_by_group(df_109, Year, Country) %>%
   ) %>%
   prepare_right_labels(df_109$Year)
 
-FIG203 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
+FIG201 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = labels_109,
@@ -552,7 +552,8 @@ FIG203 <- ggplot(df_109, aes(Year, Count, color = Country, group = Country)) +
   theme_tpa() +
   theme_right_labels(labels_109)
 
-save_chart(FIG203, "fig_2_01")
+save_chart_aligned(FIG201, "fig_2_01")
+FIG201
 ```
 
 
@@ -580,7 +581,7 @@ labels_111 <- last_by_group(df_111, Year, Country) %>%
   ) %>%
   prepare_right_labels(df_111$Year)
 
-FIG204 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
+FIG202 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = labels_111,
@@ -599,7 +600,8 @@ FIG204 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
   theme_tpa() +
   theme_right_labels(labels_111)
 
-save_chart(FIG204, "fig_2_02")
+save_chart_aligned(FIG202, "fig_2_02")
+FIG202
 ```
 
 ### Figure 2.03 - International Students Enrolled in STEM Fields by Discipline
@@ -640,7 +642,7 @@ labels_014 <- last_by_group(df_014, Year, Field) %>%
     allow_multiline = TRUE
   )
 
-FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
+FIG203 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = labels_014,
@@ -662,7 +664,8 @@ FIG205 <- ggplot(df_014, aes(Year, Count, color = Field, group = Field)) +
   theme_tpa() +
   theme_right_labels(labels_014)
 
-save_chart(FIG205, "fig_2_03")
+save_chart_aligned(FIG203, "fig_2_03")
+FIG203
 ```
 
 
@@ -691,7 +694,7 @@ labels_013 <- last_by_group(df_013, Year, Country) %>%
   ) %>%
   prepare_right_labels(df_013$Year)
 
-FIG206 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
+FIG204 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = labels_013,
@@ -711,7 +714,8 @@ FIG206 <- ggplot(df_013, aes(Year, Count, color = Country, group = Country)) +
   theme_tpa() +
   theme_right_labels(labels_013)
 
-save_chart(FIG206, "fig_2_04")
+save_chart_aligned(FIG204, "fig_2_04")
+FIG204
 ```
 
 
@@ -726,7 +730,7 @@ df_010 <- read_fig("FIG205") %>%
 
 labels <- first_last_peak(df_010, Year, value)
 
-FIG209 <- ggplot(df_010, aes(Year, value)) +
+FIG205 <- ggplot(df_010, aes(Year, value)) +
   geom_col(fill = tpa_colors[1], width = 0.7, alpha = ALPHA_COL) +
   geom_text_tpa(data    = labels,
                 mapping = aes(label = sprintf("%.2f", value)),
@@ -738,67 +742,84 @@ FIG209 <- ggplot(df_010, aes(Year, value)) +
   labs_meta(meta, y = "USD (billions)") +
   theme_tpa()
 
-save_chart(FIG209, "fig_2_05")
+save_chart_aligned(FIG205, "fig_2_05")
+FIG205
 ```
-
 
 ### Figure 2.06 - How Much Did International Enrollment Change in 2025
 ```{r FIG210}
 meta <- get_meta("FIG206")
 
-df_104 <- read_fig("FIG206")
+df_104 <- read_fig("FIG206") %>%
+  dplyr::rename(
+    y2025  = `2025`,
+    y2026  = `2026`,
+    Change = Change
+  ) %>%
+  dplyr::mutate(
+    # strip "%" and coerce to numeric; "-12.00%" -> -12.00
+    Change = as.numeric(gsub("%", "", Change, fixed = TRUE)),
+    Category = factor(Category, levels = Category)   # preserve file order
+  )
 
-FIG210 <- ggplot() +
+FIG206 <- ggplot() +
   block_arrow_layers(df_104, Category, Change,
                      fills = arrow_fill,
-                     divider_after = 1) +
+                     divider_after = 1,
+                     x_expand_left = -0.02) +   # tighter left edge
   labs_meta(meta) +
   theme_arrows()
 
-save_chart(FIG210, "fig_2_06", size = "standard")
+save_chart_aligned(FIG206, "fig_2_06", size = "standard", left_pt = 2)
+FIG206
 ```
 
 ### Figure 2.07 - Where are American Institutions Focusing Their Recruitment Efforts Abroad?
-```{r FIG211}
+```{r FIG207 alternative}
 meta <- get_meta("FIG207")
-
-panel_colors <- c(
-  "Undergraduate" = tpa_colors[1],   
-  "Graduate"      = tpa_colors[2]    
+meta$caption <- paste0(
+  meta$caption,
+  "<br>",
+   "<br>",
+  "Figures for 2023–2025 average the share of respondents citing each country as a recruitment priority across the undergraduate and graduate samples, which Open Doors began reporting separately after 2023."
 )
 
-track_max <- 1.0   # grey track length; nudge up toward ~1.1 if fills look too long
+df_207n <- read_fig("FIG207") %>%
+  rename(Country = 1) %>%
+  mutate(across(-Country, as.numeric)) %>%
+  pivot_longer(-Country, names_to = "Year", values_to = "Value") %>%
+  mutate(Year = as.numeric(Year),
+         Value = Value * 100) %>%
+  filter(!is.na(Value)) %>%
+  order_by_latest(Country, Value)
 
-df_107 <- read_fig("FIG207") %>%
-  transmute(
-    Rank                  = as.integer(str_remove(Rank, "Rank ")),
-    Undergraduate_Country = `Undergraduate Country`,
-    Undergraduate_Value   = as.numeric(`Undergraduate Percent`),
-    Graduate_Country      = `Graduate Country`,
-    Graduate_Value        = as.numeric(`Graduate Percent`)
-  ) %>%
-  pivot_longer(-Rank, names_to = c("Panel", ".value"), names_sep = "_") %>%
+labels_207n <- last_by_group(df_207n, Year, Country) %>%
   mutate(
-    Panel   = factor(Panel, levels = c("Undergraduate", "Graduate")),
-    Country = str_wrap(Country, width = 18),
-    Country = reorder_within(Country, -Rank, Panel)   # rank 1 on top, per panel
-  )
+    .label = paste0(Country, ": ", fmt_pct_0(Value))
+  ) %>%
+  prepare_right_labels(df_207n$Year)
 
-FIG211 <- ggplot(df_107, aes(y = Country)) +
-  geom_col(aes(x = track_max), fill = "grey90", width = 0.3) +
-  geom_col(aes(x = Value, fill = Panel), width = 0.3) +
-  geom_text(aes(x = track_max, label = label_percent(accuracy = 1)(Value)),
-            hjust = -0.25, fontface = "bold", color = "grey20",
-            size = DATA_LABEL_SIZE / .pt, family = FONT_FAMILY) +
-  facet_wrap(~ Panel, scales = "free_y") +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.14))) +
-  scale_y_reordered(expand = expansion(add = 1)) +
-  scale_fill_manual(values = panel_colors) +
+FIG207 <- ggplot(df_207n, aes(Year, Value, color = Country, group = Country)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_label_repel_tpa(
+    data    = labels_207n,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_207n$Year, right_labels = labels_207n) +
+  scale_y_continuous(labels = label_number(suffix = "%"),
+                     expand = EXPAND_LINE) +
+  scale_color_tpa() +
+  guides(color = "none") +
+  labs_meta(meta, y = "Share of respondents") +
   coord_cartesian(clip = "off") +
-  labs_meta(meta) +
-  theme_bullet()
+  theme_tpa() +
+  theme_right_labels(labels_207n)
 
-save_chart(FIG211, "fig_2_07")
+save_chart_aligned(FIG207, "fig_2_07")
+FIG207
 ```
 
 ### Figure 2.08 - What Do Institutions Cite as the Reason for Decreasing International Enrollments?
@@ -811,14 +832,16 @@ df_106 <- read_fig("FIG208") %>%
   pivot_longer(-Reason, names_to = "Cohort", values_to = "Share") %>%
   filter(!is.na(Share)) %>%
   mutate(
-    Cohort = factor(Cohort, levels = c("Fall 2018", "Fall 2021", "Fall 2025")),
-    Reason = str_wrap(Reason, width = 40),                 # <- lower width = narrower text column
-    Reason = factor(Reason, levels = rev(unique(Reason)))
-  ) 
+    Cohort = factor(Cohort, levels = c("Fall 2015", "Fall 2019", "Fall 2025"))
+  ) %>%
+  mutate(
+    Reason = str_wrap(Reason, width = 50),
+    Reason = fct_reorder(Reason, Share * (Cohort == "Fall 2025"), .fun = sum)
+  )
 
 cohort_colors <- c(
-  "Fall 2018" = tpa_colors[1],
-  "Fall 2021" = tpa_colors[2],
+  "Fall 2015" = tpa_colors[1],
+  "Fall 2019" = tpa_colors[2],
   "Fall 2025" = tpa_colors[3]
 )
 
@@ -833,26 +856,28 @@ labels_106 <- df_106 %>%
   ) %>%
   ungroup()
 
-FIG212 <- ggplot(df_106, aes(Share, Reason, color = Cohort)) +
-  geom_point(size = 2.5) +
+FIG208 <- ggplot(df_106, aes(Share, Reason, color = Cohort)) +
+  geom_point(size = 2) +
   geom_text(
     data = labels_106,
     aes(x = label_x, label = paste0(Share, "%")),
     nudge_y = -0.34,
-    size = 8 / .pt,
+    size = 6 / .pt,
     fontface = "bold",
     family = FONT_FAMILY,
     show.legend = FALSE
   ) +
-  scale_x_continuous(expand = expansion(mult = c(0.07, 0.07))) +
+  scale_x_continuous(expand = expansion(mult = c(0.05, 0.07))) +
   scale_y_discrete(expand = expansion(add = c(0.8, 0.6))) +
   scale_color_manual(values = cohort_colors) +
-  guides(color = guide_legend(override.aes = list(size = 3.5))) +
+  guides(color = guide_legend(override.aes = list(size = 2))) +
   coord_cartesian(clip = "off") +
   labs_meta(meta) +
-  theme_dotplot()
+  theme_dotplot() +
+  theme(axis.text.y = element_text(size = 8))
 
-save_chart(FIG212, "fig_2_08", size="standard")
+save_chart_aligned(FIG208, "fig_2_08", size = "standard", left_pt = 156) 
+FIG208
 ```
 
 
@@ -878,7 +903,7 @@ labels_102 <- last_by_group(df_102, Year, Level) %>%
   ) %>%
   prepare_right_labels(df_102$Year)
 
-FIG201 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
+FIG301 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
   geom_line(linewidth = 1) +
   geom_label_repel_tpa(
     data    = labels_102,
@@ -897,7 +922,8 @@ FIG201 <- ggplot(df_102, aes(Year, Count, color = Level, group = Level)) +
   theme_tpa() +
   theme_right_labels(labels_102)
 
-save_chart(FIG201, "fig_3_01")
+save_chart_aligned(FIG301, "fig_3_01")
+FIG301
 ```
 
 ### Figure 3.02 - International Postdoctoral Researchers by Field
@@ -920,7 +946,7 @@ labels_020 <- last_by_group(df_020, Year, Field) %>%
   ) %>%
   prepare_right_labels(df_020$Year)
 
-FIG207 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
+FIG302 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = labels_020,
@@ -941,7 +967,8 @@ FIG207 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
   theme_tpa() +
   theme_right_labels(labels_020)
 
-save_chart(FIG207, "fig_3_02")
+save_chart_aligned(FIG302, "fig_3_02")
+FIG302
 ```
 
 ### Figure 3.03 - Who Holds Postdoctoral Positions at Federally Funded Research Centers
@@ -962,7 +989,7 @@ labels_021 <- df_021 %>%
                   above  = "Temporary visa holders",
                   amount = 120)
 
-FIG208 <- ggplot(df_021, aes(Year, Count, color = Status, group = Status)) +
+FIG303 <- ggplot(df_021, aes(Year, Count, color = Status, group = Status)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
   geom_label_repel_tpa(
@@ -981,7 +1008,8 @@ FIG208 <- ggplot(df_021, aes(Year, Count, color = Status, group = Status)) +
   labs_meta(meta, y = "Postdoctoral researchers") +
   theme_tpa()
 
-save_chart(FIG208, "fig_3_03")
+save_chart_aligned(FIG303, "fig_3_03")
+FIG303
 ```
 
 ### Figure 3.04 - Who Actually Works in STEM After Earning a STEM Degree?
@@ -995,7 +1023,6 @@ prep_conversion <- function() {
       pivot_longer(-Year, names_to = "Degree", values_to = "Rate") %>%
       mutate(Rate = Rate * 100, Population = pop)
   }
-
   bind_rows(
     read_one("FIG304a", "U.S.-born"),
     read_one("FIG304b", "Foreign-born")
@@ -1012,7 +1039,6 @@ prep_conversion <- function() {
 }
 
 meta <- get_meta("FIG304")
-
 first_yr <- 2003
 last_yr  <- 2023
 
@@ -1027,7 +1053,7 @@ df_seg <- df_db %>%
   select(Degree, Population, Year, Rate) %>%
   pivot_wider(names_from = Year, values_from = Rate, names_prefix = "Y")
 
-fig_db <- ggplot(df_db, aes(y = Degree)) +
+FIG304 <- ggplot(df_db, aes(y = Degree)) +
   geom_segment(data = df_seg,
                aes(x = Y2003, xend = Y2023, yend = Degree, color = Population),
                linewidth = 1.1, alpha = 0.55) +
@@ -1050,12 +1076,19 @@ fig_db <- ggplot(df_db, aes(y = Degree)) +
   guides(
     color = guide_legend(order = 1, override.aes = list(shape = 19, size = 4)),
     shape = guide_legend(order = 2,
-                         override.aes = list(color = "grey40", fill = "white"))
+                         override.aes = list(color = "grey40", fill = "white", size = 4))
   ) +
   labs_meta(meta, y = NULL) +
-  theme_horizontal_bar()
+  theme_horizontal_bar() +
+  theme(
+    legend.box        = "horizontal",
+    legend.box.just   = "center",
+    legend.key.height = unit(16, "pt"),
+    legend.text       = element_text(vjust = 0.5)
+  )
 
-save_chart(fig_db, "fig_3_04")
+save_chart_aligned(FIG304, "fig_3_04", left_pt = 60)
+FIG304
 ```
 
 
@@ -1119,7 +1152,7 @@ bar_order <- df_bar %>%
 
 df_bar <- df_bar %>% mutate(Company = factor(Company, levels = bar_order))
 
-FIG302a <- ggplot(df_bar, aes(Company, Share, fill = Year)) +
+FIG305 <- ggplot(df_bar, aes(Company, Share, fill = Year)) +
   geom_col(position = position_dodge(width = BAR_WIDTH),
            width = BAR_WIDTH, alpha = ALPHA_COL) +
   scale_y_continuous(labels = label_number(suffix = "%"),
@@ -1130,7 +1163,8 @@ FIG302a <- ggplot(df_bar, aes(Company, Share, fill = Year)) +
   theme_tpa() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-save_chart(FIG302a, "fig_3_05")
+save_chart_aligned(FIG305, "fig_3_05")
+FIG305
 ```
 
 ### Figure 3.06 - Top Employers Receiving H-1B Approvals, Share Over Time
@@ -1151,7 +1185,7 @@ labels <- first_last_peak(df_116, Year, value) %>%
     TRUE                       ~  0.5    # peak: stays centered
   ))
 
-fig_116 <- ggplot(df_116, aes(Year, value)) +
+FIG306 <- ggplot(df_116, aes(Year, value)) +
   geom_line(color = tpa_colors[1], linewidth = LINE_WIDTH) +
   geom_point(data = labels, color = tpa_colors[1], size = POINT_SIZE) +
   # peak label: house wrapper, centered above the point
@@ -1172,7 +1206,8 @@ fig_116 <- ggplot(df_116, aes(Year, value)) +
   labs_meta(meta, y = "Top 10 employers' share of approvals") +
   theme_tpa()
 
-save_chart(fig_116, "fig_3_06")
+save_chart_aligned(FIG306, "fig_3_06")
+FIG306
 ```
 
 
@@ -1206,7 +1241,7 @@ labels_031 <- last_by_group(df_031, Year, Composition) %>%
   ) %>%
   prepare_right_labels(df_031$Year)
 
-FIG304 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Composition)) +
+FIG307 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Composition)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = POINT_SIZE) +
   geom_label_repel_tpa(
@@ -1228,19 +1263,19 @@ FIG304 <- ggplot(df_031, aes(Year, Share, color = Composition, group = Compositi
   theme_tpa() +
   theme_right_labels(labels_031)
 
-save_chart(FIG304, "fig_3_07")
+save_chart_aligned(FIG307, "fig_3_07")
+FIG307
 ```
 
 ### Figure 3.08 - Where Immigrant AI Founders Come From
 ```{r figure 032}
 meta <- get_meta("FIG308")
-
 df_032 <- read_fig("FIG308") %>%
   rename(Country = 1, Count = 2) %>%
   mutate(
     Count = as.numeric(Count),
     Country = case_when(
-      Country == "the Netherlands"     ~ "Netherlands",
+      Country == "the Netherlands"      ~ "Netherlands",
       Country == "United Arab Emirates" ~ "United Arab Emirates",
       Country == "Scotland"             ~ "United Kingdom",
       Country == "Hong Kong"            ~ "Hong Kong S.A.R.",
@@ -1252,9 +1287,10 @@ df_032 <- read_fig("FIG308") %>%
 
 world_032 <- join_country_data(df_032)
 
-FIG305 <- ggplot(world_032) +
+FIG308 <- ggplot(world_032) +
   geom_sf(aes(fill = Count), color = "white", linewidth = 0.2) +
-  geom_country_labels(world_032, value_col = "Count", min_value = 20, color = "black") +
+  geom_country_labels(world_032, value_col = "Count", min_value = 20,
+                      color_threshold = 40, size = 2.5) +
   scale_fill_gradient(
     low = TPA_RED_LIGHT,
     high = tpa_colors[1],
@@ -1267,8 +1303,10 @@ FIG305 <- ggplot(world_032) +
            xlim = c(-16000000, 16000000),
            ylim = c(-6000000, 8500000)) +
   labs_meta(meta) +
-  theme_map() 
-save_chart(FIG305, "fig_3_08")
+  theme_map()
+
+save_chart_aligned(FIG308, "fig_3_08")
+FIG308
 ```
 
 ### Figure 3.09 - Which Leading AI Companies Were Founded by Immigrants?
@@ -1294,10 +1332,10 @@ fig033_data <- function() {
 meta <- get_meta("FIG309")
 
 df_top <- fig033_data() %>%
-  slice_max(ValB, n = 25) %>%
+  slice_max(ValB, n = 15) %>%
   mutate(Company = fct_reorder(Company, ValB))
 
-FIG306 <- ggplot(df_top, aes(ValB, Company, color = Origin)) +
+FIG309 <- ggplot(df_top, aes(ValB, Company, color = Origin)) +
   geom_point(size = 3.2) +
   scale_x_log10(labels = label_dollar(suffix = "B", accuracy = 1),
                 breaks = c(1, 3, 10, 30, 100, 300),
@@ -1320,18 +1358,24 @@ FIG306 <- ggplot(df_top, aes(ValB, Company, color = Origin)) +
                                 size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt))
   )
 
-save_chart(FIG306, "fig_3_09")
+save_chart_aligned(FIG309, "fig_3_09", left_pt = 106)
+FIG309
 ```
-
-
-
 
 ### Figure 3.10 - Where Researchers at Leading AI Companies Are Located?
 ```{r figure 034}
 meta <- get_meta("FIG310")
-
-company_order <- c("Alphabet","Anthropic", "OpenAI", "Alibaba", "DeepSeek", "Moonshot")
+company_order  <- c("Alphabet","Anthropic", "OpenAI", "Alibaba", "DeepSeek", "Moonshot")
 category_order <- c("Rest of World", "China", "United States")
+
+company_country <- c(
+  "Alphabet"  = "united-states",
+  "Anthropic" = "united-states",
+  "OpenAI"    = "united-states",
+  "Alibaba"   = "china",
+  "DeepSeek"  = "china",
+  "Moonshot"  = "china"
+)
 
 df_034 <- read_fig("FIG310") %>%
   rename(Company = 1) %>%
@@ -1343,13 +1387,20 @@ df_034 <- read_fig("FIG310") %>%
     Company = factor(Company, levels = company_order)
   )
 
+# one flag per company, placed in the left margin next to the axis label
+df_flags <- tibble(
+  Company = factor(company_order, levels = company_order),
+  flag    = paste0("inputs/flags/", recode(company_order, !!!company_country), ".png"),
+  x       = -4
+)
+
 palette_034 <- c(
   "United States"      = tpa_colors[2],
   "China"              = tpa_colors[1],
   "Rest of World"      = tpa_colors[3]
 )
 
-FIG308 <- ggplot(df_034, aes(Share, Company, fill = Affiliation)) +
+FIG310 <- ggplot(df_034, aes(Share, Company, fill = Affiliation)) +
   geom_col(width = BAR_WIDTH_NARROW, alpha = ALPHA_COL) +
   geom_text(aes(label = fmt_pct_0(Share)),
             position = position_stack(vjust = 0.5),
@@ -1357,16 +1408,23 @@ FIG308 <- ggplot(df_034, aes(Share, Company, fill = Affiliation)) +
             fontface = "bold",
             family = FONT_FAMILY,
             size = DATA_LABEL_SIZE / .pt) +
+  geom_image(data = df_flags,
+             aes(x = x, y = Company, image = flag),
+             inherit.aes = FALSE,
+             size = 0.055, by = "height",
+             hjust = 1) +
   scale_x_continuous(labels = label_number(suffix = "%"),
                      breaks = seq(0, 100, 10),
-                     limits = c(0, 101),
+                     limits = c(-8, 101),
                      expand = expansion(mult = c(0, 0))) +
   scale_fill_manual(values = palette_034,
                     breaks = c("United States", "China", "Rest of World")) +
   labs_meta(meta, x = "Share of researchers") +
-  theme_horizontal_bar()
+  theme_horizontal_bar() +
+  coord_cartesian(clip = "off")
 
-save_chart(FIG308, "fig_3_10")
+save_chart_aligned(FIG310, "fig_3_10", left_pt = 50)
+FIG310
 ```
 
 # Chapter 4

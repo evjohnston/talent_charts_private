@@ -17,6 +17,7 @@ suppressPackageStartupMessages({
   library(magick)
   library(dplyr)
   library(tidyr)
+  library(ggimage)
 })
 
 # ============================================================================
