@@ -1,6 +1,0 @@
-"0","meta <- get_meta(""TAB604"")"
-"0","change_type <- ""ppt""  # choose ""relative"" or ""ppt"""
-"0",""
-"0","TAB604 <- build_perm_expiry_table(meta, change_type = change_type)"
-"0",""
-"0","save_table(TAB604, ""tab_6_04"")"

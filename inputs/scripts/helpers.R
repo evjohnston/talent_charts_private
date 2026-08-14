@@ -41,6 +41,13 @@ pivot_observed_projected <- function(
     select(all_of(year_col), all_of(country_name), period, value)
 }
 
+# Overwrite a prepared-label frame's reserved right gutter with a supplied
+# limit, so figures that must align end their panels at the same x.
+set_right_limit <- function(labels_df, limit) {
+  attr(labels_df, "tpa_right_limit") <- limit
+  labels_df
+}
+
 # ---- Generic country/group line charts ----------------------
 # Used across many figures: 013, 018, 019, 023, 062, 063, 064,
 # 066, 069, 070, 078, 080, 081, and others.
@@ -569,10 +576,10 @@ get_meta <- function(id) {
   
   list(
     title      = full_title,
-    title_long = m$title_long[1],
+    #title_long = m$title_long[1],
     #   subtitle   = CHART_LINE,
-    caption    = format_source(short),
-    csv        = m$csv[1]
+    caption    = format_source(short)
+    #csv        = m$csv[1]
   )
 }
 
@@ -676,6 +683,7 @@ fmt_num_b    <- function(x) paste0(round(x / 1e9, 1), "B")
 fmt_dollar   <- function(x) sprintf("$%.2f", x)
 fmt_dollar_m <- function(x) sprintf("$%.1fM", x)
 fmt_dollar_b <- function(x) sprintf("$%.1fB", x)
+fmt_num_k0 <- function(x) ifelse(x == 0, "0", paste0(round(x / 1e3), "K"))
 fmt_kbm <- function(x) {
   dplyr::case_when(
     is.na(x)  ~ NA_character_,

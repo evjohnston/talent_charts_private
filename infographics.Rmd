@@ -47,23 +47,22 @@ INFOGRAPHIC_AUDIT_SHOW <- FALSE
 # UNIFORM INFOGRAPHIC PAGE CONTRACT — ALL SIX CHAPTERS
 # ============================================================================
 #
-# Publication pages are fixed-size. Every NONFINAL page must contain:
+# Publication pages are fixed-size. Each page may contain up to:
 #
 #   30 body/stat rows
 #    5 visible section headers
 #   --------------------------------
 #   35 rendered row-equivalents
 #
-# Final continuation pages may contain fewer rows, but they use the exact same
-# physical canvas, typography, column widths, row height, and export DPI.
+# Pages may contain fewer rows when statistics are switched off. The canvas,
+# typography, column widths, row height, and export DPI remain fixed.
 #
-# If a future edit creates a sixth section header inside the first 30 rows,
-# pagination stops with an error rather than silently shrinking the page.
-# Consolidate/relabel sections instead.
+# If an edit creates a sixth section header inside one page, pagination stops
+# with an error rather than silently shrinking the page.
 # ============================================================================
 
-INFOGRAPHIC_ROWS_PER_PAGE <- 30L
-INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 5L
+INFOGRAPHIC_ROWS_PER_PAGE <- 36L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 6L
 INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
   INFOGRAPHIC_ROWS_PER_PAGE +
   INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
@@ -170,40 +169,6 @@ infographic_page_contract <- function(
     )
   }
 
-  # The six current chapter infographics are intentionally structured so every
-  # full/nonfinal page has the exact same 30 + 5 composition.
-  if (!is_final) {
-    if (
-      body_rows !=
-        INFOGRAPHIC_ROWS_PER_PAGE
-    ) {
-      problems <- c(
-        problems,
-        paste0(
-          "nonfinal page has ",
-          body_rows,
-          " body rows; expected exactly ",
-          INFOGRAPHIC_ROWS_PER_PAGE
-        )
-      )
-    }
-
-    if (
-      section_headers !=
-        INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
-    ) {
-      problems <- c(
-        problems,
-        paste0(
-          "nonfinal page has ",
-          section_headers,
-          " section headers; expected exactly ",
-          INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
-        )
-      )
-    }
-  }
-
   list(
     body_rows = body_rows,
     section_headers = section_headers,
@@ -303,7 +268,7 @@ paginate_infographic_data <- function(
           contract$problems,
           collapse = "; "
         ),
-        ". Keep full pages at exactly 30 body rows + 5 visible section headers; ",
+        ". Keep each page within 30 body rows + 5 visible section headers; ",
         "do not shrink typography or the canvas.",
         call. = FALSE
       )
@@ -1169,6 +1134,13 @@ export_current_chapter <- function(
     source_figures,
     section_order,
     note_text = NULL,
+    column_labels = c(
+      Earlier = "Earlier<br>value",
+      Latest = "Latest or<br>Projected Value",
+      Change = "Change"
+    ),
+    trend_right_padding_px = 0,
+    show_header = TRUE,
     rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
 ) {
   data <- finalize_infographic_data(
@@ -1209,10 +1181,13 @@ export_current_chapter <- function(
       chapter_number = chapter_number,
       title = title,
       subtitle = subtitle,
+      column_labels = column_labels,
       notes = final_notes,
       layout = INFOGRAPHIC_FIXED_LAYOUT,
+      trend_right_padding_px = trend_right_padding_px,
       row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
-      nowrap_values = TRUE
+      nowrap_values = TRUE,
+      show_header = show_header
     )
   }
 
@@ -1241,16 +1216,86 @@ export_current_chapter <- function(
 # ============================================================================
 # CHAPTER 1: AMERICA'S STEM TALENT SYSTEM — BY THE NUMBERS
 #
-# Design:
-#   - Page 1 = historical/current U.S. pipeline measures.
-#   - Page 2 = global STEM PhD projections.
-#   - Both pages use exactly the same typography, columns, row heights,
-#     heading treatment, and physical width.
-#   - Measure labels avoid repeating words already supplied by section headers.
+# Comparison convention:
+#   - Historical column = 1995 for all current/historical measures.
+#   - *  = source series contains usable data before 1995.
+#   - Current column = 2025 where available.
+#   - ** = latest usable observation is 2024 rather than 2025.
+#   - Projection rows remain optional and are off by default.
 #
-# Current report sources only:
+# Current report sources:
 #   Figures 1.01–1.08 and Table 1.01.
 # ============================================================================
+
+
+# ----------------------------------------------------------------------------
+# 0. INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
+# Set any statistic to FALSE to remove it. Filtering happens before pagination,
+# so the figure automatically adjusts to the included rows.
+
+CH1_INCLUDE <- c(
+
+  # Expansion of US higher education
+  research_doctorates = TRUE,
+  all_bachelors = TRUE,
+  all_masters = TRUE,
+  all_doctorates = TRUE,
+
+  # Growth and composition of STEM training
+  stem_total = TRUE,
+  stem_bachelors = TRUE,
+  stem_masters = TRUE,
+  stem_doctorates = TRUE,
+  stem_md_ratio = TRUE,
+  stem_share_bachelors = TRUE,
+  stem_share_masters = TRUE,
+  stem_share_doctorates = TRUE,
+
+  # International enrollment and degree dependence
+  intl_students = TRUE,
+  intl_enrollment_share = TRUE,
+  intl_all_bachelors = TRUE,
+  intl_all_masters = TRUE,
+  intl_all_doctorates = TRUE,
+  intl_stem_bachelors = TRUE,
+  intl_stem_masters = TRUE,
+  intl_stem_doctorates = TRUE,
+
+  # Table 1.01 selected fields
+  tab101_cs_bachelors = TRUE,
+  tab101_engineering_bachelors = TRUE,
+  tab101_math_bachelors = TRUE,
+  tab101_physical_sciences_bachelors = TRUE,
+
+  tab101_cs_masters = TRUE,
+  tab101_engineering_masters = TRUE,
+  tab101_math_masters = TRUE,
+  tab101_physical_sciences_masters = TRUE,
+
+  tab101_cs_doctorates = TRUE,
+  tab101_engineering_doctorates = TRUE,
+  tab101_math_doctorates = TRUE,
+  tab101_physical_sciences_doctorates = TRUE,
+
+  # Projections — off by default
+  proj_us_total = FALSE,
+  proj_china_total = FALSE,
+  proj_india_total = FALSE,
+  proj_us_percap = FALSE,
+  proj_china_percap = FALSE,
+  proj_india_percap = FALSE
+)
+
+
+# ----------------------------------------------------------------------------
+# COMPARISON-YEAR RULES
+# ----------------------------------------------------------------------------
+# These are publication comparison rules, not inferred source endpoints.
+
+CH1_BASELINE_YEAR <- 1995L
+CH1_TARGET_YEAR <- 2025L
+CH1_FALLBACK_YEAR <- 2024L
 
 
 # ----------------------------------------------------------------------------
@@ -1258,156 +1303,719 @@ export_current_chapter <- function(
 # ----------------------------------------------------------------------------
 
 fig101 <- read_current_figure("FIG101") %>%
-  select(Year, value = 2) %>%
-  mutate(across(everything(), as.numeric))
+  select(
+    Year,
+    value = 2
+  ) %>%
+  mutate(
+    across(
+      everything(),
+      as.numeric
+    )
+  )
+
 
 fig102 <- read_current_figure("FIG102")
+
 fig103 <- read_current_figure("FIG103")
 
+
 fig104 <- read_current_figure("FIG104") %>%
-  rename(Year = 1, Total = 2, Share = 3) %>%
-  mutate(across(everything(), as.numeric))
+  rename(
+    Year = 1,
+    Total = 2,
+    Share = 3
+  ) %>%
+  mutate(
+    across(
+      everything(),
+      as.numeric
+    )
+  )
+
 
 fig105 <- read_current_figure("FIG105")
+
 fig106 <- read_current_figure("FIG106")
+
 
 fig107_long <- read_current_figure("FIG107") %>%
   pivot_observed_projected()
 
+
 fig108_long <- read_current_figure("FIG108") %>%
   pivot_observed_projected()
 
-tab101 <- read_current_table("TAB101")
+
+# ----------------------------------------------------------------------------
+# TABLE 1.01 — LONG-FORMAT SOURCE
+# ----------------------------------------------------------------------------
+#
+# Expected columns:
+#   Year
+#   Field
+#   Degree
+#   Nonresident_Total
+#   Grand_Total
+#   NonresidentShare
+#
+# The two engineering source categories are collapsed to "Engineering" by
+# summing underlying counts and recomputing the share.
+
+tab101_long <- prepare_tab101_data(
+  "TAB101"
+)
 
 
 # ----------------------------------------------------------------------------
-# 2. DERIVED STEM COMPOSITION MEASURES
+# 2. COMPARISON-ENDPOINT HELPERS
 # ----------------------------------------------------------------------------
-# These add useful chapter-level statistics without introducing any old files.
-# FIG102 supplies all-degree totals; FIG103 supplies STEM-degree totals.
 
-fig102_degree_totals <- fig102 %>%
-  transmute(
-    Year = year_number(.data$Year),
-    All_Bachelors = numeric_clean(.data$Bachelors),
-    All_Masters = numeric_clean(.data$Masters),
-    All_Doctorates = numeric_clean(.data$Doctorate)
-  ) %>%
-  filter(is.finite(.data$Year))
 
-fig103_stem_totals <- fig103 %>%
-  transmute(
-    Year = year_number(.data$Year),
-    STEM_Bachelors = numeric_clean(.data$Bachelors),
-    STEM_Masters = numeric_clean(.data$Masters),
-    STEM_Doctorates = numeric_clean(.data$Doctorate)
-  ) %>%
-  filter(is.finite(.data$Year))
+# 1995 baseline.
+#
+# The displayed value always comes from 1995.
+# has_earlier_history records whether usable observations exist before 1995.
 
-stem_composition <- inner_join(
-  fig103_stem_totals,
-  fig102_degree_totals,
-  by = "Year"
-) %>%
-  mutate(
-    Total_STEM = .data$STEM_Bachelors +
-      .data$STEM_Masters +
-      .data$STEM_Doctorates,
+ch1_baseline_endpoint <- function(
+    df,
+    column,
+    year_column = "Year",
+    academic = FALSE
+) {
 
-    Masters_Doctorate_Ratio =
-      .data$STEM_Masters / .data$STEM_Doctorates,
-
-    STEM_Share_Bachelors =
-      .data$STEM_Bachelors / .data$All_Bachelors,
-
-    STEM_Share_Masters =
-      .data$STEM_Masters / .data$All_Masters,
-
-    STEM_Share_Doctorates =
-      .data$STEM_Doctorates / .data$All_Doctorates
+  series <- series_data(
+    df,
+    column,
+    year_column
   )
 
 
-# ----------------------------------------------------------------------------
-# 3. TABLE 1.01 FIELD SHARES — EXPLICIT 2015–2025 ENDPOINTS
-# ----------------------------------------------------------------------------
-
-field_share_metric <- function(
-    field,
-    degree_prefix,
-    measure,
-    stat_id,
-    emphasis = FALSE,
-    earlier_year = 2015L,
-    latest_year = 2025L
-) {
-  row <- tab101 %>%
+  baseline <- series %>%
     filter(
-      normalize_label(.data$Field) ==
-        normalize_label(.env$field)
+      .data$Year ==
+        CH1_BASELINE_YEAR
+    ) %>%
+    slice_head(
+      n = 1
     )
 
-  if (nrow(row) != 1) {
-    return(NULL)
-  }
 
-  earlier_col <- paste0(
-    degree_prefix,
-    "_",
-    earlier_year
-  )
+  if (
+    nrow(
+      baseline
+    ) != 1L
+  ) {
 
-  latest_col <- paste0(
-    degree_prefix,
-    "_",
-    latest_year
-  )
-
-  required_cols <- c(
-    earlier_col,
-    latest_col
-  )
-
-  missing_cols <- setdiff(
-    required_cols,
-    names(row)
-  )
-
-  if (length(missing_cols) > 0) {
     stop(
-      "Missing required TAB101 columns for ",
-      degree_prefix,
-      ": ",
-      paste(
-        missing_cols,
-        collapse = ", "
-      ),
+      "Chapter 1 requires a usable ",
+      CH1_BASELINE_YEAR,
+      " observation for `",
+      column,
+      "`.",
       call. = FALSE
     )
   }
 
-  metric_values(
-    stat_id = stat_id,
-    section_id = "field_dependence",
-    section = "International share in selected STEM fields",
-    measure = measure,
-    first_value = numeric_clean(
-      row[[earlier_col]]
-    )[[1]],
-    first_label = earlier_year,
-    last_value = numeric_clean(
-      row[[latest_col]]
-    )[[1]],
-    last_label = latest_year,
-    value_type = "percent_value",
-    change_type = "pp_percent",
-    emphasis = emphasis
+
+  list(
+
+    value =
+      baseline$Value[[1]],
+
+    year =
+      CH1_BASELINE_YEAR,
+
+    has_earlier_history =
+      any(
+        series$Year <
+          CH1_BASELINE_YEAR
+      ),
+
+    label = if (
+      academic
+    ) {
+      academic_period_label(
+        df,
+        CH1_BASELINE_YEAR
+      )
+    } else {
+      calendar_year_label(
+        CH1_BASELINE_YEAR
+      )
+    }
   )
 }
 
 
+# Current endpoint.
+#
+# Use 2025 where available; otherwise use 2024.
+
+ch1_current_endpoint <- function(
+    df,
+    column,
+    year_column = "Year",
+    academic = FALSE
+) {
+
+  series <- series_data(
+    df,
+    column,
+    year_column
+  )
+
+
+  preferred_years <- c(
+    CH1_TARGET_YEAR,
+    CH1_FALLBACK_YEAR
+  )
+
+
+  chosen_year <- preferred_years[
+    preferred_years %in%
+      series$Year
+  ]
+
+
+  if (
+    !length(
+      chosen_year
+    )
+  ) {
+
+    stop(
+      "Chapter 1 requires a ",
+      CH1_TARGET_YEAR,
+      " value, or a ",
+      CH1_FALLBACK_YEAR,
+      " fallback, for `",
+      column,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  chosen_year <- chosen_year[[1]]
+
+
+  row <- series %>%
+    filter(
+      .data$Year ==
+        .env$chosen_year
+    ) %>%
+    slice_head(
+      n = 1
+    )
+
+
+  list(
+
+    value =
+      row$Value[[1]],
+
+    year =
+      chosen_year,
+
+    label = if (
+      academic
+    ) {
+      academic_period_label(
+        df,
+        chosen_year
+      )
+    } else {
+      calendar_year_label(
+        chosen_year
+      )
+    }
+  )
+}
+
+
+# Generic Chapter 1 metric helper.
+#
+# Display convention:
+#   1995 column:
+#     value*
+#     if source data extend before 1995
+#
+#   2025 column:
+#     value
+#     if 2025 exists
+#
+#     value**
+#     if 2024 is used instead
+
+ch1_metric_series <- function(
+    stat_id,
+    section_id,
+    section,
+    measure,
+    df,
+    column,
+    value_type,
+    change_type,
+    year_column = "Year",
+    academic = FALSE,
+    emphasis = FALSE,
+    transform = identity
+) {
+
+  first <- ch1_baseline_endpoint(
+    df,
+    column,
+    year_column = year_column,
+    academic = academic
+  )
+
+
+  last <- ch1_current_endpoint(
+    df,
+    column,
+    year_column = year_column,
+    academic = academic
+  )
+
+
+  first$value <- transform(
+    first$value
+  )
+
+
+  last$value <- transform(
+    last$value
+  )
+
+
+  out <- metric_values(
+
+    stat_id =
+      stat_id,
+
+    section_id =
+      section_id,
+
+    section =
+      section,
+
+    measure =
+      measure,
+
+    first_value =
+      first$value,
+
+    first_label =
+      first$label,
+
+    last_value =
+      last$value,
+
+    last_label =
+      last$label,
+
+    value_type =
+      value_type,
+
+    change_type =
+      change_type,
+
+    emphasis =
+      emphasis
+  )
+
+
+  # Column header already says 1995.
+  out$Earlier <- paste0(
+
+    format_value(
+      first$value,
+      value_type
+    ),
+
+    if (
+      first$has_earlier_history
+    ) {
+      "*"
+    } else {
+      ""
+    }
+  )
+
+
+  # Column header already says 2025.
+  out$Latest <- paste0(
+
+    format_value(
+      last$value,
+      value_type
+    ),
+
+    if (
+      identical(
+        as.integer(
+          last$year
+        ),
+        CH1_FALLBACK_YEAR
+      )
+    ) {
+      "**"
+    } else {
+      ""
+    }
+  )
+
+
+  out
+}
+
+
 # ----------------------------------------------------------------------------
-# 4. PROJECTION HELPER
+# 3. DERIVED STEM COMPOSITION MEASURES
+# ----------------------------------------------------------------------------
+
+fig102_degree_totals <- fig102 %>%
+
+  transmute(
+
+    Year =
+      year_number(
+        .data$Year
+      ),
+
+    All_Bachelors =
+      numeric_clean(
+        .data$Bachelors
+      ),
+
+    All_Masters =
+      numeric_clean(
+        .data$Masters
+      ),
+
+    All_Doctorates =
+      numeric_clean(
+        .data$Doctorate
+      )
+  ) %>%
+
+  filter(
+    is.finite(
+      .data$Year
+    )
+  )
+
+
+fig103_stem_totals <- fig103 %>%
+
+  transmute(
+
+    Year =
+      year_number(
+        .data$Year
+      ),
+
+    STEM_Bachelors =
+      numeric_clean(
+        .data$Bachelors
+      ),
+
+    STEM_Masters =
+      numeric_clean(
+        .data$Masters
+      ),
+
+    STEM_Doctorates =
+      numeric_clean(
+        .data$Doctorate
+      )
+  ) %>%
+
+  filter(
+    is.finite(
+      .data$Year
+    )
+  )
+
+
+stem_composition <- inner_join(
+
+  fig103_stem_totals,
+
+  fig102_degree_totals,
+
+  by = "Year"
+
+) %>%
+
+  mutate(
+
+    Total_STEM =
+      .data$STEM_Bachelors +
+      .data$STEM_Masters +
+      .data$STEM_Doctorates,
+
+
+    Masters_Doctorate_Ratio =
+      .data$STEM_Masters /
+      .data$STEM_Doctorates,
+
+
+    STEM_Share_Bachelors =
+      .data$STEM_Bachelors /
+      .data$All_Bachelors,
+
+
+    STEM_Share_Masters =
+      .data$STEM_Masters /
+      .data$All_Masters,
+
+
+    STEM_Share_Doctorates =
+      .data$STEM_Doctorates /
+      .data$All_Doctorates
+  )
+
+
+# ----------------------------------------------------------------------------
+# 4. TABLE 1.01 FIELD-SHARE HELPER
+# ----------------------------------------------------------------------------
+#
+# Uses the same 1995 / 2025 comparison convention as every other current
+# Chapter 1 statistic.
+#
+# Engineering has already been combined in tab101_long from underlying counts.
+
+field_share_metric <- function(
+    field,
+    degree,
+    measure,
+    stat_id,
+    emphasis = FALSE
+) {
+
+  series <- tab101_long %>%
+
+    filter(
+
+      normalize_label(
+        .data$Field
+      ) ==
+        normalize_label(
+          .env$field
+        ),
+
+      .data$Degree ==
+        .env$degree,
+
+      is.finite(
+        .data$NonresidentShare
+      )
+    ) %>%
+
+    arrange(
+      .data$Year
+    )
+
+
+  if (
+    nrow(
+      series
+    ) == 0L
+  ) {
+
+    stop(
+      "No usable Table 1.01 observations were found for `",
+      field,
+      "` / `",
+      degree,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  # --------------------------------------------------------------------------
+  # 1995 baseline
+  # --------------------------------------------------------------------------
+
+  first <- series %>%
+
+    filter(
+      .data$Year ==
+        CH1_BASELINE_YEAR
+    ) %>%
+
+    slice_head(
+      n = 1
+    )
+
+
+  if (
+    nrow(
+      first
+    ) != 1L
+  ) {
+
+    stop(
+      "Table 1.01 requires a usable ",
+      CH1_BASELINE_YEAR,
+      " observation for `",
+      field,
+      "` / `",
+      degree,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  has_earlier_history <- any(
+    series$Year <
+      CH1_BASELINE_YEAR
+  )
+
+
+  # --------------------------------------------------------------------------
+  # 2025 current value, with 2024 fallback
+  # --------------------------------------------------------------------------
+
+  preferred_years <- c(
+    CH1_TARGET_YEAR,
+    CH1_FALLBACK_YEAR
+  )
+
+
+  available_current_years <- preferred_years[
+    preferred_years %in%
+      series$Year
+  ]
+
+
+  if (
+    !length(
+      available_current_years
+    )
+  ) {
+
+    stop(
+      "Table 1.01 has neither a ",
+      CH1_TARGET_YEAR,
+      " nor ",
+      CH1_FALLBACK_YEAR,
+      " usable observation for `",
+      field,
+      "` / `",
+      degree,
+      "`.",
+      call. = FALSE
+    )
+  }
+
+
+  current_year <-
+    available_current_years[[1]]
+
+
+  last <- series %>%
+
+    filter(
+      .data$Year ==
+        .env$current_year
+    ) %>%
+
+    slice_head(
+      n = 1
+    )
+
+
+  # --------------------------------------------------------------------------
+  # Build infographic row
+  # --------------------------------------------------------------------------
+
+  out <- metric_values(
+
+    stat_id =
+      stat_id,
+
+    section_id =
+      "field_dependence",
+
+    section =
+      "International share in selected STEM fields",
+
+    measure =
+      measure,
+
+    first_value =
+      first$NonresidentShare[[1]],
+
+    first_label =
+      CH1_BASELINE_YEAR,
+
+    last_value =
+      last$NonresidentShare[[1]],
+
+    last_label =
+      last$Year[[1]],
+
+    value_type =
+      "percent_value",
+
+    change_type =
+      "pp_percent",
+
+    emphasis =
+      emphasis
+  )
+
+
+  out$Earlier <- paste0(
+
+    format_value(
+      first$NonresidentShare[[1]],
+      "percent_value"
+    ),
+
+    if (
+      has_earlier_history
+    ) {
+      "*"
+    } else {
+      ""
+    }
+  )
+
+
+  out$Latest <- paste0(
+
+    format_value(
+      last$NonresidentShare[[1]],
+      "percent_value"
+    ),
+
+    if (
+      identical(
+        as.integer(
+          last$Year[[1]]
+        ),
+        CH1_FALLBACK_YEAR
+      )
+    ) {
+      "**"
+    } else {
+      ""
+    }
+  )
+
+
+  out
+}
+
+
+# ----------------------------------------------------------------------------
+# 5. PROJECTION HELPER
 # ----------------------------------------------------------------------------
 
 projection_metric <- function(
@@ -1418,54 +2026,115 @@ projection_metric <- function(
     value_type = "count",
     emphasis = FALSE
 ) {
+
   country_df <- df %>%
+
     filter(
-      .data$Country == .env$country,
-      is.finite(.data$value)
+
+      .data$Country ==
+        .env$country,
+
+      is.finite(
+        .data$value
+      )
     )
 
+
   observed <- country_df %>%
-    filter(.data$period == "Observed") %>%
-    arrange(.data$Year) %>%
-    slice_tail(n = 1)
+
+    filter(
+      .data$period ==
+        "Observed"
+    ) %>%
+
+    arrange(
+      .data$Year
+    ) %>%
+
+    slice_tail(
+      n = 1
+    )
+
 
   projected <- country_df %>%
-    filter(.data$period == "Projected") %>%
-    arrange(.data$Year) %>%
-    slice_tail(n = 1)
 
-  if (nrow(observed) != 1 || nrow(projected) != 1) {
-    return(NULL)
+    filter(
+      .data$period ==
+        "Projected"
+    ) %>%
+
+    arrange(
+      .data$Year
+    ) %>%
+
+    slice_tail(
+      n = 1
+    )
+
+
+  if (
+    nrow(observed) != 1L ||
+      nrow(projected) != 1L
+  ) {
+    return(
+      NULL
+    )
   }
 
+
   metric_values(
-    stat_id = stat_id,
-    section_id = "projection",
-    section = "Global STEM PhD projections",
-    measure = measure,
-    first_value = observed$value[[1]],
-    first_label = observed$Year[[1]],
-    last_value = projected$value[[1]],
-    last_label = projected$Year[[1]],
-    value_type = value_type,
-    change_type = "percent",
-    emphasis = emphasis,
-    projected = TRUE
+
+    stat_id =
+      stat_id,
+
+    section_id =
+      "projection",
+
+    section =
+      "Global STEM PhD projections",
+
+    measure =
+      measure,
+
+    first_value =
+      observed$value[[1]],
+
+    first_label =
+      observed$Year[[1]],
+
+    last_value =
+      projected$value[[1]],
+
+    last_label =
+      projected$Year[[1]],
+
+    value_type =
+      value_type,
+
+    change_type =
+      "percent",
+
+    emphasis =
+      emphasis,
+
+    projected =
+      TRUE
   )
 }
 
 
 # ----------------------------------------------------------------------------
-# 5. BUILD THE CHAPTER 1 STATISTICS
+# 6. BUILD CHAPTER 1 STATISTICS
 # ----------------------------------------------------------------------------
 
-ch1_data <- bind_rows(
+ch1_data_all <- bind_rows(
 
-  # --------------------------------------------------------------------------
-  # Expansion of US higher education
-  # --------------------------------------------------------------------------
 
-  metric_series(
+  # ==========================================================================
+  # EXPANSION OF US HIGHER EDUCATION
+  # ==========================================================================
+
+  ch1_metric_series(
     "research_doctorates",
     "scale",
     "Expansion of US higher education",
@@ -1477,7 +2146,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "all_bachelors",
     "scale",
     "Expansion of US higher education",
@@ -1488,7 +2158,8 @@ ch1_data <- bind_rows(
     "multiple"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "all_masters",
     "scale",
     "Expansion of US higher education",
@@ -1499,7 +2170,8 @@ ch1_data <- bind_rows(
     "multiple"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "all_doctorates",
     "scale",
     "Expansion of US higher education",
@@ -1511,11 +2183,12 @@ ch1_data <- bind_rows(
   ),
 
 
-  # --------------------------------------------------------------------------
-  # Growth and composition of STEM training
-  # --------------------------------------------------------------------------
 
-  metric_series(
+  # ==========================================================================
+  # GROWTH AND COMPOSITION OF STEM TRAINING
+  # ==========================================================================
+
+  ch1_metric_series(
     "stem_total",
     "stem",
     "Growth and composition of STEM training",
@@ -1527,7 +2200,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_bachelors",
     "stem",
     "Growth and composition of STEM training",
@@ -1538,7 +2212,8 @@ ch1_data <- bind_rows(
     "percent"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_masters",
     "stem",
     "Growth and composition of STEM training",
@@ -1549,7 +2224,8 @@ ch1_data <- bind_rows(
     "percent"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_doctorates",
     "stem",
     "Growth and composition of STEM training",
@@ -1560,7 +2236,8 @@ ch1_data <- bind_rows(
     "percent"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_md_ratio",
     "stem",
     "Growth and composition of STEM training",
@@ -1571,7 +2248,8 @@ ch1_data <- bind_rows(
     "multiple"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_share_bachelors",
     "stem",
     "Growth and composition of STEM training",
@@ -1582,7 +2260,8 @@ ch1_data <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_share_masters",
     "stem",
     "Growth and composition of STEM training",
@@ -1593,7 +2272,8 @@ ch1_data <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "stem_share_doctorates",
     "stem",
     "Growth and composition of STEM training",
@@ -1605,14 +2285,12 @@ ch1_data <- bind_rows(
   ),
 
 
-  # --------------------------------------------------------------------------
-  # International enrollment and degree dependence
-  #
-  # The section title already supplies "International", so row labels do not
-  # repeat it.
-  # --------------------------------------------------------------------------
 
-  metric_series(
+  # ==========================================================================
+  # INTERNATIONAL ENROLLMENT AND DEGREE DEPENDENCE
+  # ==========================================================================
+
+  ch1_metric_series(
     "intl_students",
     "international",
     "International enrollment and degree dependence",
@@ -1625,7 +2303,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_enrollment_share",
     "international",
     "International enrollment and degree dependence",
@@ -1637,7 +2316,8 @@ ch1_data <- bind_rows(
     academic = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_all_bachelors",
     "international",
     "International enrollment and degree dependence",
@@ -1648,7 +2328,8 @@ ch1_data <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_all_masters",
     "international",
     "International enrollment and degree dependence",
@@ -1660,7 +2341,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_all_doctorates",
     "international",
     "International enrollment and degree dependence",
@@ -1672,7 +2354,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_stem_bachelors",
     "international",
     "International enrollment and degree dependence",
@@ -1683,7 +2366,8 @@ ch1_data <- bind_rows(
     "pp_share"
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_stem_masters",
     "international",
     "International enrollment and degree dependence",
@@ -1695,7 +2379,8 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
-  metric_series(
+
+  ch1_metric_series(
     "intl_stem_doctorates",
     "international",
     "International enrollment and degree dependence",
@@ -1708,12 +2393,10 @@ ch1_data <- bind_rows(
   ),
 
 
-  # --------------------------------------------------------------------------
-  # International share in selected STEM fields
-  #
-  # The section title already supplies "International share", so the row labels
-  # are just the fields / degree levels.
-  # --------------------------------------------------------------------------
+
+  # ==========================================================================
+  # INTERNATIONAL SHARE IN SELECTED STEM FIELDS
+  # ==========================================================================
 
   field_share_metric(
     "Computer and Information Sciences",
@@ -1722,19 +2405,6 @@ ch1_data <- bind_rows(
     "tab101_cs_bachelors"
   ),
 
-  field_share_metric(
-    "Engineering",
-    "Bachelors",
-    "Engineering bachelor’s degrees",
-    "tab101_engineering_bachelors"
-  ),
-
-  field_share_metric(
-    "Mathematics and Statistics",
-    "Bachelors",
-    "Mathematics and statistics bachelor’s degrees",
-    "tab101_math_bachelors"
-  ),
 
   field_share_metric(
     "Computer and Information Sciences",
@@ -1744,20 +2414,6 @@ ch1_data <- bind_rows(
     TRUE
   ),
 
-  field_share_metric(
-    "Engineering",
-    "Masters",
-    "Engineering master’s degrees",
-    "tab101_engineering_masters",
-    TRUE
-  ),
-
-  field_share_metric(
-    "Mathematics and Statistics",
-    "Masters",
-    "Mathematics and statistics master’s degrees",
-    "tab101_math_masters"
-  ),
 
   field_share_metric(
     "Computer and Information Sciences",
@@ -1767,6 +2423,24 @@ ch1_data <- bind_rows(
     TRUE
   ),
 
+
+  field_share_metric(
+    "Engineering",
+    "Bachelors",
+    "Engineering bachelor’s degrees",
+    "tab101_engineering_bachelors"
+  ),
+
+
+  field_share_metric(
+    "Engineering",
+    "Masters",
+    "Engineering master’s degrees",
+    "tab101_engineering_masters",
+    TRUE
+  ),
+
+
   field_share_metric(
     "Engineering",
     "Doctorate",
@@ -1775,6 +2449,23 @@ ch1_data <- bind_rows(
     TRUE
   ),
 
+
+  field_share_metric(
+    "Mathematics and Statistics",
+    "Bachelors",
+    "Mathematics and statistics bachelor’s degrees",
+    "tab101_math_bachelors"
+  ),
+
+
+  field_share_metric(
+    "Mathematics and Statistics",
+    "Masters",
+    "Mathematics and statistics master’s degrees",
+    "tab101_math_masters"
+  ),
+
+
   field_share_metric(
     "Mathematics and Statistics",
     "Doctorate",
@@ -1782,10 +2473,32 @@ ch1_data <- bind_rows(
     "tab101_math_doctorates"
   ),
 
+    field_share_metric(
+    "Physical Sciences",
+    "Bachelors",
+    "Physical sciences bachelor’s degrees",
+    "tab101_physical_sciences_bachelors"
+  ),
 
-  # --------------------------------------------------------------------------
-  # Global STEM PhD projections
-  # --------------------------------------------------------------------------
+
+  field_share_metric(
+    "Physical Sciences",
+    "Masters",
+    "Physical sciences master’s degrees",
+    "tab101_physical_sciences_masters"
+  ),
+
+
+  field_share_metric(
+    "Physical Sciences",
+    "Doctorate",
+    "Physical sciences research doctorates",
+    "tab101_physical_sciences_doctorates"
+  ),
+
+  # ==========================================================================
+  # GLOBAL STEM PhD PROJECTIONS
+  # ==========================================================================
 
   projection_metric(
     fig107_long,
@@ -1795,6 +2508,7 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
+
   projection_metric(
     fig107_long,
     "China",
@@ -1802,6 +2516,7 @@ ch1_data <- bind_rows(
     "proj_china_total",
     emphasis = TRUE
   ),
+
 
   projection_metric(
     fig107_long,
@@ -1811,6 +2526,7 @@ ch1_data <- bind_rows(
     emphasis = TRUE
   ),
 
+
   projection_metric(
     fig108_long,
     "United States",
@@ -1819,6 +2535,7 @@ ch1_data <- bind_rows(
     value_type = "rate"
   ),
 
+
   projection_metric(
     fig108_long,
     "China",
@@ -1826,6 +2543,7 @@ ch1_data <- bind_rows(
     "proj_china_percap",
     value_type = "rate"
   ),
+
 
   projection_metric(
     fig108_long,
@@ -1838,7 +2556,125 @@ ch1_data <- bind_rows(
 
 
 # ----------------------------------------------------------------------------
-# 6. EXPORT WITH THE SAME FIXED PAGINATION USED BY EVERY CHAPTER
+# 7. VALIDATE INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
+
+ch1_stat_ids <- unique(
+  ch1_data_all$StatID
+)
+
+
+missing_controls <- setdiff(
+  ch1_stat_ids,
+  names(
+    CH1_INCLUDE
+  )
+)
+
+
+unknown_controls <- setdiff(
+  names(
+    CH1_INCLUDE
+  ),
+  ch1_stat_ids
+)
+
+
+if (
+  length(
+    missing_controls
+  ) ||
+    length(
+      unknown_controls
+    )
+) {
+
+  stop(
+
+    paste0(
+
+      "CH1_INCLUDE is out of sync with ch1_data. ",
+
+      if (
+        length(
+          missing_controls
+        )
+      ) {
+
+        paste0(
+          "Missing controls: ",
+          paste(
+            missing_controls,
+            collapse = ", "
+          ),
+          ". "
+        )
+
+      } else {
+
+        ""
+      },
+
+      if (
+        length(
+          unknown_controls
+        )
+      ) {
+
+        paste0(
+          "Unknown controls: ",
+          paste(
+            unknown_controls,
+            collapse = ", "
+          ),
+          "."
+        )
+
+      } else {
+
+        ""
+      }
+    ),
+
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 8. APPLY INCLUDE / EXCLUDE CONTROLS
+# ----------------------------------------------------------------------------
+
+ch1_enabled_ids <- names(
+  CH1_INCLUDE
+)[
+  CH1_INCLUDE
+]
+
+
+ch1_data <- ch1_data_all %>%
+
+  filter(
+    .data$StatID %in%
+      ch1_enabled_ids
+  )
+
+
+if (
+  nrow(
+    ch1_data
+  ) == 0L
+) {
+
+  stop(
+    "CH1_INCLUDE excludes every Chapter 1 statistic.",
+    call. = FALSE
+  )
+}
+
+
+# ----------------------------------------------------------------------------
+# 9. EXPORT
 # ----------------------------------------------------------------------------
 
 ch1_section_order <- c(
@@ -1849,27 +2685,175 @@ ch1_section_order <- c(
   "Global STEM PhD projections"
 )
 
+
+ch1_has_projections <- any(
+  ch1_data$SectionID ==
+    "projection"
+)
+
+
+# A single * in the 1995 column means that the source series extends further
+# back than the selected 1995 comparison year.
+
+ch1_has_prebaseline_history <- any(
+  stringr::str_detect(
+    ch1_data$Earlier,
+    "(?<!\\*)\\*$"
+  )
+)
+
+
+# A double ** in the 2025 column means that the latest available observation
+# is 2024 rather than 2025.
+
+ch1_has_2024_fallback <- any(
+  stringr::str_detect(
+    ch1_data$Latest,
+    "\\*\\*$"
+  )
+)
+
+
+# Default historical/current view:
+#
+#       MEASURE | 1995 | 2025 | CHANGE
+#
+# If projection rows are manually enabled, use broader labels because those
+# rows compare their latest observed and projected endpoints rather than
+# 1995 and 2025.
+
+ch1_column_labels <- c(
+
+  Earlier = if (
+    ch1_has_projections
+  ) {
+    "1995 / Observed"
+  } else {
+    as.character(
+      CH1_BASELINE_YEAR
+    )
+  },
+
+
+  Latest = if (
+    ch1_has_projections
+  ) {
+    "2025 / Projected"
+  } else {
+    as.character(
+      CH1_TARGET_YEAR
+    )
+  },
+
+
+  Change =
+    "Change"
+)
+
+
+ch1_note_text <- c(
+
+  if (
+    ch1_has_prebaseline_history
+  ) {
+
+    paste0(
+      "\\* Data are available further back than ",
+      CH1_BASELINE_YEAR,
+      " for marked series."
+    )
+
+  } else {
+
+    NULL
+  },
+
+
+  if (
+    ch1_has_2024_fallback
+  ) {
+
+    paste0(
+      "\\*\\* Latest data are available through ",
+      CH1_FALLBACK_YEAR,
+      " for marked series."
+    )
+
+  } else {
+
+    NULL
+  },
+
+
+  paste0(
+
+    "**Note:** Historical comparisons use ",
+    CH1_BASELINE_YEAR,
+    " and ",
+    CH1_TARGET_YEAR,
+    " observations. ",
+
+    if (
+      ch1_has_projections
+    ) {
+
+      paste0(
+        "Projection rows compare the latest observed year with the latest ",
+        "projected year; a “P” marks projections. "
+      )
+
+    } else {
+
+      ""
+    },
+
+    "Arrow colors indicate direction of change only."
+  )
+)
+
+
 export_current_chapter(
-  data = ch1_data,
-  chapter_number = 1,
-  title = "AMERICA’S STEM TALENT SYSTEM: BY THE NUMBERS",
-  subtitle = "Historical, current, and projected measures",
-  name = "infographic_ch1_by_the_numbers",
+
+  data =
+    ch1_data,
+
+  chapter_number =
+    1,
+
+  title =
+    "AMERICA’S STEM TALENT SYSTEM: BY THE NUMBERS",
+
+  subtitle = if (
+    ch1_has_projections
+  ) {
+    "Historical, current, and projected measures"
+  } else {
+    "Historical and current measures"
+  },
+
+  name =
+    "infographic_ch1_by_the_numbers",
+
   source_figures = c(
     "Figures 1.01–1.08",
     "Table 1.01"
   ),
-  section_order = ch1_section_order,
-  note_text = paste0(
-    "**Note:** Earlier and latest values use the first and last nonmissing ",
-    "observations in the current report source series, except Table 1.01 rows, ",
-    "which compare the explicitly defined 2015 and 2025 endpoints. Projection ",
-    "rows compare the latest observed year with the latest projected year. ",
-    "A “P” after a year indicates a projected value. Arrow colors indicate ",
-    "direction of change only, not whether the authors consider the change ",
-    "positive or negative."
-  )
+
+  section_order =
+    ch1_section_order,
+
+  note_text =
+    ch1_note_text,
+
+  column_labels =
+    ch1_column_labels,
+
+  trend_right_padding_px =
+    5,
+  
+  show_header = FALSE,
 )
+
 ```
 
 # Chapter 2

@@ -1704,24 +1704,121 @@ build_bookend_table <- function(name, meta,
     with_size("standard")
 }
 
+# ---- Prepare Table 1.01 source data -----------------------------------------
+#
+# One source of truth for Table 1.01 data preparation.
+#
+# - standardizes degree labels
+# - standardizes field labels
+# - combines the two engineering categories using underlying counts
+# - recomputes NonresidentShare
+#
+# No endpoint selection or display formatting happens here.
+
+prepare_tab101_data <- function(name = "TAB101") {
+  
+  read_fig(name) %>%
+    
+    mutate(
+      Year = suppressWarnings(
+        as.integer(.data$Year)
+      ),
+      
+      Degree = recode(
+        .data$Degree,
+        "Bachelor's" = "Bachelors",
+        "Master's"   = "Masters",
+        "Doctorate"  = "Doctorate"
+      ),
+      
+      Field = recode(
+        .data$Field,
+        
+        "Computer and Information Sciences and Support Services" =
+          "Computer and Information Sciences"
+      ),
+      
+      Nonresident_Total = suppressWarnings(
+        as.numeric(.data$Nonresident_Total)
+      ),
+      
+      Grand_Total = suppressWarnings(
+        as.numeric(.data$Grand_Total)
+      )
+    ) %>%
+    
+    filter(
+      is.finite(.data$Year),
+      .data$Degree %in% c(
+        "Bachelors",
+        "Masters",
+        "Doctorate"
+      )
+    ) %>%
+    
+    group_by(
+      .data$Field,
+      .data$Degree,
+      .data$Year
+    ) %>%
+    
+    summarise(
+      Nonresident_Total = if (
+        all(is.na(.data$Nonresident_Total))
+      ) {
+        NA_real_
+      } else {
+        sum(
+          .data$Nonresident_Total,
+          na.rm = TRUE
+        )
+      },
+      
+      Grand_Total = if (
+        all(is.na(.data$Grand_Total))
+      ) {
+        NA_real_
+      } else {
+        sum(
+          .data$Grand_Total,
+          na.rm = TRUE
+        )
+      },
+      
+      .groups = "drop"
+    ) %>%
+    
+    mutate(
+      NonresidentShare = if_else(
+        is.finite(.data$Nonresident_Total) &
+          is.finite(.data$Grand_Total) &
+          .data$Grand_Total > 0,
+        
+        100 *
+          .data$Nonresident_Total /
+          .data$Grand_Total,
+        
+        NA_real_
+      )
+    )
+}
+
 # ---- Combined share-change table (all degrees) ------------------------------
 #
-# Expects:
+# Reads the long-format source:
+#   Year
 #   Field
-#   Bachelors_2015
-#   Bachelors_2025
-#   Bachelors_PctChangeInShare
-#   Masters_2015
-#   Masters_2025
-#   Masters_PctChangeInShare
-#   Doctorate_2015
-#   Doctorate_2025
-#   Doctorate_PctChangeInShare
+#   Degree            (Bachelor's / Master's / Doctorate)
+#   Nonresident_Total
+#   Grand_Total
+#   NonresidentShare  (percent, e.g. 7.24)
 #
-# The *_PctChangeInShare columns are recalculated here from the two displayed
-# endpoint columns so the table cannot drift from the underlying values.
-#
-# Row filtering and field merges should be done upstream.
+# The two engineering source rows are collapsed into a single "Engineering"
+# row by summing the underlying counts, then recomputing the share. Endpoints
+# are taken from the data (min and max Year), not hardcoded. Column order is
+# forced to match `degrees`. The *_PctChangeInShare columns are recalculated
+# from the two displayed endpoint columns so the table cannot drift. Fields are
+# sorted by average movement across the three degrees.
 
 build_change_table_wide <- function(
     name,
@@ -1737,30 +1834,33 @@ build_change_table_wide <- function(
     "Doctorate"
   )
   
-  earlier_year <- 2015L
-  latest_year  <- 2025L
-  
-  earlier_cols <- paste0(
-    degrees,
-    "_",
-    earlier_year
+  keep_fields <- c(
+    "Mathematics and Statistics",
+    "Engineering",
+    "Computer and Information Sciences",
+    "Architecture and Related Services",
+    "Physical Sciences",
+    "Biological and Biomedical Sciences",
+    "Natural Resources and Conservation"
   )
   
-  latest_cols <- paste0(
-    degrees,
-    "_",
-    latest_year
-  )
+  # --------------------------------------------------------------------------
+  # Read long-format source; merge the two engineering rows by summing counts
+  # --------------------------------------------------------------------------
   
-  change_cols <- paste0(
-    degrees,
-    "_PctChangeInShare"
-  )
+  df_long <- prepare_tab101_data(name) %>%
+    filter(
+      .data$Field %in% keep_fields
+    )
   
-  year_cols <- c(
-    earlier_cols,
-    latest_cols
-  )
+  # Endpoints come from the data, not from constants.
+  earlier_year <- min(df_long$Year, na.rm = TRUE)
+  latest_year  <- max(df_long$Year, na.rm = TRUE)
+  
+  earlier_cols <- paste0(degrees, "_", earlier_year)
+  latest_cols  <- paste0(degrees, "_", latest_year)
+  change_cols  <- paste0(degrees, "_PctChangeInShare")
+  year_cols    <- c(earlier_cols, latest_cols)
   
   required_cols <- c(
     "Field",
@@ -1769,22 +1869,36 @@ build_change_table_wide <- function(
     change_cols
   )
   
-  df <- read_fig(name)
+  # --------------------------------------------------------------------------
+  # Pivot the two endpoint years to wide
+  # --------------------------------------------------------------------------
   
-  missing_cols <- setdiff(
-    required_cols,
-    names(df)
-  )
+  df <- df_long %>%
+    filter(Year %in% c(earlier_year, latest_year)) %>%
+    select(Field, Degree, Year, NonresidentShare) %>%
+    pivot_wider(
+      names_from  = c(Degree, Year),
+      names_sep   = "_",
+      values_from = NonresidentShare
+    )
+  
+  # Change columns are recalculated below; seed them so the check passes.
+  for (deg in degrees) {
+    df[[paste0(deg, "_PctChangeInShare")]] <- NA_real_
+  }
+  
+  # Force physical column order to match `degrees`.
+  df <- df %>%
+    select(Field, all_of(c(rbind(earlier_cols, latest_cols, change_cols))))
+  
+  missing_cols <- setdiff(required_cols, names(df))
   
   if (length(missing_cols) > 0) {
     stop(
       "Missing required columns in ",
       name,
       ": ",
-      paste(
-        missing_cols,
-        collapse = ", "
-      ),
+      paste(missing_cols, collapse = ", "),
       call. = FALSE
     )
   }
@@ -1800,31 +1914,18 @@ build_change_table_wide <- function(
     )
   
   # --------------------------------------------------------------------------
-  # Recalculate change from the displayed 2015 and 2025 values
+  # Recalculate change from the displayed endpoint values
   # --------------------------------------------------------------------------
   
   for (deg in degrees) {
     
-    col_2015 <- paste0(
-      deg,
-      "_",
-      earlier_year
-    )
-    
-    col_2025 <- paste0(
-      deg,
-      "_",
-      latest_year
-    )
-    
-    change_col <- paste0(
-      deg,
-      "_PctChangeInShare"
-    )
+    col_earlier <- paste0(deg, "_", earlier_year)
+    col_latest  <- paste0(deg, "_", latest_year)
+    change_col  <- paste0(deg, "_PctChangeInShare")
     
     df[[change_col]] <- table_change(
-      df[[col_2015]],
-      df[[col_2025]],
+      df[[col_earlier]],
+      df[[col_latest]],
       change_type
     )
   }
@@ -1833,11 +1934,12 @@ build_change_table_wide <- function(
   # Rank fields by average movement across the three degree levels
   # --------------------------------------------------------------------------
   
+  # Sort by each field's average latest-year share across the three degrees.
   df <- df %>%
     mutate(
       .avg = rowMeans(
         across(
-          all_of(change_cols)
+          all_of(latest_cols)
         ),
         na.rm = TRUE
       )
@@ -1909,20 +2011,9 @@ build_change_table_wide <- function(
         label = deg,
         columns = all_of(
           c(
-            paste0(
-              deg,
-              "_",
-              earlier_year
-            ),
-            paste0(
-              deg,
-              "_",
-              latest_year
-            ),
-            paste0(
-              deg,
-              "_PctChangeInShare"
-            )
+            paste0(deg, "_", earlier_year),
+            paste0(deg, "_", latest_year),
+            paste0(deg, "_PctChangeInShare")
           )
         )
       )
@@ -1934,9 +2025,14 @@ build_change_table_wide <- function(
   
   tbl <- tbl %>%
     cols_label(
-      ends_with("_2015") ~ "2015",
-      ends_with("_2025") ~ "2025",
-      ends_with("_PctChangeInShare") ~ "Change"
+      .list = setNames(
+        c(
+          rep(as.character(earlier_year), length(earlier_cols)),
+          rep(as.character(latest_year),  length(latest_cols)),
+          rep("Change",                   length(change_cols))
+        ),
+        c(earlier_cols, latest_cols, change_cols)
+      )
     ) %>%
     
     # Diverging gradient on change columns.
@@ -1983,7 +2079,7 @@ build_change_table_wide <- function(
         ),
         locations = cells_body(
           columns = all_of(col),
-          rows = .data[[col]] > 50
+          rows = round(.data[[col]], 1) >= 50
         )
       )
   }
@@ -1998,7 +2094,9 @@ build_change_table_wide <- function(
         "Values are the percent of degree completions awarded to international",
         "(nonresident) students.", change_col_label(FALSE), "is the",
         change_phrase(change_type), "in that share from",
-        earlier_year, "to", latest_year
+        earlier_year, "to", latest_year,
+        ", with fields ordered by their average", latest_year,
+        "share across the three degree levels"
       ),
       locations = cells_column_spanners(
         spanners = degrees

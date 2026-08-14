@@ -185,7 +185,7 @@ extract_academic_year_pairs <- function(x) {
 
 metadata_years <- function(id) {
   text <- metadata_text(id)
-
+  
   # metadata_text() is one combined citation string. The generic extract_year()
   # helper intentionally returns one year per input label, so using it here
   # previously retained only the FIRST year it encountered. A citation such as
@@ -198,10 +198,10 @@ metadata_years <- function(id) {
   )[[1]]
   full <- suppressWarnings(as.numeric(full))
   full <- full[is.finite(full)]
-
+  
   academic_pairs <- extract_academic_year_pairs(text)
   short_ranges <- extract_short_year_ranges(text)
-
+  
   sort(unique(c(
     full,
     academic_pairs$start,
@@ -760,11 +760,11 @@ INFOGRAPHIC_FIXED_LAYOUT <- list(
   subtitle_font_px = infographic_pt_to_px(PUB$type$subtitle_pt),
   panel_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
   group_font_px = infographic_pt_to_px(INFOGRAPHIC_BODY_PT),
-
+  
   # Match the source/caption size used by figures and revised tables.
   source_font_px = infographic_pt_to_px(PUB$type$caption_pt),
-
-  row_padding_px = infographic_pt_to_px(2.5)
+  
+  row_padding_px = infographic_pt_to_px(2.8)
 )
 
 # One uniform data-row height for every chapter/page.
@@ -872,21 +872,21 @@ capitalize_source_terms <- function(x) {
 # or bad.
 infographic_trend_arrow <- function(change) {
   x <- trimws(as.character(change))
-
+  
   value <- suppressWarnings(
     readr::parse_number(x)
   )
-
+  
   is_blank <- is.na(x) |
     !nzchar(x) |
     x %in% c("—", "–")
-
+  
   is_multiple <- grepl(
     "×\\s*$",
     x,
     perl = TRUE
   )
-
+  
   signed_up <- grepl(
     "^\\s*\\+",
     x,
@@ -894,7 +894,7 @@ infographic_trend_arrow <- function(change) {
   ) &
     is.finite(value) &
     value > 0
-
+  
   signed_down <- grepl(
     "^\\s*[-−]",
     x,
@@ -902,27 +902,27 @@ infographic_trend_arrow <- function(change) {
   ) &
     is.finite(value) &
     value < 0
-
+  
   multiple_up <- is_multiple &
     is.finite(value) &
     value > 1
-
+  
   multiple_down <- is_multiple &
     is.finite(value) &
     value < 1
-
+  
   out <- rep("", length(x))
-
+  
   out[
     !is_blank &
       (signed_up | multiple_up)
   ] <- "\u25B2"  # ▲
-
+  
   out[
     !is_blank &
       (signed_down | multiple_down)
   ] <- "\u25BC"  # ▼
-
+  
   out
 }
 
@@ -942,6 +942,8 @@ build_infographic_table <- function(
     layout = INFOGRAPHIC_FIXED_LAYOUT,
     row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
     nowrap_values = TRUE,
+    trend_right_padding_px = 0,
+    show_header = TRUE,
     top_border = FALSE
 ) {
   sizes <- font_sizes(layout)
@@ -962,11 +964,16 @@ build_infographic_table <- function(
     subtitle <- smart_display_text(subtitle)
   }
   
+  subtitle_html <- NULL
+  if (!is.null(subtitle)) {
+    subtitle_html <- paste0(
+      "<span class='infographic-subtitle'>", subtitle, "</span>"
+    )
+  }
+  
   notes <- notes %>%
     smart_display_text() %>%
     capitalize_source_terms()
-  
-  column_labels[["Latest"]] <- "Latest or<br>Projected Value"
   
   hidden_columns <- intersect(
     c(
@@ -991,13 +998,6 @@ build_infographic_table <- function(
     )
   }
   
-  subtitle_html <- NULL
-  if (!is.null(subtitle)) {
-    subtitle_html <- paste0(
-      "<span class='infographic-subtitle'>", subtitle, "</span>"
-    )
-  }
-  
   tbl <- data %>%
     gt::gt(
       rowname_col = "Measure",
@@ -1015,12 +1015,27 @@ build_infographic_table <- function(
       align = "center",
       columns = c(Earlier, Latest, Change, Trend)
     ) %>%
-    gt::cols_hide(columns = tidyselect::any_of(hidden_columns)) %>%
-    theme_gt_tpa() %>%
-    gt::tab_header(
-      title = gt::html(title_html),
-      subtitle = if (is.null(subtitle_html)) NULL else gt::html(subtitle_html)
-    )
+    gt::cols_hide(
+      columns = tidyselect::any_of(hidden_columns)
+    ) %>%
+    theme_gt_tpa()
+  
+  
+  # Add Chapter / title / subtitle only when requested.
+  if (isTRUE(show_header)) {
+    
+    tbl <- tbl %>%
+      gt::tab_header(
+        title = gt::html(title_html),
+        subtitle = if (
+          is.null(subtitle_html)
+        ) {
+          NULL
+        } else {
+          gt::html(subtitle_html)
+        }
+      )
+  }
   
   for (note in notes) {
     tbl <- gt::tab_source_note(tbl, source_note = gt::md(note))
@@ -1070,7 +1085,7 @@ build_infographic_table <- function(
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = "#008a22",
+        color = "blue",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1080,7 +1095,7 @@ build_infographic_table <- function(
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = "#8a0022",
+        color = "gold",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1180,7 +1195,7 @@ build_infographic_table <- function(
     "#", id, " tbody td {font-weight:400 !important;}",
     "#", id, " tbody td:nth-child(3) {font-weight:700 !important;}",
     "#", id, " td[data-column-id='Trend'] {",
-    "padding-left:0 !important;padding-right:0 !important;",
+    "padding-left:0 !important;padding-right:", trend_right_padding_px, "px !important;",
     "text-align:center !important;",
     "font-size:", sizes$data * 0.82, "px !important;",
     "line-height:1 !important;}",
@@ -1251,10 +1266,10 @@ paginate_infographic_data <- function(
   if (nrow(data) < 1) {
     stop("The infographic contains no data rows.")
   }
-
+  
   rows_per_page <- as.integer(rows_per_page)
   section_headers_per_page <- as.integer(section_headers_per_page)
-
+  
   if (
     length(rows_per_page) != 1L ||
     !is.finite(rows_per_page) ||
@@ -1262,7 +1277,7 @@ paginate_infographic_data <- function(
   ) {
     stop("`rows_per_page` must be one positive integer.")
   }
-
+  
   if (
     length(section_headers_per_page) != 1L ||
     !is.finite(section_headers_per_page) ||
@@ -1270,16 +1285,16 @@ paginate_infographic_data <- function(
   ) {
     stop("`section_headers_per_page` must be one nonnegative integer.")
   }
-
+  
   if (!"Section" %in% names(data)) {
     stop(
       "Infographic pagination requires a `Section` column so section headers ",
       "can be counted in the fixed page-height budget."
     )
   }
-
+  
   rendered_row_budget <- rows_per_page + section_headers_per_page
-
+  
   # Greedy pagination in publication order.
   #
   # Cost model:
@@ -1295,31 +1310,31 @@ paginate_infographic_data <- function(
   body_rows_on_page <- 0L
   rendered_units_on_page <- 0L
   previous_section_on_page <- NULL
-
+  
   for (i in seq_len(nrow(data))) {
     current_section <- as.character(data$Section[[i]])
-
+    
     starts_new_section <- (
       body_rows_on_page == 0L ||
-      is.null(previous_section_on_page) ||
-      !identical(current_section, previous_section_on_page)
+        is.null(previous_section_on_page) ||
+        !identical(current_section, previous_section_on_page)
     )
-
+    
     body_cost <- 1L
     header_cost <- if (starts_new_section) 1L else 0L
-
+    
     would_exceed_body_cap <- (
       body_rows_on_page + body_cost >
         rows_per_page
     )
-
+    
     would_exceed_rendered_budget <- (
       rendered_units_on_page +
         body_cost +
         header_cost >
         rendered_row_budget
     )
-
+    
     if (
       body_rows_on_page > 0L &&
       (
@@ -1332,31 +1347,31 @@ paginate_infographic_data <- function(
         ,
         drop = FALSE
       ]
-
+      
       page_start <- i
       body_rows_on_page <- 0L
       rendered_units_on_page <- 0L
       previous_section_on_page <- NULL
-
+      
       starts_new_section <- TRUE
       header_cost <- 1L
     }
-
+    
     body_rows_on_page <- body_rows_on_page + body_cost
     rendered_units_on_page <-
       rendered_units_on_page +
       body_cost +
       header_cost
-
+    
     previous_section_on_page <- current_section
   }
-
+  
   pages[[length(pages) + 1L]] <- data[
     page_start:nrow(data),
     ,
     drop = FALSE
   ]
-
+  
   pages
 }
 
@@ -1369,7 +1384,7 @@ mark_infographic_continuation <- function(
     dplyr::mutate(
       Section = as.character(.data$Section)
     )
-
+  
   if (
     is.null(previous_page_data) ||
     nrow(previous_page_data) == 0L ||
@@ -1377,27 +1392,27 @@ mark_infographic_continuation <- function(
   ) {
     return(page_data)
   }
-
+  
   previous_section <- as.character(
     previous_page_data$Section[[nrow(previous_page_data)]]
   )
-
+  
   first_section <- as.character(
     page_data$Section[[1]]
   )
-
+  
   if (
     !is.na(previous_section) &&
     !is.na(first_section) &&
     identical(previous_section, first_section)
   ) {
     continued_label <- paste0(first_section, " (cont.)")
-
+    
     page_data$Section[
       page_data$Section == first_section
     ] <- continued_label
   }
-
+  
   page_data
 }
 
@@ -1487,56 +1502,56 @@ export_paginated_infographic <- function(
     rows_per_page = rows_per_page,
     section_headers_per_page = section_headers_per_page
   )
-
+  
   total_pages <- length(pages)
-
+  
   exports <- lapply(seq_along(pages), function(page_number) {
     page_name <- if (total_pages == 1L) {
       name
     } else {
       paste0(name, "_page_", sprintf("%02d", page_number))
     }
-
+    
     previous_page <- if (page_number == 1L) {
       NULL
     } else {
       pages[[page_number - 1L]]
     }
-
+    
     display_data <- mark_infographic_continuation(
       page_data = pages[[page_number]],
       previous_page_data = previous_page
     )
-
+    
     table <- build_page(
       page_data = display_data,
       page_number = page_number,
       total_pages = total_pages,
       is_last_page = page_number == total_pages
     )
-
+    
     export_infographic_page(
       table = table,
       name = page_name,
       output_dir = output_dir
     )
   })
-
+  
   page_body_counts <- vapply(
     pages,
     nrow,
     integer(1)
   )
-
+  
   page_header_counts <- vapply(
     pages,
     function(x) {
       if (nrow(x) == 0L) {
         return(0L)
       }
-
+      
       section <- as.character(x$Section)
-
+      
       sum(
         c(
           TRUE,
@@ -1547,7 +1562,7 @@ export_paginated_infographic <- function(
     },
     integer(1)
   )
-
+  
   message(
     "Saved ", total_pages,
     " fixed-format page", if (total_pages == 1L) "" else "s",
@@ -1565,7 +1580,6 @@ export_paginated_infographic <- function(
     ),
     ". Type size, row height, columns, and PNG dimensions remain fixed."
   )
-
+  
   invisible(exports)
 }
-

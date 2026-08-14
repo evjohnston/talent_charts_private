@@ -1,6 +1,0 @@
-"0","meta <- get_meta(""TAB603"")"
-"0","change_type <- ""ppt""  # choose ""relative"" or ""ppt"""
-"0",""
-"0","TAB603 <- build_sector_bookend_table(meta, change_type = change_type)"
-"0",""
-"0","save_table(TAB603, ""tab_6_03"")"

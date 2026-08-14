@@ -150,13 +150,13 @@ PUB <- list(
   page = list(
     width_in  = 8.5,
     height_in = 11,
-    margin_in = .75
+    margin_in = 1
   ),
   
   # All document-facing font sizes are defined at 100% here, then passed
   # through font_pt(). Change FONT_SCALE_PERCENT above to scale them together.
   type = list(
-    title_pt     = font_pt(11),
+    title_pt     = font_pt(12),
     subtitle_pt  = font_pt(10),
     caption_pt   = font_pt(8),
     body_pt      = font_pt(10),
@@ -179,7 +179,7 @@ PUB <- list(
     edge_xxwide_pt      = 30,
     
     # Titles, sources, and axes.
-    title_bottom_pt       = 5,
+    title_bottom_pt       = 12,
     subtitle_bottom_pt    = 14,
     source_top_pt         = 12,
     axis_title_gap_pt     = 10,
@@ -254,7 +254,7 @@ PUB <- list(
   
   infographic = list(
     width_in  = 6.5,
-    height_in = 8.5,
+    height_in = 9,
     css_dpi   = 144
   )
 )

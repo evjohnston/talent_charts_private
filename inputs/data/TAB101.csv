@@ -1,8 +1,838 @@
-Field,Bachelors_2015,Bachelors_2025,Bachelors_PctChangeInShare,Masters_2015,Masters_2025,Masters_PctChangeInShare,Doctorate_2015,Doctorate_2025,Doctorate_PctChangeInShare
-Architecture and Related Services,5.06,7.24,0.4308300395,18.08,28.4,0.5707964602,39.72,51.94,0.307653575
-Biological and Biomedical Sciences,2.25,3.31,0.4711111111,16.23,22.64,0.3949476278,25.03,23.23,-0.07191370356
-Computer and Information Sciences,9.28,8.51,-0.08297413793,37.5,64.89,0.7304,42.06,54.85,0.3040893961
-Engineering,7.58,7.09,-0.06464379947,33.9,49.35,0.4557522124,48.98,54.71,0.1169865251
-Mathematics and Statistics,4.31,16.83,2.90487239,27.58,54.56,0.9782451051,44.78,52.81,0.1793211255
-Natural Resources and Conservation,1.18,1.98,0.6779661017,11.6,16.92,0.4586206897,29.64,27.19,-0.0826585695
-Physical Sciences,3.73,5.94,0.5924932976,30.6,32.66,0.06732026144,32.84,38.06,0.158952497
+Year,Field,Degree,Nonresident_Total,Grand_Total,NonresidentShare
+1995,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,78,5068,1.54
+1996,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,75,4864,1.54
+1997,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,89,5039,1.77
+1998,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,78,5205,1.5
+1999,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,81,5555,1.46
+2000,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,61,5901,1.03
+2001,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,89,5881,1.51
+2002,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,85,5994,1.42
+2003,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,212,14377,1.47
+2004,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,187,14121,1.32
+2005,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,214,14545,1.47
+2006,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,194,14399,1.35
+2007,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,215,14589,1.47
+2008,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,199,14831,1.34
+2009,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,192,15262,1.26
+2010,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,249,15461,1.61
+2011,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,242,15923,1.52
+2012,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,248,16373,1.51
+2013,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,348,17213,2.02
+2014,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,385,18171,2.12
+2015,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,428,19253,2.22
+2016,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,445,19587,2.27
+2017,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,507,19838,2.56
+2018,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,557,20389,2.73
+2019,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,591,20757,2.85
+2020,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,686,21569,3.18
+2021,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,653,21692,3.01
+2022,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,544,20619,2.64
+2023,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,473,20721,2.28
+2024,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,412,20738,1.99
+2025,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Bachelor's,410,21083,1.94
+1995,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,116,218,53.21
+1996,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,130,236,55.08
+1997,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,89,181,49.17
+1998,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,118,224,52.68
+1999,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,119,205,58.05
+2000,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,96,183,52.46
+2001,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,128,191,67.02
+2002,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,103,175,58.86
+2003,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,412,786,52.42
+2004,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,397,752,52.79
+2005,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,395,743,53.16
+2006,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,356,721,49.38
+2007,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,428,778,55.01
+2008,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,415,773,53.69
+2009,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,398,765,52.03
+2010,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,317,664,47.74
+2011,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,357,692,51.59
+2012,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,401,748,53.61
+2013,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,406,817,49.69
+2014,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,418,823,50.79
+2015,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,425,879,48.35
+2016,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,432,848,50.94
+2017,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,486,929,52.31
+2018,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,457,886,51.58
+2019,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,486,956,50.84
+2020,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,554,4295,12.9
+2021,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,448,4268,10.5
+2022,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,486,4337,11.21
+2023,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,435,4398,9.89
+2024,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,458,4611,9.93
+2025,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Doctorate,491,4747,10.34
+1995,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,223,662,33.69
+1996,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,222,650,34.15
+1997,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,220,601,36.61
+1998,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,197,630,31.27
+1999,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,195,576,33.85
+2000,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,167,543,30.76
+2001,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,168,554,30.32
+2002,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,177,558,31.72
+2003,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,443,2130,20.8
+2004,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,577,2292,25.17
+2005,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,546,2258,24.18
+2006,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,493,2241,22
+2007,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,457,2118,21.58
+2008,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,473,2107,22.45
+2009,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,482,2283,21.11
+2010,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,477,2233,21.36
+2011,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,565,2513,22.48
+2012,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,563,2610,21.57
+2013,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,586,2623,22.34
+2014,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,604,2733,22.1
+2015,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,615,2710,22.69
+2016,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,644,2883,22.34
+2017,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,714,2995,23.84
+2018,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,653,2882,22.66
+2019,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,638,2926,21.8
+2020,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,693,3130,22.14
+2021,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,559,2943,18.99
+2022,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,544,3073,17.7
+2023,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,535,3180,16.82
+2024,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,723,3399,21.27
+2025,Agricultural/Animal/Plant/Veterinary Science and Related Fields,Master's,857,3629,23.62
+1995,Architecture and Related Services,Bachelor's,448,8860,5.06
+1996,Architecture and Related Services,Bachelor's,428,8398,5.1
+1997,Architecture and Related Services,Bachelor's,511,7977,6.41
+1998,Architecture and Related Services,Bachelor's,540,7687,7.02
+1999,Architecture and Related Services,Bachelor's,538,8295,6.49
+2000,Architecture and Related Services,Bachelor's,538,8495,6.33
+2001,Architecture and Related Services,Bachelor's,591,8522,6.93
+2002,Architecture and Related Services,Bachelor's,515,8853,5.82
+2003,Architecture and Related Services,Bachelor's,509,9107,5.59
+2004,Architecture and Related Services,Bachelor's,430,8891,4.84
+2005,Architecture and Related Services,Bachelor's,464,9294,4.99
+2006,Architecture and Related Services,Bachelor's,403,9560,4.22
+2007,Architecture and Related Services,Bachelor's,414,9800,4.22
+2008,Architecture and Related Services,Bachelor's,418,9902,4.22
+2009,Architecture and Related Services,Bachelor's,414,10200,4.06
+2010,Architecture and Related Services,Bachelor's,421,10130,4.16
+2011,Architecture and Related Services,Bachelor's,451,9933,4.54
+2012,Architecture and Related Services,Bachelor's,571,9846,5.8
+2013,Architecture and Related Services,Bachelor's,654,9865,6.63
+2014,Architecture and Related Services,Bachelor's,667,9229,7.23
+2015,Architecture and Related Services,Bachelor's,787,9203,8.55
+2016,Architecture and Related Services,Bachelor's,950,8980,10.58
+2017,Architecture and Related Services,Bachelor's,1088,8711,12.49
+2018,Architecture and Related Services,Bachelor's,1173,8598,13.64
+2019,Architecture and Related Services,Bachelor's,1242,8914,13.93
+2020,Architecture and Related Services,Bachelor's,1151,9137,12.6
+2021,Architecture and Related Services,Bachelor's,1004,9392,10.69
+2022,Architecture and Related Services,Bachelor's,1008,9556,10.55
+2023,Architecture and Related Services,Bachelor's,881,10291,8.56
+2024,Architecture and Related Services,Bachelor's,843,10404,8.1
+2025,Architecture and Related Services,Bachelor's,839,11590,7.24
+1995,Architecture and Related Services,Doctorate,56,141,39.72
+1996,Architecture and Related Services,Doctorate,63,141,44.68
+1997,Architecture and Related Services,Doctorate,46,135,34.07
+1998,Architecture and Related Services,Doctorate,54,131,41.22
+1999,Architecture and Related Services,Doctorate,48,119,40.34
+2000,Architecture and Related Services,Doctorate,46,129,35.66
+2001,Architecture and Related Services,Doctorate,53,153,34.64
+2002,Architecture and Related Services,Doctorate,85,183,46.45
+2003,Architecture and Related Services,Doctorate,79,152,51.97
+2004,Architecture and Related Services,Doctorate,81,173,46.82
+2005,Architecture and Related Services,Doctorate,79,179,44.13
+2006,Architecture and Related Services,Doctorate,115,201,57.21
+2007,Architecture and Related Services,Doctorate,90,178,50.56
+2008,Architecture and Related Services,Doctorate,92,199,46.23
+2009,Architecture and Related Services,Doctorate,88,212,41.51
+2010,Architecture and Related Services,Doctorate,87,210,41.43
+2011,Architecture and Related Services,Doctorate,75,205,36.59
+2012,Architecture and Related Services,Doctorate,105,255,41.18
+2013,Architecture and Related Services,Doctorate,90,247,36.44
+2014,Architecture and Related Services,Doctorate,112,247,45.34
+2015,Architecture and Related Services,Doctorate,112,272,41.18
+2016,Architecture and Related Services,Doctorate,94,245,38.37
+2017,Architecture and Related Services,Doctorate,120,291,41.24
+2018,Architecture and Related Services,Doctorate,107,250,42.8
+2019,Architecture and Related Services,Doctorate,111,255,43.53
+2020,Architecture and Related Services,Doctorate,119,252,47.22
+2021,Architecture and Related Services,Doctorate,130,255,50.98
+2022,Architecture and Related Services,Doctorate,130,252,51.59
+2023,Architecture and Related Services,Doctorate,133,244,54.51
+2024,Architecture and Related Services,Doctorate,124,250,49.6
+2025,Architecture and Related Services,Doctorate,134,258,51.94
+1995,Architecture and Related Services,Master's,712,3937,18.08
+1996,Architecture and Related Services,Master's,742,4016,18.48
+1997,Architecture and Related Services,Master's,784,4045,19.38
+1998,Architecture and Related Services,Master's,883,4383,20.15
+1999,Architecture and Related Services,Master's,894,4272,20.93
+2000,Architecture and Related Services,Master's,979,4283,22.86
+2001,Architecture and Related Services,Master's,1043,4327,24.1
+2002,Architecture and Related Services,Master's,1104,4588,24.06
+2003,Architecture and Related Services,Master's,1133,4949,22.89
+2004,Architecture and Related Services,Master's,1245,5456,22.82
+2005,Architecture and Related Services,Master's,1080,5696,18.96
+2006,Architecture and Related Services,Master's,992,5778,17.17
+2007,Architecture and Related Services,Master's,946,6004,15.76
+2008,Architecture and Related Services,Master's,955,6125,15.59
+2009,Architecture and Related Services,Master's,1010,6630,15.23
+2010,Architecture and Related Services,Master's,1130,7333,15.41
+2011,Architecture and Related Services,Master's,1239,7833,15.82
+2012,Architecture and Related Services,Master's,1351,8502,15.89
+2013,Architecture and Related Services,Master's,1468,8147,18.02
+2014,Architecture and Related Services,Master's,1852,8092,22.89
+2015,Architecture and Related Services,Master's,2060,8077,25.5
+2016,Architecture and Related Services,Master's,2366,8046,29.41
+2017,Architecture and Related Services,Master's,2584,7932,32.58
+2018,Architecture and Related Services,Master's,2455,7341,33.44
+2019,Architecture and Related Services,Master's,2418,7371,32.8
+2020,Architecture and Related Services,Master's,2192,6835,32.07
+2021,Architecture and Related Services,Master's,1734,6346,27.32
+2022,Architecture and Related Services,Master's,1946,6759,28.79
+2023,Architecture and Related Services,Master's,2198,7437,29.55
+2024,Architecture and Related Services,Master's,2137,7367,29.01
+2025,Architecture and Related Services,Master's,2054,7232,28.4
+1995,Biological and Biomedical Sciences,Bachelor's,1281,56822,2.25
+1996,Biological and Biomedical Sciences,Bachelor's,1365,62017,2.2
+1997,Biological and Biomedical Sciences,Bachelor's,1460,65061,2.24
+1998,Biological and Biomedical Sciences,Bachelor's,1422,67073,2.12
+1999,Biological and Biomedical Sciences,Bachelor's,1428,66420,2.15
+2000,Biological and Biomedical Sciences,Bachelor's,1375,64800,2.12
+2001,Biological and Biomedical Sciences,Bachelor's,1436,62074,2.31
+2002,Biological and Biomedical Sciences,Bachelor's,1457,61716,2.36
+2003,Biological and Biomedical Sciences,Bachelor's,1486,61489,2.42
+2004,Biological and Biomedical Sciences,Bachelor's,1602,62828,2.55
+2005,Biological and Biomedical Sciences,Bachelor's,1922,65658,2.93
+2006,Biological and Biomedical Sciences,Bachelor's,2038,70208,2.9
+2007,Biological and Biomedical Sciences,Bachelor's,2232,76089,2.93
+2008,Biological and Biomedical Sciences,Bachelor's,2210,78887,2.8
+2009,Biological and Biomedical Sciences,Bachelor's,2337,81792,2.86
+2010,Biological and Biomedical Sciences,Bachelor's,2496,87554,2.85
+2011,Biological and Biomedical Sciences,Bachelor's,2723,91200,2.99
+2012,Biological and Biomedical Sciences,Bachelor's,2791,97332,2.87
+2013,Biological and Biomedical Sciences,Bachelor's,2938,101931,2.88
+2014,Biological and Biomedical Sciences,Bachelor's,2811,106459,2.64
+2015,Biological and Biomedical Sciences,Bachelor's,2904,111830,2.6
+2016,Biological and Biomedical Sciences,Bachelor's,3254,115751,2.81
+2017,Biological and Biomedical Sciences,Bachelor's,3507,118865,2.95
+2018,Biological and Biomedical Sciences,Bachelor's,3811,120743,3.16
+2019,Biological and Biomedical Sciences,Bachelor's,4085,123402,3.31
+2020,Biological and Biomedical Sciences,Bachelor's,4346,128930,3.37
+2021,Biological and Biomedical Sciences,Bachelor's,4403,133981,3.29
+2022,Biological and Biomedical Sciences,Bachelor's,4401,133823,3.29
+2023,Biological and Biomedical Sciences,Bachelor's,4275,132629,3.22
+2024,Biological and Biomedical Sciences,Bachelor's,4064,130680,3.11
+2025,Biological and Biomedical Sciences,Bachelor's,4471,134915,3.31
+1995,Biological and Biomedical Sciences,Doctorate,1166,4659,25.03
+1996,Biological and Biomedical Sciences,Doctorate,1284,4786,26.83
+1997,Biological and Biomedical Sciences,Doctorate,1333,4818,27.67
+1998,Biological and Biomedical Sciences,Doctorate,1349,4968,27.15
+1999,Biological and Biomedical Sciences,Doctorate,1223,4631,26.41
+2000,Biological and Biomedical Sciences,Doctorate,1251,4876,25.66
+2001,Biological and Biomedical Sciences,Doctorate,1148,4621,24.84
+2002,Biological and Biomedical Sciences,Doctorate,1150,4535,25.36
+2003,Biological and Biomedical Sciences,Doctorate,1272,5037,25.25
+2004,Biological and Biomedical Sciences,Doctorate,1331,5275,25.23
+2005,Biological and Biomedical Sciences,Doctorate,1521,5621,27.06
+2006,Biological and Biomedical Sciences,Doctorate,1678,5823,28.82
+2007,Biological and Biomedical Sciences,Doctorate,1945,6394,30.42
+2008,Biological and Biomedical Sciences,Doctorate,2131,6959,30.62
+2009,Biological and Biomedical Sciences,Doctorate,2034,7029,28.94
+2010,Biological and Biomedical Sciences,Doctorate,2174,7745,28.07
+2011,Biological and Biomedical Sciences,Doctorate,2122,7817,27.15
+2012,Biological and Biomedical Sciences,Doctorate,2161,8017,26.96
+2013,Biological and Biomedical Sciences,Doctorate,2187,8102,26.99
+2014,Biological and Biomedical Sciences,Doctorate,2290,8390,27.29
+2015,Biological and Biomedical Sciences,Doctorate,2231,8136,27.42
+2016,Biological and Biomedical Sciences,Doctorate,2122,8017,26.47
+2017,Biological and Biomedical Sciences,Doctorate,2083,8148,25.56
+2018,Biological and Biomedical Sciences,Doctorate,2078,8295,25.05
+2019,Biological and Biomedical Sciences,Doctorate,1975,8053,24.53
+2020,Biological and Biomedical Sciences,Doctorate,2038,7977,25.55
+2021,Biological and Biomedical Sciences,Doctorate,1840,7558,24.35
+2022,Biological and Biomedical Sciences,Doctorate,2045,8639,23.67
+2023,Biological and Biomedical Sciences,Doctorate,2259,9055,24.95
+2024,Biological and Biomedical Sciences,Doctorate,2188,9074,24.11
+2025,Biological and Biomedical Sciences,Doctorate,2169,9336,23.23
+1995,Biological and Biomedical Sciences,Master's,880,5423,16.23
+1996,Biological and Biomedical Sciences,Master's,977,6207,15.74
+1997,Biological and Biomedical Sciences,Master's,908,6497,13.98
+1998,Biological and Biomedical Sciences,Master's,891,6288,14.17
+1999,Biological and Biomedical Sciences,Master's,808,6231,12.97
+2000,Biological and Biomedical Sciences,Master's,738,6233,11.84
+2001,Biological and Biomedical Sciences,Master's,862,6383,13.5
+2002,Biological and Biomedical Sciences,Master's,795,6253,12.71
+2003,Biological and Biomedical Sciences,Master's,1001,7015,14.27
+2004,Biological and Biomedical Sciences,Master's,1132,7748,14.61
+2005,Biological and Biomedical Sciences,Master's,1228,8252,14.88
+2006,Biological and Biomedical Sciences,Master's,1298,8742,14.85
+2007,Biological and Biomedical Sciences,Master's,1325,8817,15.03
+2008,Biological and Biomedical Sciences,Master's,1499,9608,15.6
+2009,Biological and Biomedical Sciences,Master's,1753,9955,17.61
+2010,Biological and Biomedical Sciences,Master's,1861,10797,17.24
+2011,Biological and Biomedical Sciences,Master's,2008,11414,17.59
+2012,Biological and Biomedical Sciences,Master's,2154,12510,17.22
+2013,Biological and Biomedical Sciences,Master's,2179,13706,15.9
+2014,Biological and Biomedical Sciences,Master's,2284,14076,16.23
+2015,Biological and Biomedical Sciences,Master's,2447,14757,16.58
+2016,Biological and Biomedical Sciences,Master's,2507,15843,15.82
+2017,Biological and Biomedical Sciences,Master's,2596,16451,15.78
+2018,Biological and Biomedical Sciences,Master's,2672,17320,15.43
+2019,Biological and Biomedical Sciences,Master's,2706,18282,14.8
+2020,Biological and Biomedical Sciences,Master's,2870,18999,15.11
+2021,Biological and Biomedical Sciences,Master's,2931,19614,14.94
+2022,Biological and Biomedical Sciences,Master's,2694,20808,12.95
+2023,Biological and Biomedical Sciences,Master's,3879,23333,16.62
+2024,Biological and Biomedical Sciences,Master's,4687,23495,19.95
+2025,Biological and Biomedical Sciences,Master's,5668,25031,22.64
+1995,Computer and Information Sciences and Support Services,Bachelor's,2295,24719,9.28
+1996,Computer and Information Sciences and Support Services,Bachelor's,2180,24424,8.93
+1997,Computer and Information Sciences and Support Services,Bachelor's,1999,24982,8
+1998,Computer and Information Sciences and Support Services,Bachelor's,2138,27164,7.87
+1999,Computer and Information Sciences and Support Services,Bachelor's,2250,29666,7.58
+2000,Computer and Information Sciences and Support Services,Bachelor's,2894,36565,7.91
+2001,Computer and Information Sciences and Support Services,Bachelor's,3390,42267,8.02
+2002,Computer and Information Sciences and Support Services,Bachelor's,3872,47672,8.12
+2003,Computer and Information Sciences and Support Services,Bachelor's,4825,58062,8.31
+2004,Computer and Information Sciences and Support Services,Bachelor's,5079,60280,8.43
+2005,Computer and Information Sciences and Support Services,Bachelor's,4000,54727,7.31
+2006,Computer and Information Sciences and Support Services,Bachelor's,3106,48289,6.43
+2007,Computer and Information Sciences and Support Services,Bachelor's,2439,42679,5.71
+2008,Computer and Information Sciences and Support Services,Bachelor's,1808,38993,4.64
+2009,Computer and Information Sciences and Support Services,Bachelor's,1826,38606,4.73
+2010,Computer and Information Sciences and Support Services,Bachelor's,1871,40204,4.65
+2011,Computer and Information Sciences and Support Services,Bachelor's,2025,43610,4.64
+2012,Computer and Information Sciences and Support Services,Bachelor's,2373,48094,4.93
+2013,Computer and Information Sciences and Support Services,Bachelor's,2384,51654,4.62
+2014,Computer and Information Sciences and Support Services,Bachelor's,2819,56092,5.03
+2015,Computer and Information Sciences and Support Services,Bachelor's,3374,60343,5.59
+2016,Computer and Information Sciences and Support Services,Bachelor's,4086,65293,6.26
+2017,Computer and Information Sciences and Support Services,Bachelor's,5146,72355,7.11
+2018,Computer and Information Sciences and Support Services,Bachelor's,6812,80798,8.43
+2019,Computer and Information Sciences and Support Services,Bachelor's,8015,89529,8.95
+2020,Computer and Information Sciences and Support Services,Bachelor's,9628,97930,9.83
+2021,Computer and Information Sciences and Support Services,Bachelor's,10794,105814,10.2
+2022,Computer and Information Sciences and Support Services,Bachelor's,10737,109597,9.8
+2023,Computer and Information Sciences and Support Services,Bachelor's,10497,114773,9.15
+2024,Computer and Information Sciences and Support Services,Bachelor's,10026,122747,8.17
+2025,Computer and Information Sciences and Support Services,Bachelor's,11955,140495,8.51
+1995,Computer and Information Sciences and Support Services,Doctorate,376,894,42.06
+1996,Computer and Information Sciences and Support Services,Doctorate,395,867,45.56
+1997,Computer and Information Sciences and Support Services,Doctorate,369,857,43.06
+1998,Computer and Information Sciences and Support Services,Doctorate,370,862,42.92
+1999,Computer and Information Sciences and Support Services,Doctorate,335,806,41.56
+2000,Computer and Information Sciences and Support Services,Doctorate,375,777,48.26
+2001,Computer and Information Sciences and Support Services,Doctorate,373,768,48.57
+2002,Computer and Information Sciences and Support Services,Doctorate,340,750,45.33
+2003,Computer and Information Sciences and Support Services,Doctorate,403,816,49.39
+2004,Computer and Information Sciences and Support Services,Doctorate,455,910,50
+2005,Computer and Information Sciences and Support Services,Doctorate,621,1127,55.1
+2006,Computer and Information Sciences and Support Services,Doctorate,865,1417,61.04
+2007,Computer and Information Sciences and Support Services,Doctorate,939,1597,58.8
+2008,Computer and Information Sciences and Support Services,Doctorate,1029,1706,60.32
+2009,Computer and Information Sciences and Support Services,Doctorate,845,1589,53.18
+2010,Computer and Information Sciences and Support Services,Doctorate,786,1606,48.94
+2011,Computer and Information Sciences and Support Services,Doctorate,794,1595,49.78
+2012,Computer and Information Sciences and Support Services,Doctorate,872,1704,51.17
+2013,Computer and Information Sciences and Support Services,Doctorate,962,1852,51.94
+2014,Computer and Information Sciences and Support Services,Doctorate,1063,1989,53.44
+2015,Computer and Information Sciences and Support Services,Doctorate,1089,2004,54.34
+2016,Computer and Information Sciences and Support Services,Doctorate,1123,1994,56.32
+2017,Computer and Information Sciences and Support Services,Doctorate,1092,1998,54.65
+2018,Computer and Information Sciences and Support Services,Doctorate,1164,2032,57.28
+2019,Computer and Information Sciences and Support Services,Doctorate,1286,2236,57.51
+2020,Computer and Information Sciences and Support Services,Doctorate,1400,2420,57.85
+2021,Computer and Information Sciences and Support Services,Doctorate,1485,2585,57.45
+2022,Computer and Information Sciences and Support Services,Doctorate,1637,2800,58.46
+2023,Computer and Information Sciences and Support Services,Doctorate,1621,2885,56.19
+2024,Computer and Information Sciences and Support Services,Doctorate,1836,3243,56.61
+2025,Computer and Information Sciences and Support Services,Doctorate,2131,3885,54.85
+1995,Computer and Information Sciences and Support Services,Master's,3880,10347,37.5
+1996,Computer and Information Sciences and Support Services,Master's,3871,10223,37.87
+1997,Computer and Information Sciences and Support Services,Master's,3935,10107,38.93
+1998,Computer and Information Sciences and Support Services,Master's,4751,11298,42.05
+1999,Computer and Information Sciences and Support Services,Master's,5337,12295,43.41
+2000,Computer and Information Sciences and Support Services,Master's,6552,14305,45.8
+2001,Computer and Information Sciences and Support Services,Master's,7706,16256,47.4
+2002,Computer and Information Sciences and Support Services,Master's,7617,16181,47.07
+2003,Computer and Information Sciences and Support Services,Master's,9183,19669,46.69
+2004,Computer and Information Sciences and Support Services,Master's,8950,20485,43.69
+2005,Computer and Information Sciences and Support Services,Master's,7569,18608,40.68
+2006,Computer and Information Sciences and Support Services,Master's,6717,17400,38.6
+2007,Computer and Information Sciences and Support Services,Master's,6294,16332,38.54
+2008,Computer and Information Sciences and Support Services,Master's,7426,17295,42.94
+2009,Computer and Information Sciences and Support Services,Master's,8385,18108,46.31
+2010,Computer and Information Sciences and Support Services,Master's,7989,18146,44.03
+2011,Computer and Information Sciences and Support Services,Master's,8842,19862,44.52
+2012,Computer and Information Sciences and Support Services,Master's,9494,21417,44.33
+2013,Computer and Information Sciences and Support Services,Master's,10123,23043,43.93
+2014,Computer and Information Sciences and Support Services,Master's,11285,24829,45.45
+2015,Computer and Information Sciences and Support Services,Master's,17368,31760,54.69
+2016,Computer and Information Sciences and Support Services,Master's,25332,40412,62.68
+2017,Computer and Information Sciences and Support Services,Master's,30084,46825,64.25
+2018,Computer and Information Sciences and Support Services,Master's,29040,46890,61.93
+2019,Computer and Information Sciences and Support Services,Master's,26030,45957,56.64
+2020,Computer and Information Sciences and Support Services,Master's,29250,51772,56.5
+2021,Computer and Information Sciences and Support Services,Master's,28866,54456,53.01
+2022,Computer and Information Sciences and Support Services,Master's,22928,51748,44.31
+2023,Computer and Information Sciences and Support Services,Master's,46321,77725,59.6
+2024,Computer and Information Sciences and Support Services,Master's,59455,91322,65.1
+2025,Computer and Information Sciences and Support Services,Master's,66562,102569,64.89
+1995,Engineering,Bachelor's,4814,63481,7.58
+1996,Engineering,Bachelor's,4762,63088,7.55
+1997,Engineering,Bachelor's,4797,62310,7.7
+1998,Engineering,Bachelor's,4650,60918,7.63
+1999,Engineering,Bachelor's,4525,59235,7.64
+2000,Engineering,Bachelor's,4541,59494,7.63
+2001,Engineering,Bachelor's,4417,59162,7.47
+2002,Engineering,Bachelor's,4263,60592,7.04
+2003,Engineering,Bachelor's,4313,63829,6.76
+2004,Engineering,Bachelor's,4581,64694,7.08
+2005,Engineering,Bachelor's,4783,66127,7.23
+2006,Engineering,Bachelor's,4743,68142,6.96
+2007,Engineering,Bachelor's,4417,68204,6.48
+2008,Engineering,Bachelor's,4184,69735,6
+2009,Engineering,Bachelor's,4109,70309,5.84
+2010,Engineering,Bachelor's,4537,73912,6.14
+2011,Engineering,Bachelor's,5252,77437,6.78
+2012,Engineering,Bachelor's,6356,82587,7.7
+2013,Engineering,Bachelor's,6785,87149,7.79
+2014,Engineering,Bachelor's,7579,93344,8.12
+2015,Engineering,Bachelor's,8591,99018,8.68
+2016,Engineering,Bachelor's,10097,107956,9.35
+2017,Engineering,Bachelor's,11797,116763,10.1
+2018,Engineering,Bachelor's,13280,123013,10.8
+2019,Engineering,Bachelor's,13685,127683,10.72
+2020,Engineering,Bachelor's,13915,129311,10.76
+2021,Engineering,Bachelor's,12638,127267,9.93
+2022,Engineering,Bachelor's,10870,124273,8.75
+2023,Engineering,Bachelor's,9517,120274,7.91
+2024,Engineering,Bachelor's,8327,117374,7.09
+2025,Engineering,Bachelor's,8498,119925,7.09
+1995,Engineering,Doctorate,3001,6127,48.98
+1996,Engineering,Doctorate,3117,6370,48.93
+1997,Engineering,Doctorate,3006,6202,48.47
+1998,Engineering,Doctorate,2927,6016,48.65
+1999,Engineering,Doctorate,2499,5434,45.99
+2000,Engineering,Doctorate,2728,5386,50.65
+2001,Engineering,Doctorate,2998,5560,53.92
+2002,Engineering,Doctorate,2934,5195,56.48
+2003,Engineering,Doctorate,3042,5287,57.54
+2004,Engineering,Doctorate,3595,5941,60.51
+2005,Engineering,Doctorate,4109,6555,62.68
+2006,Engineering,Doctorate,4699,7428,63.26
+2007,Engineering,Doctorate,5187,8089,64.12
+2008,Engineering,Doctorate,4948,8161,60.63
+2009,Engineering,Doctorate,4575,7980,57.33
+2010,Engineering,Doctorate,4311,7750,55.63
+2011,Engineering,Doctorate,4724,8401,56.23
+2012,Engineering,Doctorate,4893,8774,55.77
+2013,Engineering,Doctorate,5337,9421,56.65
+2014,Engineering,Doctorate,5642,10063,56.07
+2015,Engineering,Doctorate,5728,10292,55.65
+2016,Engineering,Doctorate,5740,10318,55.63
+2017,Engineering,Doctorate,5916,10419,56.78
+2018,Engineering,Doctorate,6274,10858,57.78
+2019,Engineering,Doctorate,6548,11182,58.56
+2020,Engineering,Doctorate,6738,11186,60.24
+2021,Engineering,Doctorate,6541,10929,59.85
+2022,Engineering,Doctorate,7174,12121,59.19
+2023,Engineering,Doctorate,6813,11896,57.27
+2024,Engineering,Doctorate,6536,11761,55.57
+2025,Engineering,Doctorate,6667,12185,54.71
+1995,Engineering,Master's,9717,28661,33.9
+1996,Engineering,Master's,8995,27759,32.4
+1997,Engineering,Master's,8634,25870,33.37
+1998,Engineering,Master's,9177,26310,34.88
+1999,Engineering,Master's,9249,25764,35.9
+2000,Engineering,Master's,9899,25835,38.32
+2001,Engineering,Master's,10999,26521,41.47
+2002,Engineering,Master's,10795,26279,41.08
+2003,Engineering,Master's,13372,28895,46.28
+2004,Engineering,Master's,15593,33081,47.14
+2005,Engineering,Master's,14803,33217,44.56
+2006,Engineering,Master's,13196,31684,41.65
+2007,Engineering,Master's,11489,29851,38.49
+2008,Engineering,Master's,13222,32401,40.81
+2009,Engineering,Master's,15507,35767,43.36
+2010,Engineering,Master's,15654,36096,43.37
+2011,Engineering,Master's,17028,39393,43.23
+2012,Engineering,Master's,17185,41480,41.43
+2013,Engineering,Master's,17713,41584,42.6
+2014,Engineering,Master's,19392,43472,44.61
+2015,Engineering,Master's,24073,47241,50.96
+2016,Engineering,Master's,29720,52800,56.29
+2017,Engineering,Master's,30425,53799,56.55
+2018,Engineering,Master's,28765,52587,54.7
+2019,Engineering,Master's,26039,50461,51.6
+2020,Engineering,Master's,23857,48184,49.51
+2021,Engineering,Master's,22986,48041,47.85
+2022,Engineering,Master's,16246,43694,37.18
+2023,Engineering,Master's,25902,54261,47.74
+2024,Engineering,Master's,27760,54708,50.74
+2025,Engineering,Master's,27438,55603,49.35
+1995,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,522,15810,3.3
+1996,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,569,15426,3.69
+1997,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,544,14011,3.88
+1998,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,558,14039,3.97
+1999,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,513,14098,3.64
+2000,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,419,14157,2.96
+2001,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,495,14209,3.48
+2002,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,447,14373,3.11
+2003,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,447,14707,3.04
+2004,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,513,14738,3.48
+2005,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,493,14837,3.32
+2006,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,380,14502,2.62
+2007,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,373,14954,2.49
+2008,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,369,15124,2.44
+2009,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,437,15381,2.84
+2010,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,442,15905,2.78
+2011,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,460,16378,2.81
+2012,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,493,16901,2.92
+2013,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,597,16726,3.57
+2014,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,660,16394,4.03
+2015,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,891,16761,5.32
+2016,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1006,16702,6.02
+2017,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1333,17841,7.47
+2018,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1461,18406,7.94
+2019,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1462,19284,7.58
+2020,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1404,19507,7.2
+2021,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,1141,18728,6.09
+2022,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,957,18187,5.26
+2023,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,805,17692,4.55
+2024,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,660,17692,3.73
+2025,Engineering/Engineering-Related Technologies/Technicians,Bachelor's,817,18259,4.47
+1995,Engineering/Engineering-Related Technologies/Technicians,Doctorate,8,22,36.36
+1996,Engineering/Engineering-Related Technologies/Technicians,Doctorate,7,11,63.64
+1997,Engineering/Engineering-Related Technologies/Technicians,Doctorate,4,9,44.44
+1998,Engineering/Engineering-Related Technologies/Technicians,Doctorate,9,14,64.29
+1999,Engineering/Engineering-Related Technologies/Technicians,Doctorate,4,5,80
+2000,Engineering/Engineering-Related Technologies/Technicians,Doctorate,4,6,66.67
+2001,Engineering/Engineering-Related Technologies/Technicians,Doctorate,11,19,57.89
+2002,Engineering/Engineering-Related Technologies/Technicians,Doctorate,9,15,60
+2003,Engineering/Engineering-Related Technologies/Technicians,Doctorate,31,57,54.39
+2004,Engineering/Engineering-Related Technologies/Technicians,Doctorate,27,58,46.55
+2005,Engineering/Engineering-Related Technologies/Technicians,Doctorate,27,55,49.09
+2006,Engineering/Engineering-Related Technologies/Technicians,Doctorate,34,75,45.33
+2007,Engineering/Engineering-Related Technologies/Technicians,Doctorate,29,61,47.54
+2008,Engineering/Engineering-Related Technologies/Technicians,Doctorate,26,55,47.27
+2009,Engineering/Engineering-Related Technologies/Technicians,Doctorate,27,59,45.76
+2010,Engineering/Engineering-Related Technologies/Technicians,Doctorate,25,67,37.31
+2011,Engineering/Engineering-Related Technologies/Technicians,Doctorate,19,56,33.93
+2012,Engineering/Engineering-Related Technologies/Technicians,Doctorate,40,134,29.85
+2013,Engineering/Engineering-Related Technologies/Technicians,Doctorate,54,111,48.65
+2014,Engineering/Engineering-Related Technologies/Technicians,Doctorate,54,108,50
+2015,Engineering/Engineering-Related Technologies/Technicians,Doctorate,53,123,43.09
+2016,Engineering/Engineering-Related Technologies/Technicians,Doctorate,55,133,41.35
+2017,Engineering/Engineering-Related Technologies/Technicians,Doctorate,57,152,37.5
+2018,Engineering/Engineering-Related Technologies/Technicians,Doctorate,57,212,26.89
+2019,Engineering/Engineering-Related Technologies/Technicians,Doctorate,65,215,30.23
+2020,Engineering/Engineering-Related Technologies/Technicians,Doctorate,45,143,31.47
+2021,Engineering/Engineering-Related Technologies/Technicians,Doctorate,88,203,43.35
+2022,Engineering/Engineering-Related Technologies/Technicians,Doctorate,57,167,34.13
+2023,Engineering/Engineering-Related Technologies/Technicians,Doctorate,65,182,35.71
+2024,Engineering/Engineering-Related Technologies/Technicians,Doctorate,91,216,42.13
+2025,Engineering/Engineering-Related Technologies/Technicians,Doctorate,81,224,36.16
+1995,Engineering/Engineering-Related Technologies/Technicians,Master's,161,1114,14.45
+1996,Engineering/Engineering-Related Technologies/Technicians,Master's,136,1127,12.07
+1997,Engineering/Engineering-Related Technologies/Technicians,Master's,136,1040,13.08
+1998,Engineering/Engineering-Related Technologies/Technicians,Master's,128,1137,11.26
+1999,Engineering/Engineering-Related Technologies/Technicians,Master's,164,1003,16.35
+2000,Engineering/Engineering-Related Technologies/Technicians,Master's,133,915,14.54
+2001,Engineering/Engineering-Related Technologies/Technicians,Master's,136,851,15.98
+2002,Engineering/Engineering-Related Technologies/Technicians,Master's,177,896,19.75
+2003,Engineering/Engineering-Related Technologies/Technicians,Master's,546,2403,22.72
+2004,Engineering/Engineering-Related Technologies/Technicians,Master's,626,2561,24.44
+2005,Engineering/Engineering-Related Technologies/Technicians,Master's,613,2567,23.88
+2006,Engineering/Engineering-Related Technologies/Technicians,Master's,573,2626,21.82
+2007,Engineering/Engineering-Related Technologies/Technicians,Master's,645,2798,23.05
+2008,Engineering/Engineering-Related Technologies/Technicians,Master's,841,2998,28.05
+2009,Engineering/Engineering-Related Technologies/Technicians,Master's,1280,3630,35.26
+2010,Engineering/Engineering-Related Technologies/Technicians,Master's,1345,4377,30.73
+2011,Engineering/Engineering-Related Technologies/Technicians,Master's,1285,4660,27.58
+2012,Engineering/Engineering-Related Technologies/Technicians,Master's,1412,4949,28.53
+2013,Engineering/Engineering-Related Technologies/Technicians,Master's,1469,5025,29.23
+2014,Engineering/Engineering-Related Technologies/Technicians,Master's,1622,5163,31.42
+2015,Engineering/Engineering-Related Technologies/Technicians,Master's,2025,5581,36.28
+2016,Engineering/Engineering-Related Technologies/Technicians,Master's,2851,6358,44.84
+2017,Engineering/Engineering-Related Technologies/Technicians,Master's,4112,7652,53.74
+2018,Engineering/Engineering-Related Technologies/Technicians,Master's,3759,7457,50.41
+2019,Engineering/Engineering-Related Technologies/Technicians,Master's,2739,6368,43.01
+2020,Engineering/Engineering-Related Technologies/Technicians,Master's,2456,6345,38.71
+2021,Engineering/Engineering-Related Technologies/Technicians,Master's,2291,6537,35.05
+2022,Engineering/Engineering-Related Technologies/Technicians,Master's,1975,6440,30.67
+2023,Engineering/Engineering-Related Technologies/Technicians,Master's,3849,8566,44.93
+2024,Engineering/Engineering-Related Technologies/Technicians,Master's,5105,9419,54.2
+2025,Engineering/Engineering-Related Technologies/Technicians,Master's,5048,9430,53.53
+1995,Mathematics and Statistics,Bachelor's,593,13762,4.31
+1996,Mathematics and Statistics,Bachelor's,558,13203,4.23
+1997,Mathematics and Statistics,Bachelor's,526,12869,4.09
+1998,Mathematics and Statistics,Bachelor's,456,12367,3.69
+1999,Mathematics and Statistics,Bachelor's,472,12645,3.73
+2000,Mathematics and Statistics,Bachelor's,475,12148,3.91
+2001,Mathematics and Statistics,Bachelor's,434,11748,3.69
+2002,Mathematics and Statistics,Bachelor's,459,12448,3.69
+2003,Mathematics and Statistics,Bachelor's,593,12571,4.72
+2004,Mathematics and Statistics,Bachelor's,643,13388,4.8
+2005,Mathematics and Statistics,Bachelor's,714,14409,4.96
+2006,Mathematics and Statistics,Bachelor's,747,14823,5.04
+2007,Mathematics and Statistics,Bachelor's,641,15021,4.27
+2008,Mathematics and Statistics,Bachelor's,684,15233,4.49
+2009,Mathematics and Statistics,Bachelor's,746,15574,4.79
+2010,Mathematics and Statistics,Bachelor's,890,16091,5.53
+2011,Mathematics and Statistics,Bachelor's,1189,17254,6.89
+2012,Mathematics and Statistics,Bachelor's,1642,18902,8.69
+2013,Mathematics and Statistics,Bachelor's,2081,20515,10.14
+2014,Mathematics and Statistics,Bachelor's,2438,21083,11.56
+2015,Mathematics and Statistics,Bachelor's,2827,21922,12.9
+2016,Mathematics and Statistics,Bachelor's,3425,22865,14.98
+2017,Mathematics and Statistics,Bachelor's,4093,24157,16.94
+2018,Mathematics and Statistics,Bachelor's,4401,25342,17.37
+2019,Mathematics and Statistics,Bachelor's,4931,26224,18.8
+2020,Mathematics and Statistics,Bachelor's,5643,27310,20.66
+2021,Mathematics and Statistics,Bachelor's,5560,27176,20.46
+2022,Mathematics and Statistics,Bachelor's,5384,26271,20.49
+2023,Mathematics and Statistics,Bachelor's,5034,25314,19.89
+2024,Mathematics and Statistics,Bachelor's,3977,23343,17.04
+2025,Mathematics and Statistics,Bachelor's,4004,23791,16.83
+1995,Mathematics and Statistics,Doctorate,549,1226,44.78
+1996,Mathematics and Statistics,Doctorate,545,1209,45.08
+1997,Mathematics and Statistics,Doctorate,558,1174,47.53
+1998,Mathematics and Statistics,Doctorate,573,1260,45.48
+1999,Mathematics and Statistics,Doctorate,520,1141,45.57
+2000,Mathematics and Statistics,Doctorate,506,1106,45.75
+2001,Mathematics and Statistics,Doctorate,488,1024,47.66
+2002,Mathematics and Statistics,Doctorate,508,958,53.03
+2003,Mathematics and Statistics,Doctorate,496,1009,49.16
+2004,Mathematics and Statistics,Doctorate,557,1060,52.55
+2005,Mathematics and Statistics,Doctorate,637,1176,54.17
+2006,Mathematics and Statistics,Doctorate,711,1294,54.95
+2007,Mathematics and Statistics,Doctorate,720,1351,53.29
+2008,Mathematics and Statistics,Doctorate,691,1361,50.77
+2009,Mathematics and Statistics,Doctorate,748,1537,48.67
+2010,Mathematics and Statistics,Doctorate,735,1599,45.97
+2011,Mathematics and Statistics,Doctorate,740,1590,46.54
+2012,Mathematics and Statistics,Doctorate,818,1672,48.92
+2013,Mathematics and Statistics,Doctorate,912,1827,49.92
+2014,Mathematics and Statistics,Doctorate,916,1873,48.91
+2015,Mathematics and Statistics,Doctorate,902,1804,50
+2016,Mathematics and Statistics,Doctorate,876,1862,47.05
+2017,Mathematics and Statistics,Doctorate,943,1928,48.91
+2018,Mathematics and Statistics,Doctorate,1003,2015,49.78
+2019,Mathematics and Statistics,Doctorate,1018,2008,50.7
+2020,Mathematics and Statistics,Doctorate,1109,2028,54.68
+2021,Mathematics and Statistics,Doctorate,1065,1960,54.34
+2022,Mathematics and Statistics,Doctorate,1206,2215,54.45
+2023,Mathematics and Statistics,Doctorate,1139,2105,54.11
+2024,Mathematics and Statistics,Doctorate,1056,2053,51.44
+2025,Mathematics and Statistics,Doctorate,1128,2136,52.81
+1995,Mathematics and Statistics,Master's,1156,4191,27.58
+1996,Mathematics and Statistics,Master's,1081,4037,26.78
+1997,Mathematics and Statistics,Master's,1001,3790,26.41
+1998,Mathematics and Statistics,Master's,1029,3700,27.81
+1999,Mathematics and Statistics,Master's,1028,3489,29.46
+2000,Mathematics and Statistics,Master's,1147,3422,33.52
+2001,Mathematics and Statistics,Master's,1255,3375,37.19
+2002,Mathematics and Statistics,Master's,1300,3491,37.24
+2003,Mathematics and Statistics,Master's,1446,3631,39.82
+2004,Mathematics and Statistics,Master's,1716,4199,40.87
+2005,Mathematics and Statistics,Master's,1714,4492,38.16
+2006,Mathematics and Statistics,Master's,1729,4765,36.29
+2007,Mathematics and Statistics,Master's,1733,4915,35.26
+2008,Mathematics and Statistics,Master's,1812,5035,35.99
+2009,Mathematics and Statistics,Master's,2086,5242,39.79
+2010,Mathematics and Statistics,Master's,2302,5673,40.58
+2011,Mathematics and Statistics,Master's,2275,5901,38.55
+2012,Mathematics and Statistics,Master's,2506,6281,39.9
+2013,Mathematics and Statistics,Master's,2983,6998,42.63
+2014,Mathematics and Statistics,Master's,3376,7317,46.14
+2015,Mathematics and Statistics,Master's,3691,7645,48.28
+2016,Mathematics and Statistics,Master's,4467,8473,52.72
+2017,Mathematics and Statistics,Master's,5023,9108,55.15
+2018,Mathematics and Statistics,Master's,6087,10473,58.12
+2019,Mathematics and Statistics,Master's,6625,11419,58.02
+2020,Mathematics and Statistics,Master's,6834,12077,56.59
+2021,Mathematics and Statistics,Master's,6927,12604,54.96
+2022,Mathematics and Statistics,Master's,5669,11788,48.09
+2023,Mathematics and Statistics,Master's,7130,13123,54.33
+2024,Mathematics and Statistics,Master's,6817,12161,56.06
+2025,Mathematics and Statistics,Master's,6908,12662,54.56
+1995,Natural Resources and Conservation,Bachelor's,94,7978,1.18
+1996,Natural Resources and Conservation,Bachelor's,118,9146,1.29
+1997,Natural Resources and Conservation,Bachelor's,113,9703,1.16
+1998,Natural Resources and Conservation,Bachelor's,140,9904,1.41
+1999,Natural Resources and Conservation,Bachelor's,148,10098,1.47
+2000,Natural Resources and Conservation,Bachelor's,152,9742,1.56
+2001,Natural Resources and Conservation,Bachelor's,141,9083,1.55
+2002,Natural Resources and Conservation,Bachelor's,168,8994,1.87
+2003,Natural Resources and Conservation,Bachelor's,139,9126,1.52
+2004,Natural Resources and Conservation,Bachelor's,139,8737,1.59
+2005,Natural Resources and Conservation,Bachelor's,155,8600,1.8
+2006,Natural Resources and Conservation,Bachelor's,158,8799,1.8
+2007,Natural Resources and Conservation,Bachelor's,149,8707,1.71
+2008,Natural Resources and Conservation,Bachelor's,115,9426,1.22
+2009,Natural Resources and Conservation,Bachelor's,143,9868,1.45
+2010,Natural Resources and Conservation,Bachelor's,158,10989,1.44
+2011,Natural Resources and Conservation,Bachelor's,194,12816,1.51
+2012,Natural Resources and Conservation,Bachelor's,219,14761,1.48
+2013,Natural Resources and Conservation,Bachelor's,296,16559,1.79
+2014,Natural Resources and Conservation,Bachelor's,313,17124,1.83
+2015,Natural Resources and Conservation,Bachelor's,328,17199,1.91
+2016,Natural Resources and Conservation,Bachelor's,346,17596,1.97
+2017,Natural Resources and Conservation,Bachelor's,398,18087,2.2
+2018,Natural Resources and Conservation,Bachelor's,501,19141,2.62
+2019,Natural Resources and Conservation,Bachelor's,537,19946,2.69
+2020,Natural Resources and Conservation,Bachelor's,539,20552,2.62
+2021,Natural Resources and Conservation,Bachelor's,460,20547,2.24
+2022,Natural Resources and Conservation,Bachelor's,468,20430,2.29
+2023,Natural Resources and Conservation,Bachelor's,404,20964,1.93
+2024,Natural Resources and Conservation,Bachelor's,384,21201,1.81
+2025,Natural Resources and Conservation,Bachelor's,447,22613,1.98
+1995,Natural Resources and Conservation,Doctorate,99,334,29.64
+1996,Natural Resources and Conservation,Doctorate,103,291,35.4
+1997,Natural Resources and Conservation,Doctorate,112,346,32.37
+1998,Natural Resources and Conservation,Doctorate,116,378,30.69
+1999,Natural Resources and Conservation,Doctorate,105,347,30.26
+2000,Natural Resources and Conservation,Doctorate,114,346,32.95
+2001,Natural Resources and Conservation,Doctorate,110,371,29.65
+2002,Natural Resources and Conservation,Doctorate,123,375,32.8
+2003,Natural Resources and Conservation,Doctorate,119,443,26.86
+2004,Natural Resources and Conservation,Doctorate,113,420,26.9
+2005,Natural Resources and Conservation,Doctorate,106,430,24.65
+2006,Natural Resources and Conservation,Doctorate,137,473,28.96
+2007,Natural Resources and Conservation,Doctorate,144,494,29.15
+2008,Natural Resources and Conservation,Doctorate,111,488,22.75
+2009,Natural Resources and Conservation,Doctorate,147,563,26.11
+2010,Natural Resources and Conservation,Doctorate,125,487,25.67
+2011,Natural Resources and Conservation,Doctorate,153,557,27.47
+2012,Natural Resources and Conservation,Doctorate,152,586,25.94
+2013,Natural Resources and Conservation,Doctorate,150,598,25.08
+2014,Natural Resources and Conservation,Doctorate,145,587,24.7
+2015,Natural Resources and Conservation,Doctorate,171,686,24.93
+2016,Natural Resources and Conservation,Doctorate,161,686,23.47
+2017,Natural Resources and Conservation,Doctorate,174,642,27.1
+2018,Natural Resources and Conservation,Doctorate,142,619,22.94
+2019,Natural Resources and Conservation,Doctorate,174,667,26.09
+2020,Natural Resources and Conservation,Doctorate,153,601,25.46
+2021,Natural Resources and Conservation,Doctorate,163,606,26.9
+2022,Natural Resources and Conservation,Doctorate,155,649,23.88
+2023,Natural Resources and Conservation,Doctorate,155,600,25.83
+2024,Natural Resources and Conservation,Doctorate,170,632,26.9
+2025,Natural Resources and Conservation,Doctorate,202,743,27.19
+1995,Natural Resources and Conservation,Master's,238,2052,11.6
+1996,Natural Resources and Conservation,Master's,251,2419,10.38
+1997,Natural Resources and Conservation,Master's,236,2312,10.21
+1998,Natural Resources and Conservation,Master's,235,2381,9.87
+1999,Natural Resources and Conservation,Master's,190,2298,8.27
+2000,Natural Resources and Conservation,Master's,203,2284,8.89
+2001,Natural Resources and Conservation,Master's,221,2212,9.99
+2002,Natural Resources and Conservation,Master's,221,2349,9.41
+2003,Natural Resources and Conservation,Master's,262,2407,10.88
+2004,Natural Resources and Conservation,Master's,270,2522,10.71
+2005,Natural Resources and Conservation,Master's,252,2555,9.86
+2006,Natural Resources and Conservation,Master's,248,2483,9.99
+2007,Natural Resources and Conservation,Master's,227,2590,8.76
+2008,Natural Resources and Conservation,Master's,276,2639,10.46
+2009,Natural Resources and Conservation,Master's,245,2687,9.12
+2010,Natural Resources and Conservation,Master's,282,3058,9.22
+2011,Natural Resources and Conservation,Master's,282,3343,8.44
+2012,Natural Resources and Conservation,Master's,308,3884,7.93
+2013,Natural Resources and Conservation,Master's,356,3811,9.34
+2014,Natural Resources and Conservation,Master's,434,3928,11.05
+2015,Natural Resources and Conservation,Master's,401,3875,10.35
+2016,Natural Resources and Conservation,Master's,469,3993,11.75
+2017,Natural Resources and Conservation,Master's,452,3988,11.33
+2018,Natural Resources and Conservation,Master's,624,4238,14.72
+2019,Natural Resources and Conservation,Master's,613,4459,13.75
+2020,Natural Resources and Conservation,Master's,596,4371,13.64
+2021,Natural Resources and Conservation,Master's,647,4508,14.35
+2022,Natural Resources and Conservation,Master's,583,5057,11.53
+2023,Natural Resources and Conservation,Master's,686,5381,12.75
+2024,Natural Resources and Conservation,Master's,865,5221,16.57
+2025,Natural Resources and Conservation,Master's,847,5007,16.92
+1995,Physical Sciences,Bachelor's,723,19377,3.73
+1996,Physical Sciences,Bachelor's,686,19853,3.46
+1997,Physical Sciences,Bachelor's,671,19730,3.4
+1998,Physical Sciences,Bachelor's,675,19598,3.44
+1999,Physical Sciences,Bachelor's,602,18541,3.25
+2000,Physical Sciences,Bachelor's,578,18627,3.1
+2001,Physical Sciences,Bachelor's,607,18131,3.35
+2002,Physical Sciences,Bachelor's,604,18000,3.36
+2003,Physical Sciences,Bachelor's,579,18029,3.21
+2004,Physical Sciences,Bachelor's,640,18125,3.53
+2005,Physical Sciences,Bachelor's,750,18975,3.95
+2006,Physical Sciences,Bachelor's,838,20384,4.11
+2007,Physical Sciences,Bachelor's,803,21112,3.8
+2008,Physical Sciences,Bachelor's,842,21947,3.84
+2009,Physical Sciences,Bachelor's,880,22492,3.91
+2010,Physical Sciences,Bachelor's,916,23322,3.93
+2011,Physical Sciences,Bachelor's,1014,24596,4.12
+2012,Physical Sciences,Bachelor's,1094,26398,4.14
+2013,Physical Sciences,Bachelor's,1292,27726,4.66
+2014,Physical Sciences,Bachelor's,1391,29088,4.78
+2015,Physical Sciences,Bachelor's,1472,29797,4.94
+2016,Physical Sciences,Bachelor's,1598,30237,5.28
+2017,Physical Sciences,Bachelor's,1777,31031,5.73
+2018,Physical Sciences,Bachelor's,1942,31258,6.21
+2019,Physical Sciences,Bachelor's,2155,30811,6.99
+2020,Physical Sciences,Bachelor's,2185,30488,7.17
+2021,Physical Sciences,Bachelor's,2062,29003,7.11
+2022,Physical Sciences,Bachelor's,1977,28158,7.02
+2023,Physical Sciences,Bachelor's,1815,26814,6.77
+2024,Physical Sciences,Bachelor's,1597,25464,6.27
+2025,Physical Sciences,Bachelor's,1564,26315,5.94
+1995,Physical Sciences,Doctorate,1473,4485,32.84
+1996,Physical Sciences,Doctorate,1596,4570,34.92
+1997,Physical Sciences,Doctorate,1568,4473,35.05
+1998,Physical Sciences,Doctorate,1618,4572,35.39
+1999,Physical Sciences,Doctorate,1509,4239,35.6
+2000,Physical Sciences,Doctorate,1466,4023,36.44
+2001,Physical Sciences,Doctorate,1471,3989,36.88
+2002,Physical Sciences,Doctorate,1398,3810,36.69
+2003,Physical Sciences,Doctorate,1462,3864,37.84
+2004,Physical Sciences,Doctorate,1530,3827,39.98
+2005,Physical Sciences,Doctorate,1762,4121,42.76
+2006,Physical Sciences,Doctorate,1974,4501,43.86
+2007,Physical Sciences,Doctorate,2169,4855,44.68
+2008,Physical Sciences,Doctorate,2114,4825,43.81
+2009,Physical Sciences,Doctorate,2147,5062,42.41
+2010,Physical Sciences,Doctorate,2103,5087,41.34
+2011,Physical Sciences,Doctorate,2159,5315,40.62
+2012,Physical Sciences,Doctorate,2157,5399,39.95
+2013,Physical Sciences,Doctorate,2205,5547,39.75
+2014,Physical Sciences,Doctorate,2413,5835,41.35
+2015,Physical Sciences,Doctorate,2287,5843,39.14
+2016,Physical Sciences,Doctorate,2404,6081,39.53
+2017,Physical Sciences,Doctorate,2355,6052,38.91
+2018,Physical Sciences,Doctorate,2440,6194,39.39
+2019,Physical Sciences,Doctorate,2467,6321,39.03
+2020,Physical Sciences,Doctorate,2336,5988,39.01
+2021,Physical Sciences,Doctorate,2357,5725,41.17
+2022,Physical Sciences,Doctorate,2713,6548,41.43
+2023,Physical Sciences,Doctorate,2588,6577,39.35
+2024,Physical Sciences,Doctorate,2585,6497,39.79
+2025,Physical Sciences,Doctorate,2435,6398,38.06
+1995,Physical Sciences,Master's,1755,5735,30.6
+1996,Physical Sciences,Master's,1735,5854,29.64
+1997,Physical Sciences,Master's,1646,5579,29.5
+1998,Physical Sciences,Master's,1500,5398,27.79
+1999,Physical Sciences,Master's,1384,5196,26.64
+2000,Physical Sciences,Master's,1335,4859,27.47
+2001,Physical Sciences,Master's,1413,5104,27.68
+2002,Physical Sciences,Master's,1390,5042,27.57
+2003,Physical Sciences,Master's,1387,5163,26.86
+2004,Physical Sciences,Master's,1632,5625,29.01
+2005,Physical Sciences,Master's,1628,5787,28.13
+2006,Physical Sciences,Master's,1672,6014,27.8
+2007,Physical Sciences,Master's,1611,5853,27.52
+2008,Physical Sciences,Master's,1634,5971,27.37
+2009,Physical Sciences,Master's,1575,5734,27.47
+2010,Physical Sciences,Master's,1687,6099,27.66
+2011,Physical Sciences,Master's,1764,6383,27.64
+2012,Physical Sciences,Master's,1983,6931,28.61
+2013,Physical Sciences,Master's,1951,7044,27.7
+2014,Physical Sciences,Master's,1986,7009,28.33
+2015,Physical Sciences,Master's,2056,7089,29
+2016,Physical Sciences,Master's,2068,7090,29.17
+2017,Physical Sciences,Master's,2150,7134,30.14
+2018,Physical Sciences,Master's,2066,7187,28.75
+2019,Physical Sciences,Master's,1871,7146,26.18
+2020,Physical Sciences,Master's,1914,6965,27.48
+2021,Physical Sciences,Master's,1830,6755,27.09
+2022,Physical Sciences,Master's,1631,6874,23.73
+2023,Physical Sciences,Master's,1841,7166,25.69
+2024,Physical Sciences,Master's,2136,7427,28.76
+2025,Physical Sciences,Master's,2549,7805,32.66

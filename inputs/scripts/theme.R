@@ -54,7 +54,7 @@ chart_height_from <- function(old_w, old_h, new_w = CHART_WIDTH_IN) {
 }
 
 # ---- Chart size presets -------------------------------------
-SIZE_STANDARD <- list(w = CHART_WIDTH_IN, h = 4.8)
+SIZE_STANDARD <- list(w = CHART_WIDTH_IN, h = 4.5)
 SIZE_MEDIUM   <- list(w = CHART_WIDTH_IN, h = chart_height_from(8.0, 8.25))
 SIZE_LONG     <- list(w = CHART_WIDTH_IN, h = chart_height_from(8.0, 11.0))
 SIZE_TALL     <- list(w = CHART_WIDTH_IN, h = chart_height_from(6.0,  8.0))

@@ -181,11 +181,12 @@ FIG101 <- ggplot(df_003, aes(Year, value)) +
     with_segment = TRUE
   ) +
   scale_x_years(df_003$Year) +
-  scale_y_continuous(labels = label_comma(),
+  scale_y_continuous(labels = fmt_num_k,
                      expand = EXPAND_LINE_TALL) +
   labs_meta(meta, y = "Doctorate recipients") +
   theme_tpa()
-save_chart(FIG101, "fig_1_01")
+save_chart_aligned(FIG101, "fig_1_01")
+FIG101
 ```
 
 
@@ -225,7 +226,7 @@ FIG102 <- ggplot(df_098, aes(Year, Count, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_098$Year, pad_left = 0.05, right_labels = last_098) +
+  scale_x_years(df_098$Year, right_labels = last_098) +
   scale_y_continuous(labels = m1, expand = EXPAND_LINE) +
   scale_color_levels() +
   guides(color = "none") +
@@ -234,7 +235,7 @@ FIG102 <- ggplot(df_098, aes(Year, Count, color = Level, group = Level)) +
   theme_tpa() +
   theme_right_labels(last_098)
 
-save_chart(FIG102, "fig_1_02")
+save_chart_aligned(FIG102, "fig_1_02")
 ```
 
 ### Figure 1.03 - How Many STEM Degrees Are Awarded in the United States
@@ -255,9 +256,8 @@ FIG103 <- ggplot(df_001, aes(Year, Count, fill = Level)) +
   labs_meta(meta, y = "Degrees awarded") +
   coord_cartesian(ylim = c(200000, 800000)) +
   theme_tpa()
-save_chart(FIG103, "fig_1_03")
+save_chart_aligned(FIG103, "fig_1_03")
 ```
-
 
 
 ### Figure 1.04 - International Students in U.S. Higher Education
@@ -293,7 +293,7 @@ FIG104 <- ggplot(df_009, aes(Year)) +
   labs_meta(meta) +
   theme_dual_axis()
 
-save_chart(FIG104, "fig_1_04")
+save_chart_aligned(FIG104, "fig_1_04")
 ```
 
 ### Figure 1.05 - What Share of All Degrees Awarded in the US are Earned by Int. Students
@@ -334,15 +334,16 @@ FIG105 <- ggplot(df_099, aes(Year, Share, color = Level, group = Level)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  scale_x_years(df_099$Year, pad_left = 0.05, right_labels = last_099) +
+  scale_x_years(df_099$Year, right_labels = last_099) +
   scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
   scale_color_levels() +
   guides(color = "none") +
   labs_meta(meta, y = "Share of completions") +
-  coord_cartesian(ylim = c(0, .35)) +
+  coord_cartesian(ylim = c(0, .35), clip = "off") +
   theme_tpa() +
   theme_right_labels(last_099)
-save_chart(FIG105, "fig_1_05")
+save_chart_aligned(FIG105, "fig_1_05")
+FIG105
 ```
 
 ### Figure 1.06 - What Share of STEM Degrees Are Earned by International Students?
@@ -368,7 +369,7 @@ last_005 <- last_by_group(df_005, Year, Level) %>%
   prepare_right_labels(df_005$Year)
 first_005 <- df_005 %>% group_by(Level) %>% slice_min(Year, n = 1) %>% ungroup()
 
-FIG108 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
+FIG106 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_label_repel_tpa(
     data    = last_005,
@@ -393,25 +394,40 @@ FIG108 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
   coord_cartesian(clip = "off") +
   theme_tpa() +
   theme_right_labels(last_005)
-save_chart(FIG108, "fig_1_06")
+
+save_chart_aligned(FIG106, "fig_1_06")
+FIG106
 ```
 
-
-### Figure 1.07 - Projected STEM PhD Production by Country
+### Figure 1.07 - Projected STEM PhD Production by Country### Figure 1.07 - Projected STEM PhD Production by Country
 ```{r figure 008}
 meta <- get_meta("FIG107")
-
 df_008 <- read_fig("FIG107") %>%
   pivot_observed_projected() %>%
   order_by_latest(Country, value)
-
+common_end <- max(df_008$Year)
 labels_008 <- last_by_group(df_008, Year, Country) %>%
-  mutate(.label = as.character(Country)) %>%
+  mutate(
+    .label = paste0(Country, ": ", fmt_num_k(value)),   # K-formatted values
+    Year   = common_end                                  # anchor to shared right edge
+  ) %>%
   prepare_right_labels(df_008$Year)
 
-proj_start <- proj_start_year(df_008)
-y_top      <- y_top_round(df_008$value, 50000)
+# Reserve the same right gutter as 1.08 so both panels end at the same x.
+SHARED_PROJ_RIGHT_LIMIT <- attr(
+  prepare_right_labels(
+    last_by_group(
+      read_fig("FIG108") %>% pivot_observed_projected() %>% order_by_latest(Country, value),
+      Year, Country
+    ) %>% mutate(.label = paste0(Country, ": ", round(value))),
+    (read_fig("FIG108") %>% pivot_observed_projected())$Year
+  ),
+  "tpa_right_limit"
+)
+labels_008 <- set_right_limit(labels_008, SHARED_PROJ_RIGHT_LIMIT)
 
+proj_start <- proj_start_year(df_008)
+y_top      <- 150000                       # fixed ceiling; breaks and band key off this
 milestones <- tribble(
   ~year, ~label,
   2019, "China Tops US in STEM PhDs",
@@ -419,13 +435,14 @@ milestones <- tribble(
   2042, "India Tops China in STEM PhDs,\nBoth now produce 1.5x US",
   2049, "India Doubles US STEM Production"
 )
-
-FIG109 <- ggplot(df_008, aes(Year, value, color = Country, group = Country)) +
+FIG107 <- ggplot(df_008, aes(Year, value, color = Country, group = Country)) +
   annotate_projected(proj_start, max(df_008$Year),
-                     label_y = y_top * 0.92) +
+                     label_y = 140000, ymin = 0, ymax = 150000) +   # bound band to plot range
   geom_op_lines(df_008) +
   annotate_milestones(
-    milestones, y_top,
+    milestones, y_top* 1.035,
+    gap_low  = 0.30,
+    gap_high = 0.58,
     bg_for = \(year) if_else(year >= proj_start, "grey94", "white")
   ) +
   geom_label_repel_tpa(
@@ -436,38 +453,37 @@ FIG109 <- ggplot(df_008, aes(Year, value, color = Country, group = Country)) +
     with_segment = TRUE
   ) +
   scale_x_years(df_008$Year, right_labels = labels_008) +
-  scale_y_continuous(labels = fmt_num_k,
-                     expand = EXPAND_LINE) +
+  scale_y_continuous(labels = fmt_num_k0,
+                     breaks = seq(0, 150000, by = 30000),
+                     limits = c(0, 150000),
+                     expand = expansion(mult = c(0, 0))) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "STEM PhDs per year") +
   coord_cartesian(clip = "off") +
   theme_op() +
   theme_right_labels(labels_008)
-
-save_chart(FIG109, "fig_1_07")
+save_chart_aligned(FIG107, "fig_1_07")
+FIG107
 ```
 
 ### Figure 1.08 - Projected STEM PhD Production, per Capita, by Country
 ```{r figure 007}
 meta <- get_meta("FIG108")
-
 df_007 <- read_fig("FIG108") %>%
   pivot_observed_projected() %>%
   order_by_latest(Country, value)
-
 labels_007 <- last_by_group(df_007, Year, Country) %>%
   mutate(
     .label = paste0(Country, ": ", round(value))
   ) %>%
   prepare_right_labels(df_007$Year)
-
+labels_007 <- set_right_limit(labels_007, SHARED_PROJ_RIGHT_LIMIT)
 proj_start <- proj_start_year(df_007)
-y_top      <- y_top_round(df_007$value, 100)
-
-FIG110 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
+y_top      <- 500                          # fixed ceiling; breaks and band key off this
+FIG108 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
   annotate_projected(proj_start, max(df_007$Year),
-                     label_y = y_top * 0.92) +
+                     label_y = 466.75, ymin = 0, ymax = 500) +   # bound band to plot range
   geom_op_lines(df_007) +
   geom_label_repel_tpa(
     data    = labels_007,
@@ -478,17 +494,18 @@ FIG110 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
   ) +
   scale_x_years(df_007$Year, right_labels = labels_007) +
   scale_y_continuous(labels = label_comma(),
-                     expand = EXPAND_LINE) +
+                     breaks = seq(0, 500, by = 100),
+                     limits = c(0, 500),
+                     expand = expansion(mult = c(0, 0))) +
   scale_color_tpa() +
   guides(color = "none") +
   labs_meta(meta, y = "STEM PhDs per year") +
   coord_cartesian(clip = "off") +
   theme_op() +
   theme_right_labels(labels_007)
-
-save_chart(FIG110, "fig_1_08")
+save_chart_aligned(FIG108, "fig_1_08")
+FIG108
 ```
-
 
 # Chapter 2
 
@@ -746,8 +763,8 @@ save_chart(FIG210, "fig_2_06", size = "standard")
 meta <- get_meta("FIG207")
 
 panel_colors <- c(
-  "Undergraduate" = tpa_colors[1],   # gold
-  "Graduate"      = tpa_colors[2]     # teal (not in tpa_colors; swap for tpa_colors[2] navy for house palette)
+  "Undergraduate" = tpa_colors[1],   
+  "Graduate"      = tpa_colors[2]    
 )
 
 track_max <- 1.0   # grey track length; nudge up toward ~1.1 if fills look too long
@@ -768,14 +785,14 @@ df_107 <- read_fig("FIG207") %>%
   )
 
 FIG211 <- ggplot(df_107, aes(y = Country)) +
-  geom_col(aes(x = track_max), fill = "grey90", width = 0.65) +
-  geom_col(aes(x = Value, fill = Panel), width = 0.65) +
+  geom_col(aes(x = track_max), fill = "grey90", width = 0.3) +
+  geom_col(aes(x = Value, fill = Panel), width = 0.3) +
   geom_text(aes(x = track_max, label = label_percent(accuracy = 1)(Value)),
             hjust = -0.25, fontface = "bold", color = "grey20",
             size = DATA_LABEL_SIZE / .pt, family = FONT_FAMILY) +
   facet_wrap(~ Panel, scales = "free_y") +
   scale_x_continuous(expand = expansion(mult = c(0, 0.14))) +
-  scale_y_reordered() +
+  scale_y_reordered(expand = expansion(add = 1)) +
   scale_fill_manual(values = panel_colors) +
   coord_cartesian(clip = "off") +
   labs_meta(meta) +

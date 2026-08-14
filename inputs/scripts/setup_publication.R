@@ -15,6 +15,8 @@ suppressPackageStartupMessages({
   library(gtExtras)
   library(webshot2)
   library(magick)
+  library(dplyr)
+  library(tidyr)
 })
 
 # ============================================================================
@@ -83,6 +85,7 @@ for (script in c(
   "fonts.R",
   "theme.R",
   "helpers.R",
+  "align_gutters.R",
   "tables.R",
   "chart_layers.R",
   "maps.R",
