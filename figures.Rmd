@@ -72,7 +72,7 @@ FIG000 <- ggplot(df_000, aes(value, Country, fill = Country)) +
     plot.margin = publication_margin(right = PUB$spacing$edge_wide_pt)
   )
 
-save_chart(FIG000, "fig_0_00", size = "medium")
+save_chart_aligned(FIG000, "fig_0_00", size = "medium", left_pt = 135)
 ```
 
 ### Figure 0.01 - Definition of 'International Students' Funnel
@@ -153,7 +153,7 @@ fig_funnel <- ggplot() +
   )
 
 
-save_chart(fig_funnel, "fig_0_01")
+save_chart_aligned(fig_funnel, "fig_0_01", left_pt = 0)
 ```
 
 # Chapter 1
@@ -974,7 +974,6 @@ FIG302
 ### Figure 3.03 - Who Holds Postdoctoral Positions at Federally Funded Research Centers
 ```{r figure 021}
 meta <- get_meta("FIG303")
-
 df_021 <- read_fig("FIG303") %>%
   rename(Year = 1,
          `U.S. citizens and permanent residents` = 2,
@@ -984,30 +983,34 @@ df_021 <- read_fig("FIG303") %>%
   filter(!is.na(Year), !is.na(Count)) %>%
   order_by_latest(Status, Count)
 
-labels_021 <- df_021 %>%
-  nudge_by_series(Status,
-                  above  = "Temporary visa holders",
-                  amount = 120)
+labels_021 <- last_by_group(df_021, Year, Status) %>%
+  mutate(
+    .label = paste0(str_wrap(Status, width = 18), ": \n", (Count))
+  ) %>%
+  prepare_right_labels(df_021$Year, allow_multiline = TRUE)
 
 FIG303 <- ggplot(df_021, aes(Year, Count, color = Status, group = Status)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
   geom_label_repel_tpa(
-    data         = labels_021,
-    mapping      = aes(label = label_comma()(Count)),
-    nudge_y      = labels_021$nudge_y,
+    data       = labels_021,
+    mapping    = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    lineheight   = 0.9,
     direction    = "y",
-    with_segment = FALSE
+    with_segment = TRUE
   ) +
-  scale_x_years(df_021$Year, pad_right = PAD_RIGHT_TIGHT) +
+  scale_x_years(df_021$Year, right_labels = labels_021) +
   scale_y_continuous(labels = label_comma(),
                      limits = c(0, 2500),
                      breaks = seq(0, 2500, 500),
                      expand = EXPAND_BAR_TIGHT) +
   scale_color_manual(values = citizenship_colors_alt) +
+  guides(color = "none") +
   labs_meta(meta, y = "Postdoctoral researchers") +
-  theme_tpa()
-
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_021)
 save_chart_aligned(FIG303, "fig_3_03")
 FIG303
 ```
@@ -1478,7 +1481,7 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
     direction    = "y",
     with_segment = TRUE
   ) +
-  annotate("text", x = min(df_035$Year), y = 1.6, label = "OECD average",
+  annotate("text", x = max(df_035$Year-.75), y = 1.6, label = "OECD average",
            hjust = 0, vjust = 0, color = "grey50",
            size = SMALL_LABEL_SIZE / .pt, family = FONT_FAMILY) +
   scale_x_years(df_035$Year, pad_left = 0.03, right_labels = end_labels) +
@@ -1492,7 +1495,8 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
   theme_right_labels(end_labels) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
-save_chart(FIG401, "fig_4_01")
+save_chart_aligned(FIG401, "fig_4_01")
+FIG401
 ```
 
 ### Figure 4.02 - How Do OECD Countries Rank in Math?
@@ -1544,7 +1548,8 @@ FIG402 <- ggplot(df_120, aes(Gap, Country, fill = Country)) +
                                     size = SMALL_LABEL_SIZE,
                                     color = "grey25",
                                     margin = margin(t = PUB$spacing$axis_title_compact_pt)))
-save_chart(FIG402, "fig_4_02", size = "medium")
+save_chart_aligned(FIG402, "fig_4_02", size = "medium", left_pt = 71)
+FIG402
 ```
 
 ### Figure 4.03 - How Do OECD Countries Rank in Math Proficiency?
@@ -1596,7 +1601,8 @@ FIG403 <- ggplot(df_122, aes(Top, Country, fill = Country)) +
                                     size = SMALL_LABEL_SIZE,
                                     color = "grey25",
                                     margin = margin(t = PUB$spacing$axis_title_compact_pt)))
-save_chart(FIG403, "fig_4_03", size = "medium")
+save_chart_aligned(FIG403, "fig_4_03", size = "medium", left_pt = 71)
+FIG403
 ```
 
 
@@ -1638,7 +1644,7 @@ pal_c <- c("United States" = tpa_colors[1],
            "OECD average"  = tpa_colors[3],
            "Other"         = "grey80")
 
-fig_119 <- ggplot(df_119, aes(K12, PISA)) +
+FIG404 <- ggplot(df_119, aes(K12, PISA)) +
   geom_hline(yintercept = oecd_y, color = "grey70",
              linetype = "dashed", linewidth = LINE_WIDTH_REF) +
   geom_vline(xintercept = oecd_x, color = "grey70",
@@ -1665,12 +1671,12 @@ fig_119 <- ggplot(df_119, aes(K12, PISA)) +
     direction    = "both"
   ) +
   annotate("text", x = max(df_119$K12) * 0.98, y = oecd_y - 6,
-           label = "OECD average score", hjust = 1, vjust = 1,
+           label = "OECD average score", hjust = .5, vjust = 0,
            color = "grey55", size = MICRO_LABEL_SIZE / .pt,
            family = FONT_FAMILY) +
   annotate("text", x = oecd_x - 350, y = min(df_119$PISA) + 4,
            label = "OECD average spending", angle = 90,
-           hjust = 0, vjust = 1, color = "grey55",
+           hjust = .10, vjust = 2.5, color = "grey55",
            size = MICRO_LABEL_SIZE / .pt, family = FONT_FAMILY) +
   scale_x_continuous(labels = label_dollar(scale = 1e-3, suffix = "K"),
                      expand = expansion(mult = c(0.04, 0.08))) +
@@ -1689,7 +1695,8 @@ fig_119 <- ggplot(df_119, aes(K12, PISA)) +
                              size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt))
   )
 
-save_chart(fig_119, "fig_4_04", size = "standard")
+save_chart_aligned(FIG404, "fig_4_04", size = "standard")
+FIG404
 ```
 
 ### Figure 4.05 - How Lopsided Is U.S. Education Spending?
@@ -1714,11 +1721,11 @@ pal_b <- highlight_colors(
   default     = tpa_colors[2]
 )
 
-fig_118 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
+FIG405 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
   geom_vline(xintercept = 1, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_col(width = 0.72, alpha = ALPHA_COL) +
   geom_text(aes(label = sprintf("%.1f\u00d7", Ratio),
-                hjust = if_else(Ratio >= 1, -0.2, 1.2)),
+                hjust = if_else(Ratio >= 1, -0.2, -0.2)),
             family = FONT_FAMILY, fontface = "bold",
             size = SMALL_LABEL_SIZE / .pt, color = "grey25") +
   annotate("text", x = 1.02, y = 25, label = "spends equally on both levels",
@@ -1738,7 +1745,8 @@ fig_118 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
                              size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt))
   )
 
-save_chart(fig_118, "fig_4_05", size = "medium")
+save_chart_aligned(FIG405, "fig_4_05", size = "medium", left_pt = 71)
+FIG405
 ```
 
 
@@ -1789,7 +1797,8 @@ FIG406 <- ggplot(df_038b, aes(degree_field, entry_field, fill = pct)) +
         axis.text.x  = element_text(angle = 30, hjust = 1),
         panel.grid   = element_blank())
 
-save_chart(FIG406, "fig_4_06")
+save_chart_aligned(FIG406, "fig_4_06")
+FIG406
 ```
 
 ### Figure 4.07 - Computing Holds its Majors While Broad Science Loses Half of Its Graduates
@@ -1828,7 +1837,8 @@ FIG407 <- ggplot(df_038c, aes(x = field, y = pct, fill = cohort)) +
   theme(axis.title.y = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = AXIS_SIZE, margin = margin(r = PUB$spacing$axis_label_right_gap_pt)))
 
-save_chart(FIG407, "fig_4_07")
+save_chart_aligned(FIG407, "fig_4_07")
+FIG307
 ```
 
 ### Figure 4.08 - When Do Non-Completers Leave College
@@ -1854,19 +1864,23 @@ df_083 <- read_fig("FIG408") %>%
 
 FIG408 <- ggplot(df_083, aes(ExitYear, Share, fill = Cohort)) +
   geom_col(width = 0.7, position = position_dodge(width = 0.78)) +
-  geom_text(aes(label = fmt_pct_1(Share)),
+  geom_text(aes(label = fmt_pct_1(Share), color = Cohort),
             position = position_dodge(width = 0.78), vjust = -0.4,
-            family = FONT_FAMILY, size = SMALL_LABEL_SIZE / .pt) +
+            fontface = "bold",
+            family = FONT_FAMILY, size = 7 / .pt,
+            show.legend = FALSE) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 9), breaks = seq(0, 8, 2),
                      expand = EXPAND_BAR_TIGHT) +
   scale_fill_tpa() +
+  scale_color_tpa() +
   labs_meta(meta, y = "Share of STEM entrants") +
   theme_tpa() +
   theme(axis.title.y = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = AXIS_SIZE, margin = margin(r = PUB$spacing$axis_label_right_gap_pt)))
 
-save_chart(FIG408, "fig_4_08")
+save_chart_aligned(FIG408, "fig_4_08")
+FIG408
 ```
 
 
@@ -1921,7 +1935,7 @@ palette_124 <- highlight_colors(
   default     = tpa_colors[2]
 )
 
-FIG410 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
+FIG409 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
   geom_col(width = 0.75, alpha = ALPHA_COL) +
   geom_text(aes(label = sprintf("%.1f", ratio), hjust = -0.2),
             family = FONT_FAMILY, fontface = "bold",
@@ -1937,7 +1951,8 @@ FIG410 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
         axis.title.x = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = SMALL_LABEL_SIZE, margin = margin(t = PUB$spacing$axis_title_compact_pt)))
 
-save_chart(FIG410, "fig_4_09", size = "medium")
+save_chart_aligned(FIG409, "fig_4_09", size = "medium", left_pt = 71)
+FIG409
 ```
 
 ### Figure 4.10 - Who Imports Students
@@ -1966,7 +1981,7 @@ labels_042 <- df_042 %>%
   ) %>%
   prepare_right_labels(df_042$Year)
 
-FIG411 <- ggplot() +
+FIG410 <- ggplot() +
   geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_line(data = filter(df_042, !is_hi),
             aes(Year, Flow, group = Country),
@@ -1994,7 +2009,8 @@ FIG411 <- ggplot() +
   theme_tpa() +
   theme_right_labels(labels_042)
 
-save_chart(FIG411, "fig_4_10")
+save_chart_aligned(FIG410, "fig_4_10")
+FIG410
 ```
 
 
@@ -2026,7 +2042,7 @@ labels_047 <- last_by_group(df_047, Year, Region) %>%
   ) %>%
   prepare_right_labels(df_047$Year)
 
-fig_047 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
+FIG501 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
   geom_label_repel_tpa(
@@ -2046,86 +2062,94 @@ fig_047 <- ggplot(df_047, aes(Year, Share, color = Region, group = Region)) +
   labs_meta(meta, y = "Share of NeurIPS oral presentations") +
   coord_cartesian(clip = "off") +
   theme_tpa() +
-  theme_right_labels(labels_047) +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+  theme_right_labels(labels_047)
 
-save_chart(fig_047, "fig_5_01")
+save_chart_aligned(FIG501, "fig_5_01")
+FIG501
 ```
 
 ### Figure 5.02 - Who Produces the Most-Cited Research in Emerging Technologies?
 ```{r figure 044}
 meta <- get_meta("FIG502")
-
 df_044 <- read_fig("FIG502") %>%
   filter(!is.na(Year)) %>%
   mutate(across(everything(), as.numeric)) %>%
   pivot_longer(-Year, names_to = "Country", values_to = "Share") %>%
+  filter(!is.na(Share)) %>%
   mutate(Share   = Share * 100,
          Country = case_when(Country == "china" ~ "China",
-                             Country == "us"    ~ "United States")) %>%
-  group_by(Year) %>%
-  mutate(label_y = Share + ifelse(Share == max(Share), 1.3, -1.3)) %>%
-  ungroup()
+                             Country == "us"    ~ "United States"))
 
-FIG501 <- ggplot(df_044, aes(Year, Share, color = Country, group = Country)) +
+labels_044 <- last_by_group(df_044, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", fmt_pct_0(Share))
+  ) %>%
+  prepare_right_labels(df_044$Year)
+
+FIG502 <- ggplot(df_044, aes(Year, Share, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
-  geom_text(aes(y = label_y, label = fmt_pct_0(Share)),
-            size = DATA_LABEL_SIZE / .pt, fontface = "bold",
-            family = FONT_FAMILY, show.legend = FALSE) +
-  scale_x_years(df_044$Year) +
+  geom_label_repel_tpa(
+    data    = labels_044,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_044$Year, right_labels = labels_044) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 25), breaks = seq(0, 25, 5),
-                     expand = EXPAND_LINE) +
+                     expand = EXPAND_BAR_TIGHT) +
   scale_color_china_us() +
+  guides(color = "none") +
   labs_meta(meta, y = "Fractional share of top-cited publications") +
-  coord_cartesian(xlim = c(2014.5, 2025.5), clip = "off") +
+  coord_cartesian(clip = "off") +
   theme_tpa() +
-  theme_x_horizontal() +
-  theme(plot.margin = publication_margin(
-    right = PUB$spacing$edge_pt,
-    left  = PUB$spacing$edge_pt
-  ))
-
-save_chart(FIG501, "fig_5_02")
+  theme_right_labels(labels_044)
+save_chart_aligned(FIG502, "fig_5_02")
+FIG502
 ```
 
 ### Figure 5.03 - Whose Authors Appear on the World's Top Papers?
 ```{r figure 045}
 meta <- get_meta("FIG503")
-
 df_045 <- read_fig("FIG503") %>%
   filter(!is.na(Year)) %>%
   mutate(across(everything(), as.numeric)) %>%
   pivot_longer(-Year, names_to = "Country", values_to = "Share") %>%
+  filter(!is.na(Share)) %>%
   mutate(Share   = Share * 100,
          Country = case_when(Country == "pct_papers_with_us" ~ "United States",
-                             Country == "pct_papers_with_cn" ~ "China")) %>%
-  group_by(Year) %>%
-  mutate(label_y = Share + ifelse(Share == max(Share), 0.9, -0.9)) %>%
-  ungroup()
+                             Country == "pct_papers_with_cn" ~ "China"))
 
-FIG502 <- ggplot(df_045, aes(Year, Share, color = Country, group = Country)) +
+labels_045 <- last_by_group(df_045, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, ": ", fmt_pct_1(Share))
+  ) %>%
+  prepare_right_labels(df_045$Year)
+
+FIG503 <- ggplot(df_045, aes(Year, Share, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = 2) +
-  geom_text(aes(y = label_y, label = fmt_pct_1(Share)),
-            size = DATA_LABEL_SIZE / .pt, fontface = "bold",
-            family = FONT_FAMILY, show.legend = FALSE) +
-  scale_x_years(df_045$Year) +
+  geom_label_repel_tpa(
+    data    = labels_045,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_045$Year, right_labels = labels_045) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(15, 35), breaks = seq(15, 35, 2),
-                     expand = EXPAND_LINE) +
+                     expand = EXPAND_BAR_TIGHT) +
   scale_color_china_us() +
+  guides(color = "none") +
   labs_meta(meta, y = "Share of top papers with at least one author") +
-  coord_cartesian(xlim = c(2014.5, 2025.5), clip = "off") +
+  coord_cartesian(clip = "off") +
   theme_tpa() +
-  theme_x_horizontal() +
-  theme(plot.margin = publication_margin(
-    right = PUB$spacing$edge_pt,
-    left  = PUB$spacing$edge_pt
-  ))
-
-save_chart(FIG502, "fig_5_03")
+  theme_right_labels(labels_045)
+save_chart_aligned(FIG503, "fig_5_03")
+FIG503
 ```
 
 ### Figure 5.04 - Where Do the World's Most-Cited Researchers Work
@@ -2146,7 +2170,7 @@ labels_046 <- last_by_group(df_046, Year, Country) %>%
   ) %>%
   prepare_right_labels(df_046$Year)
 
-FIG503 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
+FIG504 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
   geom_line(linewidth = LINE_WIDTH) +
   geom_point(size = POINT_SIZE) +
   geom_label_repel_tpa(
@@ -2169,53 +2193,64 @@ FIG503 <- ggplot(df_046, aes(Year, Share, color = Country, group = Country)) +
   theme_right_labels(labels_046) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
-save_chart(FIG503, "fig_5_04")
+save_chart_aligned(FIG504, "fig_5_04")
+FIG504
 ```
 
 
 ### Figure 5.05 - Who Spends the Most on R&D? 
 ```{r figure 063}
 meta <- get_meta("FIG505")
+RD_GUTTER_LABEL <- "United States: $0000B"
+
 df   <- read_country_lines("FIG505", group_col = "Region", value_col = "Value") %>%
   mutate(Value = Value / 1000)
 
-fig <- plot_country_lines(df, meta, "GERD (billions of constant 2020 PPP dollars)",
-                          group_col   = "Region",
-                          value_col   = "Value",
-                          label_fmt   = function(x) paste0("$", sprintf("%.0f", x), "B"),
-                          highlight   = c("United States", "China"),
-                          color_scale = scale_color_china_us(),
-                          y_args      = list(
+# FIG505
+FIG505 <- plot_country_lines(df, meta, "GERD (billions of constant 2020 PPP dollars)",
+                          group_col    = "Region",
+                          value_col    = "Value",
+                          label_fmt    = function(x) paste0("$", sprintf("%.0f", x), "B"),
+                          highlight    = c("United States", "China"),
+                          color_scale  = scale_color_china_us(),
+                          gutter_label = RD_GUTTER_LABEL,
+                          y_args       = list(
                             labels = function(x) paste0("$", x, "B"),
                             limits = c(0, 875),
                             breaks = seq(0, 875, 125),
                             expand = EXPAND_BAR_TIGHT
                           ))
 
-save_chart(fig, "fig_5_05")
+save_chart_aligned(FIG505, "fig_5_05")
+FIG505
 ```
 
 ### Figure 5.06 - How Intensely Does Each Country Invest in R&D?
 ```{r figure 064}
 meta <- get_meta("FIG506")
+RD_GUTTER_LABEL <- "United States: $0000B"
+
 df   <- read_country_lines("FIG506", group_col = "Country", value_col = "Share") %>%
   filter(Country != "Russia") %>%
   mutate(Country = if_else(Country == "US", "United States", Country),
          Share   = Share * 100)
 
-fig <- plot_country_lines(df, meta, "R&D intensity (% of GDP)",
-                          value_col   = "Share",
-                          label_fmt   = fmt_pct_1,
-                          highlight   = c("United States", "China"),
-                          color_scale = scale_color_china_us(),
-                          y_args      = list(
+# FIG506
+FIG506 <- plot_country_lines(df, meta, "R&D intensity (% of GDP)",
+                          value_col    = "Share",
+                          label_fmt    = fmt_pct_1,
+                          highlight    = c("United States", "China"),
+                          color_scale  = scale_color_china_us(),
+                          gutter_label = RD_GUTTER_LABEL,
+                          y_args       = list(
                             labels = label_number(suffix = "%"),
                             limits = c(0, 6),
                             breaks = seq(0, 6, 1),
                             expand = EXPAND_BAR_TIGHT
                           ))
 
-save_chart(fig, "fig_5_06")
+save_chart_aligned(FIG506, "fig_5_06")
+FIG506
 ```
 
 
@@ -2243,7 +2278,7 @@ df <- read_fig("FIG507") %>%
                                       "Experimental development"))
   )
 
-fig <- ggplot(df, aes(Year, value, fill = Type)) +
+FIG507 <- ggplot(df, aes(Year, value, fill = Type)) +
   geom_area(position = position_stack(reverse = TRUE), alpha = ALPHA_AREA) +
   facet_wrap(~ Country) +
   scale_fill_manual(values = rd_type_colors, breaks = names(rd_type_colors)) +
@@ -2256,7 +2291,8 @@ fig <- ggplot(df, aes(Year, value, fill = Type)) +
   ) +
   labs_meta(meta) +
   theme_facet()
-save_chart(fig, "fig_5_07")
+save_chart_aligned(FIG507, "fig_5_07")
+FIG507
 ```
 
 ### Figure 5.08 - Business Now Dominates R&D in Both Countries
@@ -2288,7 +2324,7 @@ df <- read_fig("FIG508") %>%
     Sector  = factor(Sector, levels = names(sector_colors))
   )
 
-fig_126 <- ggplot(df, aes(Year, value, fill = Sector)) +
+FIG508 <- ggplot(df, aes(Year, value, fill = Sector)) +
   geom_area(position = position_stack(reverse = FALSE), alpha = ALPHA_AREA) +
   facet_wrap(~ Country) +
   scale_fill_manual(values = sector_colors, breaks = names(sector_colors)) +
@@ -2302,7 +2338,8 @@ fig_126 <- ggplot(df, aes(Year, value, fill = Sector)) +
   labs_meta(meta) +
   theme_facet()
 
-save_chart(fig_126, "fig_5_08")
+save_chart_aligned(FIG508, "fig_5_08")
+FIG508
 ```
 
 # Chapter 6
@@ -2310,19 +2347,18 @@ save_chart(fig_126, "fig_5_08")
 ### Figure 6.01 - Do International PhD Recipients Plan to Stay in the United States
 ```{r figure 065}
 meta <- get_meta("FIG601")
-
 df_065 <- read_fig("FIG601") %>%
   rename(Year = 1, Share = 2) %>%
   filter(!is.na(Year)) %>%
   mutate(across(everything(), as.numeric),
          Share = Share * 100)
-
 FIG601 <- ggplot(df_065, aes(Year, Share)) +
   geom_col(fill = tpa_colors[2], width = 0.7, alpha = ALPHA_COL) +
-  geom_text(aes(label = fmt_pct_0(Share)),
+  geom_text(data = ~ filter(.x, Year %in% range(Year)),
+            aes(label = fmt_pct_0(Share)),
             vjust = -0.5,
             color = tpa_colors[2],
-            size = DATA_LABEL_SIZE / .pt,
+            size = 8 / .pt,
             fontface = "bold",
             family = FONT_FAMILY) +
   scale_x_years(df_065$Year) +
@@ -2334,8 +2370,8 @@ FIG601 <- ggplot(df_065, aes(Year, Share)) +
   coord_cartesian(ylim = c(60, 80)) +
   labs_meta(meta, y = "Intention to stay in the United States") +
   theme_tpa()
-
-save_chart(FIG601, "fig_6_01")
+save_chart_aligned(FIG601, "fig_6_01")
+FIG601
 ```
 
 ### Figure 6.02 - Stay Rates of International STEM PhD Recipients
@@ -2377,10 +2413,10 @@ FIG602 <- ggplot(df_067, aes(Year, Share, color = Rate, group = Rate)) +
   scale_color_manual(values = palette_067) +
   coord_cartesian(clip = "off") +
   labs_meta(meta, y = "Stay rate") +
-  theme_tpa() +
-  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+  theme_tpa() 
 
-save_chart(FIG602, "fig_6_02")
+save_chart_aligned(FIG602, "fig_6_02")
+FIG602
 ```
 
 ### Figure 6.03 - STEM OPT Applications and Approvals
@@ -2417,7 +2453,8 @@ FIG603 <- ggplot(df_071, aes(Year, Count, fill = Status)) +
   coord_cartesian(clip = "off") +
   theme_tpa()
 
-save_chart(FIG603, "fig_6_03")
+save_chart_aligned(FIG603, "fig_6_03")
+FIG603
 ```
 
 ### Figure 6.04 - H-1B Approvals Over Time
@@ -2435,7 +2472,7 @@ total_approvals <- function(name) {
 df_072 <- total_approvals("FIG604a") %>% rename(All = Total) %>%
   left_join(total_approvals("FIG604b") %>% rename(Tech = Total), by = "Year")
 
-FIG604a <- ggplot(df_072, aes(Year)) +
+FIG604 <- ggplot(df_072, aes(Year)) +
   geom_area(aes(y = All),  fill = tpa_colors[2], alpha = ALPHA_AREA) +
   geom_area(aes(y = Tech), fill = tpa_colors[1], alpha = ALPHA_AREA) +
   geom_line(aes(y = All),  color = tpa_colors[2], linewidth = LINE_WIDTH) +
@@ -2451,7 +2488,8 @@ FIG604a <- ggplot(df_072, aes(Year)) +
   labs_meta(meta, y = "H-1B approvals") +
   theme_tpa()
 
-save_chart(FIG604a, "fig_6_04")
+save_chart_aligned(FIG604, "fig_6_04")
+FIG604
 ```
 
 
@@ -2467,24 +2505,26 @@ df_087 <- read_hb_denials("FIG605a") %>% filter(Type == "New Denials") %>%
     by = "Year"
   )
 
-FIG605a <- ggplot(df_087, aes(Year)) +
+FIG605 <- ggplot(df_087, aes(Year)) +
   geom_area(aes(y = All),  fill = tpa_colors[2], alpha = ALPHA_AREA) +
   geom_area(aes(y = Tech), fill = tpa_colors[1], alpha = ALPHA_AREA) +
   geom_line(aes(y = All),  color = tpa_colors[2], linewidth = LINE_WIDTH) +
   geom_line(aes(y = Tech), color = tpa_colors[1], linewidth = LINE_WIDTH) +
   annotate("text", x = 2017, y = 32000, label = "All industries",
            color = tpa_colors[2], fontface = "bold", hjust = 0.5,
-           family = FONT_FAMILY, size = DATA_LABEL_SIZE / .pt) +
+           family = FONT_FAMILY, size = 7 / .pt) +
   annotate("text", x = 2018.75, y = 14000, label = "Tech occupations\n(NAICS 54)",
            color = "white", fontface = "bold", hjust = 0.5, lineheight = 0.9,
-           family = FONT_FAMILY, size = COMPACT_LABEL_SIZE / .pt) +
+           family = FONT_FAMILY, size = 7 / .pt) +
   scale_x_years(df_087$Year) +
   scale_y_continuous(labels = fmt_num_k, expand = EXPAND_BAR) +
   labs_meta(meta, y = "New H-1B denials") +
   theme_tpa()
 
-save_chart(FIG605a, "fig_6_05")
+save_chart_aligned(FIG605, "fig_6_05")
+FIG605
 ```
+
 ### Figure 6.06 - Outcomes of PERM Applications
 ```{r figure 076}
 meta <- get_meta("FIG606")
@@ -2515,14 +2555,14 @@ FIG606 <- ggplot(df_076, aes(Year, Count, fill = Status)) +
   labs_meta(meta, y = "PERM certifications") +
   theme_tpa()
 
-save_chart(FIG606, "fig_6_06")
+save_chart_aligned(FIG606, "fig_6_06")
+FIG606
 ```
 
 
 ### Figure 6.07 - Top Countries of Origin for J-1 Participants
 ```{r figure 078}
 meta <- get_meta("FIG607")
-
 df_078 <- read_fig("FIG607") %>%
   filter(!is.na(Year)) %>%
   mutate(across(everything(), as.numeric)) %>%
@@ -2530,14 +2570,12 @@ df_078 <- read_fig("FIG607") %>%
   filter(!is.na(Share)) %>%
   mutate(Share    = Share * 100,
          is_china = Country == "China")
-
 china_078 <- filter(df_078, is_china)
 other_078 <- filter(df_078, !is_china)
 china_last <- china_078 %>%
   filter(Year == max(Year)) %>%
   mutate(.label = paste0("China: ", fmt_pct_1(Share))) %>%
   prepare_right_labels(df_078$Year)
-
 FIG607 <- ggplot() +
   geom_line(data = other_078,
             aes(Year, Share, group = Country),
@@ -2550,16 +2588,11 @@ FIG607 <- ggplot() +
   geom_label_repel_tpa(
     data    = china_last,
     mapping = aes(x = .label_x, y = Share, label = .label),
+    color        = tpa_colors[1],
     hjust        = 0,
     direction    = "y",
     with_segment = TRUE
   ) +
-  annotate("text", x = 2015, y = 11.6, label = "China", hjust = 0,
-           color = tpa_colors[1], fontface = "bold",
-           family = FONT_FAMILY, size = DATA_LABEL_SIZE / .pt) +
-  annotate("text", x = 2020.2, y = 7.0, label = "Other top-five countries",
-           hjust = 0, color = "grey55",
-           family = FONT_FAMILY, size = SMALL_LABEL_SIZE / .pt) +
   scale_x_years(df_078$Year, right_labels = china_last) +
   scale_y_continuous(labels = label_number(suffix = "%"),
                      limits = c(0, 12), breaks = seq(0, 12, 2),
@@ -2568,8 +2601,8 @@ FIG607 <- ggplot() +
   coord_cartesian(clip = "off") +
   theme_tpa() +
   theme_right_labels(china_last)
-
-save_chart(FIG607, "fig_6_07")
+save_chart_aligned(FIG607, "fig_6_07")
+FIG607
 ```
 
 ### Figure 6.08 - Workforce Participation Rates of Immigrants versus Native Born Workers
@@ -2606,7 +2639,8 @@ FIG608 <- ggplot(df_079, aes(Gap, Country, fill = Country)) +
   theme_horizontal_bar() +
   theme(axis.text.y = element_text(size = SMALL_LABEL_SIZE))
 
-save_chart(FIG608, "fig_6_08", size = "medium")
+save_chart_aligned(FIG608, "fig_6_08", size = "medium", left_pt = 70)
+FIG608
 ```
 
 ### Figure 6.09 - How Much STEM Talent Does the U.S. Train and then Lose? 
@@ -2655,7 +2689,7 @@ meta$caption <- paste0(meta$caption)
 
 x_max <- max(fld$recipients)
 
-p_127 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
+FIG609 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
   geom_col(width = 0.68, alpha = ALPHA_COL) +
   geom_text(
     data = leak_lab, inherit.aes = FALSE,
@@ -2677,7 +2711,8 @@ p_127 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
   labs_meta(meta, x = NULL, y = NULL) +
   theme_horizontal_bar()
 
-save_chart(p_127, "fig_6_09", size = "standard")
+save_chart_aligned(p_127, "fig_6_09", size = "standard", left_pt = 125)
+FIG609
 ```
 
 

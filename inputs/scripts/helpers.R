@@ -94,6 +94,7 @@ plot_country_lines <- function(df, meta, y_label,
                                color_scale    = scale_color_tpa(),
                                highlight      = NULL,
                                highlight_grey = "grey80",
+                               gutter_label   = NULL,
                                y_args         = list()) {
   label_fn <- if (is.function(label_fmt)) label_fmt else identity
   
@@ -110,7 +111,7 @@ plot_country_lines <- function(df, meta, y_label,
           label_fn(.data[[value_col]])
         )
       ) %>%
-      prepare_right_labels(df$Year)
+      prepare_right_labels(df$Year, gutter_label = gutter_label)
     
     p <- ggplot(
       df,
@@ -163,7 +164,7 @@ plot_country_lines <- function(df, meta, y_label,
           label_fn(.data[[value_col]])
         )
       ) %>%
-      prepare_right_labels(df$Year)
+      prepare_right_labels(df$Year, gutter_label = gutter_label)
     
     p <- ggplot(
       mapping = aes(

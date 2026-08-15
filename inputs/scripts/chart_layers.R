@@ -119,34 +119,32 @@ prepare_right_labels <- function(
     label_col = ".label",
     gap_pt = PUB$spacing$axis_label_right_gap_pt,
     outer_pt = PUB$spacing$edge_pt,
-    allow_multiline = FALSE
+    allow_multiline = FALSE,
+    gutter_label = NULL
 ) {
   years <- as.numeric(years)
   years <- years[is.finite(years)]
-
+  
   if (!length(years)) {
     stop("`years` contains no finite values.")
   }
-
+  
   if (!label_col %in% names(labels_df)) {
     stop("`", label_col, "` is missing from the label data.")
   }
-
+  
   if (!x_col %in% names(labels_df)) {
     stop("`", x_col, "` is missing from the label data.")
   }
-
+  
   yr_min <- min(years)
   yr_max <- max(years)
   data_span <- yr_max - yr_min
-
+  
   if (!is.finite(data_span) || data_span <= 0) {
     data_span <- 1
   }
-
-  # Most endpoint labels should remain on one line. Charts with unusually
-  # long category names can deliberately preserve embedded \n line breaks by
-  # setting allow_multiline = TRUE.
+  
   if (!allow_multiline) {
     labels_df[[label_col]] <- single_line_label(
       labels_df[[label_col]]
@@ -156,58 +154,58 @@ prepare_right_labels <- function(
       labels_df[[label_col]]
     )
   }
-
+  
   point_x <- as.numeric(labels_df[[x_col]])
-
+  
   if (any(!is.finite(point_x))) {
     stop("`", x_col, "` contains non-finite endpoint values.")
   }
-
-  # Measure the rendered width that actually determines the right-hand label
-  # gutter. For multiline labels, grid::grobWidth() measures the widest line,
-  # not the full unwrapped string.
+  
   longest_label_pt <- label_width_pt(
     labels_df[[label_col]],
     single_line = !allow_multiline
   )
-
-  # Convert the physical label requirement into x-axis space instead of a
-  # large plot.margin. This allows the title, source, and x-axis line to span
-  # the full publication width.
+  
+  # Optional override: pin the gutter to a fixed reference string so that
+  # several charts sharing an x-axis reserve identical right-hand space.
+  # When NULL (the default) behavior is unchanged.
+  if (!is.null(gutter_label)) {
+    longest_label_pt <- label_width_pt(
+      gutter_label,
+      single_line = !allow_multiline
+    )
+  }
+  
   canvas_pt <- CHART_WIDTH_IN * 72
   usable_pt <- canvas_pt - (2 * PUB$spacing$edge_pt)
-
+  
   if (!is.finite(usable_pt) || usable_pt <= 0) {
     stop("Chart width is too small for the configured publication margins.")
   }
-
+  
   gutter_pt <- gap_pt + longest_label_pt + outer_pt
   gutter_fraction <- gutter_pt / usable_pt
-
-  # Safety guard for unusually long labels.
+  
   gutter_fraction <- min(max(gutter_fraction, 0), 0.45)
-
+  
   gutter_data <- data_span *
     gutter_fraction /
     (1 - gutter_fraction)
-
+  
   final_span <- data_span + gutter_data
-
+  
   gap_data <- final_span *
     (gap_pt / usable_pt)
-
+  
   target_x    <- yr_max + gap_data
   right_limit <- yr_max + gutter_data
-
-  # Keep x at the true endpoint so connector segments originate at the data.
-  # ggrepel then nudges every label to the same target x position.
+  
   labels_df$.label_x        <- point_x
   labels_df$.label_target_x <- target_x
   labels_df$.label_nudge_x  <- target_x - point_x
-
-  # scale_x_years(..., right_labels = labels_df) reads this attribute.
+  
   attr(labels_df, "tpa_right_limit") <- right_limit
-
+  
   labels_df
 }
 
@@ -355,7 +353,6 @@ geom_op_lines <- function(df, linewidth = LINE_WIDTH, dot_pattern = "dotted") {
     scale_linetype_manual(
       name   = NULL,
       values = c("Observed" = "solid", "Projected" = dot_pattern),
-      breaks = c("Observed", "Projected")
     ),
     guides(
       linetype = guide_legend(
