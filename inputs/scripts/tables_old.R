@@ -92,20 +92,6 @@ TABLE_SOURCE_FONT_PT     <- PUB$type$caption_pt
 # One vertical-rhythm system for every table.
 TABLE_BODY_LINEHEIGHT   <- 1.15
 TABLE_HEADER_LINEHEIGHT <- 1.10
-
-# Header-group rule thickness has TWO layers:
-#   1) CSS draws an approximate red rule so the HTML preview is correct.
-#   2) save_table() normalizes the FINISHED PNG at the raster level, repainting
-#      every detected header rule to exactly TABLE_HEADER_RULE_FINAL_PX pixels.
-#
-# The second layer is the source of truth for publication output. It makes rule
-# thickness independent of standard/wide/ultrawide profiles, browser zoom,
-# fractional CSS coordinates, and Chromium raster rounding.
-TABLE_HEADER_RULE_FINAL_PX <- 3L
-
-header_rule_export_px <- function() {
-  as.integer(TABLE_HEADER_RULE_FINAL_PX)
-}
 TABLE_TITLE_LINEHEIGHT <- if (!is.null(PUB$type_metrics$title_lineheight)) {
   PUB$type_metrics$title_lineheight
 } else {
@@ -161,9 +147,6 @@ TABLE_EXPORT_AUDIT <- tibble::tibble(
   header_lineheight = double(),
   title_lineheight = double(),
   source_lineheight = double(),
-  header_rule_before_px = character(),
-  header_rule_after_px = character(),
-  header_rule_bar_count = integer(),
   status = character()
 )
 
@@ -555,7 +538,7 @@ infer_table_profile <- function(name = NULL, gt_tbl = NULL) {
   "standard"
 }
 
-TABLE_BG_STRIPE         <- "white"  # plain body; color is reserved for data encoding
+TABLE_BG_STRIPE         <- "#F5F2EC"
 TABLE_TEXT_COLOR        <- "grey25"
 TABLE_MUTED_TEXT_COLOR  <- "grey45"
 TABLE_CHANGE_PALETTE    <- c(tpa_colors[2], "white", tpa_colors[1])
@@ -683,13 +666,6 @@ table_publication_css <- function(profile = "standard") {
   data_px    <- pt_to_px_profile(TABLE_DATA_FONT_PT)
   column_px  <- pt_to_px_profile(TABLE_COLUMN_LABEL_FONT_PT)
   spanner_px <- pt_to_px_profile(TABLE_SPANNER_FONT_PT)
-  # Use an integer FINAL-PNG thickness, then convert back to this profile's
-  # CSS coordinate system. Unlike CSS borders, a background stripe preserves
-  # fractional CSS heights through Chromium's layout/zoom pipeline much more
-  # consistently across standard/wide/ultrawide canvases.
-  export_zoom   <- TABLE_EXPORT_PX / p$width_px
-  rule_final_px <- header_rule_export_px()
-  rule_css_px   <- rule_final_px / export_zoom
   
   sprintf(
     paste0(
@@ -705,26 +681,16 @@ table_publication_css <- function(profile = "standard") {
       
       # COLUMN NAMES
       # All ordinary column headings get exactly one physical size regardless
-      # of standard/wide/ultrawide profile. Header-group rules live on the
-      # spanner row only, so standalone column labels never create a higher bar.
+      # of standard/wide/ultrawide profile.
       ".gt_table .gt_col_heading { font-size: %spx !important; ",
-      "line-height: %.3f !important; border-top: none !important; }\n",
+      "line-height: %.3f !important; }\n",
       
-      # SPANNERS / HEADER-GROUP RULES
-      # Every visible data block is placed under a spanner (named or blank).
-      # Draw the red rule as a bottom-aligned background stripe rather than a
-      # CSS border. Chromium snaps fractional border widths differently before
-      # profile-specific zooming; the stripe keeps the final raster thickness
-      # locked to header_rule_export_px().
+      # SPANNERS
+      # Spanners use the same point size as column names. Weight may differ,
+      # but size does not.
       ".gt_table .gt_column_spanner, .gt_table .gt_column_spanner_outer { ",
       "font-size: %spx !important; line-height: %.3f !important; ",
       "font-weight: 700 !important; }\n",
-      ".gt_table .gt_column_spanner { ",
-      "border-bottom: none !important; ",
-      "background-image: linear-gradient(to bottom, %s, %s) !important; ",
-      "background-repeat: no-repeat !important; ",
-      "background-position: left bottom !important; ",
-      "background-size: 100%% %.4fpx !important; }\n",
       
       # Make ordinary wrapper spans inherit the forced heading size while
       # preserving semantic <sup>/<sub> sizing for footnote markers.
@@ -746,9 +712,6 @@ table_publication_css <- function(profile = "standard") {
     TABLE_HEADER_LINEHEIGHT,
     spanner_px,
     TABLE_HEADER_LINEHEIGHT,
-    tpa_colors[1],
-    tpa_colors[1],
-    rule_css_px,
     TABLE_TITLE_LINEHEIGHT,
     TABLE_SUBTITLE_LINEHEIGHT,
     TABLE_SOURCE_LINEHEIGHT
@@ -872,6 +835,10 @@ theme_gt_tpa <- function(gt_tbl, meta = NULL) {
     # font survives webshot/headless-Chrome PNG export and beats gt_theme_538's
     # own font. gotham_gt_css() comes from fonts.R.
     opt_css(css = gotham_gt_css()) %>%
+    tab_style(
+      style     = cell_borders(sides = "top", color = tpa_colors[1], weight = px(2)),
+      locations = cells_column_labels(everything())
+    ) %>%
     tab_options(
       table.font.size        = px(TABLE_FONT_PX),
       table.font.color       = TABLE_TEXT_COLOR,
@@ -1084,7 +1051,7 @@ build_region_table <- function(name, meta) {
     data_color(
       columns = PctChangeCount,
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain = c(-count_lim, count_lim)
       )
     ) %>%
@@ -1092,7 +1059,7 @@ build_region_table <- function(name, meta) {
     data_color(
       columns = PctChangeShare,
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain = c(-share_lim, share_lim)
       )
     ) %>%
@@ -1130,6 +1097,10 @@ build_region_table <- function(name, meta) {
     ) %>%
     
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1]
+    )) %>%
     with_size("long")
   
 }
@@ -1149,9 +1120,8 @@ build_labor_citizenship_table <- function(df, name, meta) {
     fmt_number(columns = c(Citizen, TVH), decimals = 1, pattern = "{x}%") %>%
     cols_label(Citizen = "U.S. citizen or\npermanent resident",
                TVH     = "Temporary\nvisa holder") %>%
-    tab_spanner(label = "\u00A0", columns = c(Citizen, TVH), id = "sp_all") %>%
     gt_color_rows(columns  = TVH,
-                  palette = TABLE_INTENSITY_PALETTE,
+                  palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
                   pal_type = "continuous") %>%
     cols_align(align = "right", columns = c(Citizen, TVH)) %>%
     tab_style(style = cell_text(weight = "bold"),
@@ -1192,11 +1162,10 @@ build_h1b_top10_table <- function(df, name, meta, first_year, last_year,
     cols_label(Y1 = as.character(first_year),
                Y2 = as.character(last_year),
                Change = change_col_label(FALSE)) %>%
-    tab_spanner(label = "\u00A0", columns = c(Y1, Y2, Change), id = "sp_all") %>%
     data_color(
       columns = Change,
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain  = c(-chg_lim, chg_lim),
         na.color = "white"
       )
@@ -1242,7 +1211,7 @@ build_occupation_share_table <- function(df, name, meta, level_cols,
     footnote = end_sentence(
       "Each year column is the temporary visa holder share of employment within",
       "each STEM occupation category.",
-      change_col_label(FALSE), "is the", change_phrase(change_type),
+      change_col_label(TRUE), "is the", change_phrase(change_type),
       "from", gsub("^Y", "", level_cols[1]), "to",
       gsub("^Y", "", level_cols[length(level_cols)]), ".",
       "Rows are ordered from occupations most directly tied to science and",
@@ -1276,16 +1245,15 @@ build_occupation_share_table <- function(df, name, meta, level_cols,
   tbl <- tbl %>%
     tab_spanner(label = spanner_label,
                 columns = all_of(span_order)) %>%
-    tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
     cols_label(!!!level_labels,
-               Change = change_col_label(FALSE))
+               Change = change_col_label(TRUE))
   
   lim <- max(abs(df[["Change"]]), na.rm = TRUE)
   tbl <- tbl %>%
     data_color(
       columns = "Change",
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain  = c(-lim, lim)
       )
     )
@@ -1311,6 +1279,10 @@ build_occupation_share_table <- function(df, name, meta, level_cols,
       locations = cells_column_spanners(spanners = spanner_label)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1]
+    )) %>%
     with_size("standard")
 }
 
@@ -1358,7 +1330,7 @@ build_eb_combined_table <- function(meta,
     tab_spanner(label = names(sources)[3], columns = all_of(paste0(keys[3], "_EB", 1:3))) %>%
     fmt_number(columns = all_of(num_cols), decimals = 0) %>%
     gt_color_rows(columns  = all_of(num_cols),
-                  palette = TABLE_INTENSITY_PALETTE,
+                  palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
                   pal_type = "continuous",
                   domain   = c(0.5, dom_max))
   
@@ -1372,7 +1344,7 @@ build_eb_combined_table <- function(meta,
                                             rows = .data[[col]] == 0))
   
   tbl %>%
-    cols_align(align = "right", columns = all_of(num_cols)) %>%
+    cols_align(align = "center", columns = all_of(num_cols)) %>%
     tab_style(style = cell_text(align = "left"),
               locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
@@ -1422,17 +1394,13 @@ build_peak_table <- function(name, meta, first, last,
                peak_year = "(year)",
                last_val  = as.character(last),
                from_peak = "From peak") %>%
-    tab_spanner(label = "\u00A0",
-                columns = c(first_val, peak_val, peak_year, last_val, from_peak),
-                id = "sp_all") %>%
     cols_move(columns = peak_year, after = peak_val) %>%
     fmt_number(columns = peak_year, decimals = 0, use_seps = FALSE) %>%
     data_color(columns = from_peak,
                fn = scales::col_numeric(
-                 palette = TABLE_CHANGE_PALETTE,
-                 domain  = c(-max(abs(rows$from_peak), na.rm = TRUE),
-                              max(abs(rows$from_peak), na.rm = TRUE)))) %>%
-    cols_align(align = "right", columns = -country) %>%
+                 palette = c(tpa_colors[1], "white"),
+                 domain  = c(min(rows$from_peak, 0, na.rm = TRUE), 0))) %>%
+    cols_align(align = "center", columns = -country) %>%
     tab_style(cell_text(align = "left"), cells_stub(rows = TRUE)) %>%
     tab_footnote(
       footnote = end_sentence(
@@ -1502,20 +1470,19 @@ build_perm_expiry_table <- function(meta, path = NULL,
                 columns = c(use_first, exp_first, share_first)) %>%
     tab_spanner(label = as.character(last),
                 columns = c(use_last, exp_last, share_last)) %>%
-    tab_spanner(label = "\u00A0", columns = share_net, id = "sp_change") %>%
     data_color(columns = c(share_first, share_last),
                fn = scales::col_numeric(
-                 palette = TABLE_INTENSITY_PALETTE,
+                 palette = c("white", tpa_colors[1]),
                  domain  = c(0, 100))) %>%
     data_color(columns = share_net,
                fn = scales::col_numeric(
-                 palette = TABLE_CHANGE_PALETTE,
+                 palette = c(tpa_colors[2], "white", tpa_colors[1]),
                  domain  = c(-lim_net, lim_net))) %>%
     tab_style(style = cell_fill(color = "white"),
               locations = cells_body(columns = starts_with(c("use_", "exp_")))) %>%
     tab_style(style = cell_text(weight = "bold"),
               locations = cells_body(columns = share_net)) %>%
-    cols_align(align = "right", columns = -Country) %>%
+    cols_align(align = "center", columns = -Country) %>%
     tab_style(style = cell_text(align = "left"), locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
       footnote = end_sentence(
@@ -1527,6 +1494,9 @@ build_perm_expiry_table <- function(meta, path = NULL,
       locations = cells_column_labels(columns = share_net)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom: 2px solid %s !important; }",
+      "TAB604", tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -1585,13 +1555,13 @@ build_sector_bookend_table <- function(meta,
   tbl %>%
     data_color(columns = all_of(net_cols),
                fn = scales::col_numeric(
-                 palette = TABLE_CHANGE_PALETTE,
+                 palette = c(tpa_colors[2], "white", tpa_colors[1]),
                  domain  = c(-lim_net, lim_net))) %>%
     tab_style(style = cell_fill(color = "white"),
               locations = cells_body(columns = ends_with(c("_first", "_last")))) %>%
     tab_style(style = cell_text(weight = "bold"),
               locations = cells_body(columns = all_of(net_cols))) %>%
-    cols_align(align = "right", columns = -sector) %>%
+    cols_align(align = "center", columns = -sector) %>%
     tab_style(style = cell_text(align = "left"), locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
       footnote = end_sentence(
@@ -1602,6 +1572,9 @@ build_sector_bookend_table <- function(meta,
       locations = cells_column_labels(columns = all_of(net_cols))
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom: 2px solid %s !important; }",
+      "tab_069", tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -1673,11 +1646,11 @@ build_bookend_table <- function(name, meta,
     cols_label(pct_first = first_label, pct_last = last_label,
                Change = change_col_label(FALSE)) %>%
     tab_spanner(label = spanner_label, columns = c(pct_first, pct_last)) %>%
-    tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
+    tab_spanner(label = "\u00A0", columns = Change) %>%   # blank spanner: aligns header heights
     data_color(
       columns = Change,
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain  = c(-lim, lim)
       )
     ) %>%
@@ -1702,6 +1675,9 @@ build_bookend_table <- function(name, meta,
   
   tbl %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -2040,7 +2016,11 @@ build_change_table_wide <- function(
     data_color(
       columns = all_of(change_cols),
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(
+          tpa_colors[2],
+          "white",
+          tpa_colors[1]
+        ),
         domain = c(
           -lim,
           lim
@@ -2062,6 +2042,24 @@ build_change_table_wide <- function(
       align = "right",
       columns = -Field
     )
+  
+  # --------------------------------------------------------------------------
+  # Bold endpoint shares above 50%
+  # --------------------------------------------------------------------------
+  
+  for (col in year_cols) {
+    
+    tbl <- tbl %>%
+      tab_style(
+        style = cell_text(
+          weight = "bold"
+        ),
+        locations = cells_body(
+          columns = all_of(col),
+          rows = round(.data[[col]], 1) >= 50
+        )
+      )
+  }
   
   # --------------------------------------------------------------------------
   # Footnote + shared publication styling
@@ -2086,6 +2084,13 @@ build_change_table_wide <- function(
       meta = meta
     ) %>%
     
+    opt_css(
+      css = sprintf(
+        "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+        name,
+        tpa_colors[1]
+      )
+    ) %>%
     
     with_table_profile(
       "ultrawide"
@@ -2125,19 +2130,9 @@ build_change_table <- function(name, meta,
       LastYear         = "2024",
       PctChangeInShare = "Change"
     ) %>%
-    tab_spanner(label = "\u00A0",
-                columns = c(FirstYear, LastYear, PctChangeInShare),
-                id = "sp_all") %>%
-    data_color(
-      columns = PctChangeInShare,
-      fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
-        domain = c(
-          -max(abs(df$PctChangeInShare), na.rm = TRUE),
-           max(abs(df$PctChangeInShare), na.rm = TRUE)
-        )
-      )
-    ) %>%
+    gt_color_rows(columns  = PctChangeInShare,
+                  palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
+                  pal_type = "continuous") %>%
     cols_align(align = "right",
                columns = c(FirstYear, LastYear, PctChangeInShare)) %>%
     tab_style(style     = cell_text(weight = "bold"),
@@ -2170,9 +2165,8 @@ build_ranking_table <- function(name, meta, integer_cols = TRUE) {
   tbl %>%
     fmt_number(columns = Average, decimals = 2) %>%
     sub_missing(missing_text = "—") %>%
-    tab_spanner(label = "\u00A0", columns = all_of(c(field_cols, "Average")), id = "sp_all") %>%
     gt_color_rows(columns  = all_of(field_cols),
-                  palette = TABLE_INTENSITY_PALETTE,
+                  palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
                   pal_type = "continuous") %>%
     cols_align(align   = "right",
                columns = all_of(c(field_cols, "Average"))) %>%
@@ -2232,7 +2226,6 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
   tbl <- tbl %>%
     sub_missing(missing_text = "\u2014") %>%
     tab_spanner(label = spanner_label, columns = all_of(span_order)) %>%
-    tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
     cols_label(!!!level_labels, !!!chg_labels,
                Change = change_col_label(length(chg_cols) > 0))
   
@@ -2241,7 +2234,7 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
     tbl <- tbl %>%
       data_color(columns = all_of(col),
                  fn = scales::col_numeric(
-                   palette = TABLE_CHANGE_PALETTE,
+                   palette = c(tpa_colors[2], "white", tpa_colors[1]),
                    domain  = c(-lim, lim), na.color = "white"))
   }
   
@@ -2269,7 +2262,10 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
   }
   
   tbl <- tbl %>%
-    theme_gt_tpa(meta = meta)
+    theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1]))
   
   # No opt_footnote_marks() call here: theme_gt_tpa() sets numeric marks for
   # every table in the set, so a cell-level note is numbered like any other.
@@ -2297,9 +2293,8 @@ build_eb_table <- function(name, meta) {
     cols_merge(columns = c(EB2, `EB2.1`), pattern = "{2}") %>%
     cols_merge(columns = c(EB3, `EB3.1`), pattern = "{2}") %>%
     cols_label(EB1 = "EB1", EB2 = "EB2", EB3 = "EB3") %>%
-    tab_spanner(label = "\u00A0", columns = c(EB1, EB2, EB3), id = "sp_all") %>%
     gt_color_rows(columns  = c(EB1, EB2, EB3),
-                  palette = TABLE_INTENSITY_PALETTE,
+                  palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
                   pal_type = "continuous",
                   domain   = c(0, max(df$EB3, na.rm = TRUE))) %>%
     cols_align(align = "right", columns = c(EB1, EB2, EB3)) %>%
@@ -2376,7 +2371,7 @@ build_field_share_table <- function(df, name, meta, field_labels,
       data_color(
         columns = all_of(col),
         fn = scales::col_numeric(
-          palette = TABLE_CHANGE_PALETTE,
+          palette = c(tpa_colors[2], "white", tpa_colors[1]),
           domain  = c(-lim, lim)
         )
       )
@@ -2402,6 +2397,10 @@ build_field_share_table <- function(df, name, meta, field_labels,
       locations = cells_column_spanners(spanners = field_labels)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1]
+    )) %>%
     with_table_profile("ultrawide") %>%
     with_stub_width(table_scaled_px(170)) %>%
     with_size("long")
@@ -2492,7 +2491,7 @@ build_citizenship_table <- function(df, name, meta,
       data_color(
         columns = all_of(col),
         fn = scales::col_numeric(
-          palette = TABLE_CHANGE_PALETTE,
+          palette = c(tpa_colors[2], "white", tpa_colors[1]),
           domain  = c(-lim, lim)
         )
       )
@@ -2518,6 +2517,9 @@ build_citizenship_table <- function(df, name, meta,
   
   tbl %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_table_profile("wide") %>%
     with_stub_width(table_scaled_px(210)) %>%
     with_size("long")
@@ -2610,7 +2612,7 @@ build_conference_summary_table <- function(name, meta, conf_names,
     data_color(
       columns = c(US_Change, CN_Change),
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette  = c(tpa_colors[2], "white", tpa_colors[1]),
         domain   = c(-lim, lim),
         na.color = "white"
       )
@@ -2639,6 +2641,9 @@ build_conference_summary_table <- function(name, meta, conf_names,
       locations = cells_column_labels(columns = cross_yr)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("long")
 }
 
@@ -2672,7 +2677,6 @@ build_rd_type_level_table <- function(df, name, meta, level_cols,
                pattern = "{x}%") %>%
     tab_spanner(label = spanner_label, id = "gerd_span",
                 columns = all_of(level_cols)) %>%
-    tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
     cols_label(!!!level_labels, Change = change_col_label(FALSE)) %>%
     data_color(
       columns = Change,
@@ -2693,6 +2697,9 @@ build_rd_type_level_table <- function(df, name, meta, level_cols,
     tab_footnote(footnote = footnote,
                  locations = cells_column_spanners(spanners = "gerd_span")) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -2780,7 +2787,7 @@ build_patents_table <- function(name, meta, sources,
     tbl <- tbl %>%
       data_color(columns = all_of(col),
                  fn = scales::col_numeric(
-                   palette = TABLE_CHANGE_PALETTE,
+                   palette  = c(tpa_colors[2], "white", tpa_colors[1]),
                    domain   = c(-lim, lim), na.color = "white"))
   }
   
@@ -2805,6 +2812,9 @@ build_patents_table <- function(name, meta, sources,
       locations = cells_column_spanners(spanners = field_labels)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_table_profile("ultrawide") %>%
     with_stub_width(table_scaled_px(170)) %>%
     with_size("standard")
@@ -2888,7 +2898,7 @@ build_count_share_bookend_table <- function(name, meta,
     data_color(
       columns = sh_chg,
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette = c(tpa_colors[2], "white", tpa_colors[1]),
         domain  = c(-sh_lim, sh_lim))
     )
   
@@ -2897,7 +2907,7 @@ build_count_share_bookend_table <- function(name, meta,
       data_color(
         columns = cnt_chg,
         fn = scales::col_numeric(
-          palette = TABLE_CHANGE_PALETTE,
+          palette = c(tpa_colors[2], "white", tpa_colors[1]),
           domain  = c(-cnt_lim, cnt_lim)))
   } else {
     tbl <- tbl %>%
@@ -2926,6 +2936,9 @@ build_count_share_bookend_table <- function(name, meta,
   
   tbl %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -2960,7 +2973,7 @@ build_stem_outcomes_table <- function(name, meta) {
   for (col in outcome_cols) {
     tbl <- tbl %>%
       gt_color_rows(columns  = all_of(col),
-                    palette = TABLE_INTENSITY_PALETTE,
+                    palette  = c(TPA_RED_LIGHT, tpa_colors[1]),
                     pal_type = "continuous")
   }
   
@@ -2976,6 +2989,9 @@ build_stem_outcomes_table <- function(name, meta) {
       locations = cells_column_spanners(spanners = "Share of STEM entrants")
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -3048,7 +3064,6 @@ build_patent_company_delta_table <- function(df, name, meta,
                   list(Change = change_col_label(length(chg_cols) > 0)))
   tbl <- tbl %>%
     tab_spanner(label = spanner_label, columns = all_of(span_order)) %>%
-    tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
     cols_label(.list = label_args)
   
   for (col in all_chg_cols) {
@@ -3056,7 +3071,7 @@ build_patent_company_delta_table <- function(df, name, meta,
     tbl <- tbl %>%
       data_color(columns = all_of(col),
                  fn = scales::col_numeric(
-                   palette = TABLE_CHANGE_PALETTE,
+                   palette = c(tpa_colors[2], "white", tpa_colors[1]),
                    domain  = c(-lim, lim), na.color = "white"))
   }
   
@@ -3073,6 +3088,9 @@ build_patent_company_delta_table <- function(df, name, meta,
     tab_footnote(footnote = footnote,
                  locations = cells_column_spanners(spanners = spanner_label)) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1])) %>%
     with_size("standard")
 }
 
@@ -3174,7 +3192,7 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
     data_color(
       columns = c(US_Change, CN_Change),
       fn = scales::col_numeric(
-        palette = TABLE_CHANGE_PALETTE,
+        palette  = c(tpa_colors[2], "white", tpa_colors[1]),
         domain   = c(-lim, lim),
         na.color = "white"
       )
@@ -3201,326 +3219,11 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
       locations = cells_column_labels(columns = cross_yr)
     ) %>%
     theme_gt_tpa(meta = meta) %>%
+    opt_css(css = sprintf(
+      "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+      name, tpa_colors[1]
+    )) %>%
     with_size("standard")
-}
-
-# ---------------------------------------------------------------------------
-# Final-raster header-rule normalization
-# ---------------------------------------------------------------------------
-# CSS is deliberately NOT trusted to determine final rule thickness. Chromium
-# can rasterize the same fractional CSS stripe as 1 px in one table and 2 px in
-# another. These helpers inspect the already-rendered PNG, locate long thin
-# Stanford-red header rules, erase them, and repaint them at an exact integer
-# thickness in the final 1950-px raster.
-
-.tpa_hex_rgb <- function(hex) {
-  hex <- gsub("#", "", hex)
-  c(
-    R = strtoi(substr(hex, 1, 2), 16L),
-    G = strtoi(substr(hex, 3, 4), 16L),
-    B = strtoi(substr(hex, 5, 6), 16L)
-  )
-}
-
-.tpa_true_runs <- function(x) {
-  rr <- rle(as.logical(x))
-  ends <- cumsum(rr$lengths)
-  starts <- ends - rr$lengths + 1L
-  keep <- which(rr$values)
-
-  if (length(keep) == 0L) {
-    return(tibble::tibble(
-      x_start = integer(),
-      x_end   = integer(),
-      length  = integer()
-    ))
-  }
-
-  tibble::tibble(
-    x_start = as.integer(starts[keep]),
-    x_end   = as.integer(ends[keep]),
-    length  = as.integer(rr$lengths[keep])
-  )
-}
-
-# Return one row per horizontal header-rule segment in the FINAL raster.
-# Long red heatmap cells can occur lower in a table, so detections must be:
-#   - inside the upper header zone,
-#   - horizontally long, and
-#   - vertically thin.
-.tpa_detect_header_rule_segments <- function(
-    img,
-    rule_color = tpa_colors[1],
-    tolerance = 40,
-    min_bar_fraction = 0.06,
-    header_y_min_fraction = 0.06,
-    header_y_max_fraction = 0.45,
-    max_rule_thickness = 12L
-) {
-  info <- magick::image_info(img)
-  w <- as.integer(info$width[1])
-  h <- as.integer(info$height[1])
-
-  dat <- magick::image_data(img, channels = "rgb")
-  target <- .tpa_hex_rgb(rule_color)
-
-  # magick::image_data() is channel x width x height. Convert each channel to
-  # a conventional height x width matrix so [y, x] addresses a raster pixel.
-  r <- t(matrix(as.integer(dat[1, , ]), nrow = w, ncol = h))
-  g <- t(matrix(as.integer(dat[2, , ]), nrow = w, ncol = h))
-  b <- t(matrix(as.integer(dat[3, , ]), nrow = w, ncol = h))
-
-  dist <- sqrt(
-    (r - target[["R"]])^2 +
-    (g - target[["G"]])^2 +
-    (b - target[["B"]])^2
-  )
-  red_mask <- dist <= tolerance
-
-  y_min <- max(1L, as.integer(floor(h * header_y_min_fraction)))
-  y_max <- min(h, as.integer(ceiling(h * header_y_max_fraction)))
-  min_bar_px <- max(20L, as.integer(round(w * min_bar_fraction)))
-
-  longest_run <- vapply(
-    seq_len(h),
-    function(y) {
-      runs <- .tpa_true_runs(red_mask[y, ])
-      if (nrow(runs) == 0L) 0L else max(runs$length)
-    },
-    integer(1)
-  )
-
-  candidate_y <- which(
-    seq_len(h) >= y_min &
-    seq_len(h) <= y_max &
-    longest_run >= min_bar_px
-  )
-
-  if (length(candidate_y) == 0L) {
-    return(tibble::tibble(
-      y_start = integer(), y_end = integer(), thickness_px = integer(),
-      x_start = integer(), x_end = integer(), bar_length_px = integer()
-    ))
-  }
-
-  group_id <- cumsum(c(TRUE, diff(candidate_y) > 1L))
-  y_groups <- split(candidate_y, group_id)
-
-  out <- purrr::map_dfr(y_groups, function(ys) {
-    thickness <- length(ys)
-    if (thickness > max_rule_thickness) return(NULL)
-
-    # Pick the row inside this thin band with the most qualifying red pixels.
-    # That avoids using a partially antialiased edge row as the x geometry.
-    scores <- vapply(ys, function(y) {
-      runs <- .tpa_true_runs(red_mask[y, ])
-      sum(runs$length[runs$length >= min_bar_px])
-    }, integer(1))
-    y_rep <- ys[which.max(scores)]
-
-    runs <- .tpa_true_runs(red_mask[y_rep, ])
-    runs <- runs[runs$length >= min_bar_px, , drop = FALSE]
-    if (nrow(runs) == 0L) return(NULL)
-
-    runs %>%
-      dplyr::transmute(
-        y_start = as.integer(min(ys)),
-        y_end = as.integer(max(ys)),
-        thickness_px = as.integer(thickness),
-        x_start = as.integer(.data$x_start),
-        x_end = as.integer(.data$x_end),
-        bar_length_px = as.integer(.data$length)
-      )
-  })
-
-  out
-}
-
-# Composite a solid rectangle at exact integer pixel coordinates. ImageMagick
-# offsets are zero-based, whereas the detector returns one-based raster indices.
-.tpa_composite_rect <- function(img, x_start, y_start, width, height, color) {
-  patch <- magick::image_blank(
-    width = as.integer(width),
-    height = as.integer(height),
-    color = color
-  )
-
-  magick::image_composite(
-    img,
-    patch,
-    operator = "over",
-    offset = sprintf("+%d+%d", as.integer(x_start - 1L), as.integer(y_start - 1L))
-  )
-}
-
-normalize_header_rules_png <- function(
-    img,
-    target_px = TABLE_HEADER_RULE_FINAL_PX,
-    rule_color = tpa_colors[1],
-    erase_pad_x = 2L,
-    erase_pad_y = 2L,
-    tolerance = 40,
-    min_bar_fraction = 0.06
-) {
-  target_px <- as.integer(target_px)
-  if (target_px < 1L) stop("target_px must be >= 1.", call. = FALSE)
-
-  info <- magick::image_info(img)
-  w <- as.integer(info$width[1])
-  h <- as.integer(info$height[1])
-
-  before <- .tpa_detect_header_rule_segments(
-    img,
-    rule_color = rule_color,
-    tolerance = tolerance,
-    min_bar_fraction = min_bar_fraction
-  )
-
-  if (nrow(before) == 0L) {
-    warning("No header rule detected in rendered table PNG; raster normalization skipped.",
-            call. = FALSE)
-    return(list(
-      image = img,
-      before_px = NA_character_,
-      after_px = NA_character_,
-      bar_count = 0L
-    ))
-  }
-
-  # All segments in the same spanner band share y_start/y_end. Repainting each
-  # segment independently preserves the exact horizontal lengths and gaps that
-  # the table layout established; only vertical thickness is normalized.
-  for (i in seq_len(nrow(before))) {
-    seg <- before[i, ]
-
-    # Keep the existing BOTTOM edge fixed. A 1-px rule becoming 2 px therefore
-    # grows upward, preserving its relationship to the year/column-label row.
-    new_y_end   <- as.integer(seg$y_end)
-    new_y_start <- max(1L, new_y_end - target_px + 1L)
-
-    erase_x_start <- max(1L, as.integer(seg$x_start) - erase_pad_x)
-    erase_x_end   <- min(w,  as.integer(seg$x_end)   + erase_pad_x)
-    erase_y_start <- max(1L, min(as.integer(seg$y_start), new_y_start) - erase_pad_y)
-    erase_y_end   <- min(h,  max(as.integer(seg$y_end),   new_y_end)   + erase_pad_y)
-
-    # Header backgrounds are publication white, so remove the browser-rendered
-    # line (including antialiased edge pixels) before drawing the exact one.
-    img <- .tpa_composite_rect(
-      img,
-      x_start = erase_x_start,
-      y_start = erase_y_start,
-      width = erase_x_end - erase_x_start + 1L,
-      height = erase_y_end - erase_y_start + 1L,
-      color = "white"
-    )
-
-    img <- .tpa_composite_rect(
-      img,
-      x_start = as.integer(seg$x_start),
-      y_start = new_y_start,
-      width = as.integer(seg$x_end - seg$x_start + 1L),
-      height = target_px,
-      color = rule_color
-    )
-  }
-
-  after <- .tpa_detect_header_rule_segments(
-    img,
-    rule_color = rule_color,
-    tolerance = tolerance,
-    min_bar_fraction = min_bar_fraction
-  )
-
-  before_px <- paste(sort(unique(before$thickness_px)), collapse = ",")
-  after_px  <- if (nrow(after) == 0L) NA_character_ else
-    paste(sort(unique(after$thickness_px)), collapse = ",")
-
-  # Fail loudly rather than silently export a table whose rule was not fixed.
-  if (nrow(after) == 0L || any(after$thickness_px != target_px)) {
-    stop(
-      "Header-rule raster normalization failed: expected every detected rule to be ",
-      target_px, " px; detected ", after_px %||% "none", ".",
-      call. = FALSE
-    )
-  }
-
-  list(
-    image = img,
-    before_px = before_px,
-    after_px = after_px,
-    bar_count = as.integer(nrow(after))
-  )
-}
-
-# Run the same normalizer over PNGs that already exist on disk. This is useful
-# for testing the raster fix without knitting the whole Rmd again.
-normalize_existing_table_pngs <- function(
-    png_dir = file.path(PATHS$final_tables, "pngs"),
-    pattern = "^tab_.*\\.png$",
-    target_px = TABLE_HEADER_RULE_FINAL_PX
-) {
-  if (!requireNamespace("magick", quietly = TRUE)) {
-    stop("Package 'magick' is required for raster header-rule normalization.",
-         call. = FALSE)
-  }
-
-  files <- list.files(png_dir, pattern = pattern, full.names = TRUE)
-  if (length(files) == 0L) {
-    stop("No table PNGs found in: ", png_dir, call. = FALSE)
-  }
-
-  purrr::map_dfr(files, function(path) {
-    img <- magick::image_read(path)
-    norm <- normalize_header_rules_png(img, target_px = target_px)
-    magick::image_write(
-      norm$image,
-      path = path,
-      density = paste0(TABLE_EXPORT_DPI, "x", TABLE_EXPORT_DPI)
-    )
-
-    tibble::tibble(
-      table = basename(path),
-      before_px = norm$before_px,
-      after_px = norm$after_px,
-      bar_count = norm$bar_count
-    )
-  }) %>%
-    dplyr::arrange(.data$table)
-}
-
-# Read-only audit of the finished PNGs using exactly the same detector that the
-# normalizer uses. One row per table; multiple rule bands, if ever present, are
-# reported as comma-separated unique thicknesses.
-audit_existing_table_header_rules <- function(
-    png_dir = file.path(PATHS$final_tables, "pngs"),
-    pattern = "^tab_.*\\.png$"
-) {
-  if (!requireNamespace("magick", quietly = TRUE)) {
-    stop("Package 'magick' is required for header-rule auditing.", call. = FALSE)
-  }
-
-  files <- list.files(png_dir, pattern = pattern, full.names = TRUE)
-  if (length(files) == 0L) {
-    stop("No table PNGs found in: ", png_dir, call. = FALSE)
-  }
-
-  purrr::map_dfr(files, function(path) {
-    img <- magick::image_read(path)
-    seg <- .tpa_detect_header_rule_segments(img)
-    info <- magick::image_info(img)
-
-    tibble::tibble(
-      table = basename(path),
-      image_width_px = as.integer(info$width[1]),
-      image_height_px = as.integer(info$height[1]),
-      thickness_px = if (nrow(seg) == 0L) NA_character_ else
-        paste(sort(unique(seg$thickness_px)), collapse = ","),
-      number_of_bars = as.integer(nrow(seg)),
-      bar_lengths_px = if (nrow(seg) == 0L) NA_character_ else
-        paste(seg$bar_length_px, collapse = ", ")
-    )
-  }) %>%
-    dplyr::arrange(.data$table)
 }
 
 # ---- Export -------------------------------------------------
@@ -3581,9 +3284,6 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
   
   actual_width_px  <- NA_integer_
   actual_height_px <- NA_integer_
-  header_rule_before_px <- NA_character_
-  header_rule_after_px  <- NA_character_
-  header_rule_bar_count <- NA_integer_
   
   if (requireNamespace("magick", quietly = TRUE)) {
     img  <- magick::image_read(png_path)
@@ -3613,18 +3313,6 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
       actual_height_px <- as.integer(info$height[1])
     }
     
-    # Browser/CSS output is now only the provisional geometry. Normalize the
-    # red header rules on the FINAL raster so every table has the exact same
-    # integer-pixel rule thickness regardless of profile or Chromium rounding.
-    rule_norm <- normalize_header_rules_png(
-      img,
-      target_px = TABLE_HEADER_RULE_FINAL_PX
-    )
-    img <- rule_norm$image
-    header_rule_before_px <- rule_norm$before_px
-    header_rule_after_px  <- rule_norm$after_px
-    header_rule_bar_count <- rule_norm$bar_count
-
     magick::image_write(
       img,
       path    = png_path,
@@ -3666,9 +3354,6 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
       header_lineheight = TABLE_HEADER_LINEHEIGHT,
       title_lineheight = TABLE_TITLE_LINEHEIGHT,
       source_lineheight = TABLE_SOURCE_LINEHEIGHT,
-      header_rule_before_px = header_rule_before_px,
-      header_rule_after_px = header_rule_after_px,
-      header_rule_bar_count = header_rule_bar_count,
       status = status
     )
   )
@@ -3724,22 +3409,6 @@ write_table_export_audit <- function(
     stop(
       "Not all table PNGs have the common publication width: ",
       paste(bad, collapse = ", "),
-      call. = FALSE
-    )
-  }
-  
-  # Every table with a detected header rule must finish at the exact raster
-  # thickness set by TABLE_HEADER_RULE_FINAL_PX.
-  checked_rules <- audit %>%
-    dplyr::filter(!is.na(header_rule_after_px), header_rule_bar_count > 0)
-  if (nrow(checked_rules) > 0 &&
-      any(checked_rules$header_rule_after_px != as.character(TABLE_HEADER_RULE_FINAL_PX))) {
-    bad <- checked_rules %>%
-      dplyr::filter(header_rule_after_px != as.character(TABLE_HEADER_RULE_FINAL_PX)) %>%
-      dplyr::pull(name)
-    stop(
-      "Not all table header rules have the common final raster thickness of ",
-      TABLE_HEADER_RULE_FINAL_PX, " px: ", paste(bad, collapse = ", "),
       call. = FALSE
     )
   }

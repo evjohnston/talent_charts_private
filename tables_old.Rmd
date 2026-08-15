@@ -41,8 +41,6 @@ if (exists("reset_table_export_audit")) {
 }
 ```
 
-# Header rules are centralized in tables.R so all builders use the same red spanner rule.
-
 # Chapter 1 
 
 ### Table 1.01 - How Much of U.S. STEM Training Goes to International Students?
@@ -172,7 +170,7 @@ tab_202 <- mat %>%
   data_color(
     columns = all_of(field_order),
     fn = scales::col_numeric(
-      palette  = TABLE_CHANGE_PALETTE,   # blue (loss) → white (0) → red (gain)
+      palette  = TABLE_CHANGE_PALETTE,   # blue (gain) → white (0) → red (loss)
       domain   = c(-lim, lim),
       na.color = "white"
     )
@@ -208,6 +206,10 @@ tab_202 <- mat %>%
     )
   ) %>%
   theme_gt_tpa(meta = meta) %>%
+  opt_css(css = sprintf(
+    "#%s .gt_column_spanner { border-bottom-color: %s !important; }",
+    "TAB202", tpa_colors[1]
+  )) %>%
   with_table_profile("ultrawide") %>%
   with_size("standard")
 
@@ -248,7 +250,7 @@ tab_014 <- build_occupation_share_table(
   change_type   = change_type,
   footnote = end_sentence(
     "Each year column is the share of graduates at each degree level employed",
-    "in a STEM occupation.", change_col_label(FALSE), "is the",
+    "in a STEM occupation.", change_col_label(TRUE), "is the",
     change_phrase(change_type), "from 1993 to 2023"
   )
 )
@@ -577,7 +579,7 @@ TAB502 <- build_occupation_share_table(
   value_type    = "count",
   footnote = end_sentence(
     "Counts are U.S. universities in the global top 100 in each field, shown",
-    "for 2014, 2018, 2022, and 2026.", change_col_label(FALSE), "is the",
+    "for 2014, 2018, 2022, and 2026.", change_col_label(TRUE), "is the",
     change_phrase(change_type, "count"), "from 2014 to 2026.",
     "Computer science was first ranked in 2017; its 2017 count is shown in the",
     "2014 column so its change can be computed"
@@ -746,7 +748,7 @@ df_023 <- read_fig("TAB506") %>%
 # mark the five firms that were top 5 in 2005 with a colored rank arrow.
 # arrow points down (fell in rank) or up (rose) between 2005 and 2025.
 arrow_span <- function(rank2005, fell) {
-  color <- TABLE_TEXT_COLOR                         # neutral; color is reserved for data cells
+  color <- if (fell) "#8C1515" else "#3B7A57"   # TPA red for decline, green for rise
   glyph <- if (fell) "\u25BE" else "\u25B4"      # ▾ / ▴
   paste0(" <span style='color:", color, ";font-weight:700;'>",
          glyph, " #", rank2005, "</span>")
@@ -772,8 +774,8 @@ TAB506 <- build_patent_company_delta_table(
     "The first and last columns are patent grants in 2005 and 2025.",
     change_col_label(FALSE), "is the", change_phrase(change_type, "count"),
     "across the window. Arrows mark the five firms that ranked in the top five",
-    "by 2005 grants, with their 2005 rank; a down arrow marks a fall in rank",
-    "by 2025 and an up arrow marks a rise. Rows are ordered by 2025 grants"
+    "by 2005 grants, with their 2005 rank; red points to a fall in rank by",
+    "2025, green to a rise. Rows are ordered by 2025 grants"
   )
 )
 save_table(TAB506, "tab_5_06", profile = "ultrawide", stub_width_px = 360)
@@ -849,157 +851,4 @@ TAB605 <- build_eb_combined_table(meta)
 
 save_table(TAB605, "tab_6_05", profile = "standard")
 TAB605
-```
-
-```{r}
-library(magick)
-library(dplyr)
-library(purrr)
-library(tibble)
-
-# ---------------------------------------------------------------------------
-# Diagnose rendered header-rule thickness directly from final PNGs
-# ---------------------------------------------------------------------------
-
-png_dir <- file.path(PATHS$final_tables, "pngs")
-
-# Use the same red as the tables.
-rule_red <- if (exists("tpa_colors")) tpa_colors[1] else "#8C1515"
-
-# Convert "#RRGGBB" to numeric RGB.
-hex_rgb <- function(hex) {
-  hex <- gsub("#", "", hex)
-  c(
-    R = strtoi(substr(hex, 1, 2), 16L),
-    G = strtoi(substr(hex, 3, 4), 16L),
-    B = strtoi(substr(hex, 5, 6), 16L)
-  )
-}
-
-target <- hex_rgb(rule_red)
-
-# Lengths of all TRUE runs in one pixel row.
-true_runs <- function(x) {
-  rr <- rle(x)
-  rr$lengths[rr$values]
-}
-
-measure_header_rules <- function(path,
-                                 tolerance = 35,
-                                 min_bar_fraction = 0.08,
-                                 max_rule_thickness = 12) {
-
-  img <- image_read(path)
-  dat <- image_data(img, channels = "rgb")
-
-  # magick array is channel x width x height
-  w <- dim(dat)[2]
-  h <- dim(dat)[3]
-
-  r <- t(matrix(as.integer(dat[1, , ]), nrow = w, ncol = h))
-  g <- t(matrix(as.integer(dat[2, , ]), nrow = w, ncol = h))
-  b <- t(matrix(as.integer(dat[3, , ]), nrow = w, ncol = h))
-
-  # "Red enough" to catch the rule even if Chromium anti-aliases an edge.
-  dist <- sqrt(
-    (r - target["R"])^2 +
-    (g - target["G"])^2 +
-    (b - target["B"])^2
-  )
-
-  red_mask <- dist <= tolerance
-
-  # We only care about the header area.
-  # This excludes nearly all heatmap cells farther down the table.
-  y_min <- max(1, round(h * 0.07))
-  y_max <- min(h, round(h * 0.45))
-
-  min_bar_px <- round(w * min_bar_fraction)
-
-  # Longest continuous red run in every row.
-  longest_run <- vapply(
-    seq_len(h),
-    function(y) {
-      runs <- true_runs(red_mask[y, ])
-      if (length(runs) == 0) 0L else max(runs)
-    },
-    integer(1)
-  )
-
-  candidate_y <- which(
-    seq_len(h) >= y_min &
-    seq_len(h) <= y_max &
-    longest_run >= min_bar_px
-  )
-
-  if (length(candidate_y) == 0) {
-    return(
-      tibble(
-        table = basename(path),
-        image_width_px = w,
-        image_height_px = h,
-        y_start = NA_integer_,
-        y_end = NA_integer_,
-        thickness_px = NA_integer_,
-        number_of_bars = NA_integer_,
-        bar_lengths_px = NA_character_,
-        longest_bar_px = NA_integer_
-      )
-    )
-  }
-
-  # Group consecutive rows. A 3-pixel rule becomes one 3-row group.
-  group_id <- cumsum(c(TRUE, diff(candidate_y) > 1))
-
-  groups <- split(candidate_y, group_id)
-
-  map_dfr(groups, function(ys) {
-
-    thickness <- length(ys)
-
-    # Large blocks are almost certainly heatmap/body fills, not header rules.
-    if (thickness > max_rule_thickness) return(NULL)
-
-    # Inspect the center row of the detected rule.
-    y_mid <- ys[ceiling(length(ys) / 2)]
-
-    runs <- true_runs(red_mask[y_mid, ])
-    runs <- sort(runs[runs >= min_bar_px], decreasing = TRUE)
-
-    tibble(
-      table = basename(path),
-      image_width_px = w,
-      image_height_px = h,
-      y_start = min(ys),
-      y_end = max(ys),
-
-      # THIS is the number we care about for rule consistency.
-      thickness_px = thickness,
-
-      # Useful secondary checks:
-      number_of_bars = length(runs),
-      bar_lengths_px = paste(runs, collapse = ", "),
-      longest_bar_px = ifelse(length(runs), max(runs), NA_integer_)
-    )
-  })
-}
-
-
-# ---------------------------------------------------------------------------
-# Run across every exported table
-# ---------------------------------------------------------------------------
-
-png_files <- list.files(
-  png_dir,
-  pattern = "^tab_.*\\.png$",
-  full.names = TRUE
-)
-
-bar_diagnostics <- map_dfr(
-  png_files,
-  measure_header_rules
-) %>%
-  arrange(table, y_start)
-
-print(bar_diagnostics, n = Inf)
 ```

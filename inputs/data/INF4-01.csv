@@ -1,0 +1,33 @@
+Country,Year,Subject,Average Scores of 15 yr old students,Rank of Country
+United States,2000,Overall,498.7,17
+United States,2000,Math,493,19
+United States,2000,Reading,504,15
+United States,2000,Science,499,14
+Japan,2000,Overall,543,1
+Japan,2000,Math,557,1
+Japan,2000,Reading,522,8
+Japan,2000,Science,550,2
+South Korea,2000,Overall,541.3,2
+South Korea,2000,Math,547,2
+South Korea,2000,Reading,525,6
+South Korea,2000,Science,552,1
+OECD Average,2000,Overall,500,17
+OECD Average,2000,Math,500,17
+OECD Average,2000,Reading,500,16
+OECD Average,2000,Science,500,13
+United States,2022,Overall,489.3,18
+United States,2022,Math,465,34
+United States,2022,Reading,504,9
+United States,2022,Science,499,16
+Japan,2022,Overall,533,3
+Japan,2022,Math,536,5
+Japan,2022,Reading,516,2
+Japan,2022,Science,547,2
+South Korea,2022,Overall,523.3,5
+South Korea,2022,Math,527,6
+South Korea,2022,Reading,515,4
+South Korea,2022,Science,528,5
+OECD Average,2022,Overall,478,27
+OECD Average,2022,Math,472,29
+OECD Average,2022,Reading,476,25
+OECD Average,2022,Science,485,28
