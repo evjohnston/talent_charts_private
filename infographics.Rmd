@@ -36,25 +36,6 @@ if (is.na(setup_path)) {
 
 source(setup_path)
 
-# When this corrected Rmd is run beside infographics_corrected.R, source that
-# helper after the publication setup so its shared infographic contract and
-# styling helpers override any older infographics.R loaded by setup_publication.R.
-corrected_helper_candidates <- c(
-  file.path(rmd_dir, "infographics_corrected.R"),
-  file.path(rmd_dir, "inputs", "scripts", "infographics_corrected.R"),
-  file.path(rmd_dir, "..", "inputs", "scripts", "infographics_corrected.R"),
-  file.path(getwd(), "infographics_corrected.R"),
-  file.path(getwd(), "inputs", "scripts", "infographics_corrected.R")
-)
-
-corrected_helper_path <- corrected_helper_candidates[
-  file.exists(corrected_helper_candidates)
-][1]
-
-if (!is.na(corrected_helper_path)) {
-  source(corrected_helper_path)
-}
-
 # Keep knitted previews at the same physical width as the exported infographic.
 knitr::opts_chunk$set(out.width = paste0(PUB$infographic$width_in, "in"))
 
@@ -66,25 +47,25 @@ INFOGRAPHIC_AUDIT_SHOW <- FALSE
 # UNIFORM INFOGRAPHIC PAGE CONTRACT — ALL SIX CHAPTERS
 # ============================================================================
 #
-# Publication pages are fixed-size. The authoritative limits are defined once
-# in the shared infographic helper and are currently:
+# Publication pages are fixed-size. Each page may contain up to:
 #
-#   36 body/stat rows
-#    6 visible section headers
+#   30 body/stat rows
+#    5 visible section headers
 #   --------------------------------
-#   42 rendered row-equivalents
+#   35 rendered row-equivalents
 #
 # Pages may contain fewer rows when statistics are switched off. The canvas,
-# typography, column widths, row height, export DPI, and page caps remain fixed.
-# The Rmd never overrides the shared design contract.
+# typography, column widths, row height, and export DPI remain fixed.
+#
+# If an edit creates a sixth section header inside one page, pagination stops
+# with an error rather than silently shrinking the page.
 # ============================================================================
 
-stopifnot(
-  exists("INFOGRAPHIC_ROWS_PER_PAGE", inherits = TRUE),
-  exists("INFOGRAPHIC_SECTION_HEADERS_PER_PAGE", inherits = TRUE),
-  exists("INFOGRAPHIC_RENDERED_ROWS_PER_PAGE", inherits = TRUE),
-  exists("INFOGRAPHIC_STYLE", inherits = TRUE)
-)
+INFOGRAPHIC_ROWS_PER_PAGE <- 36L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 6L
+INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
+  INFOGRAPHIC_ROWS_PER_PAGE +
+  INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
 
 INFOGRAPHIC_EXPORT_REGISTRY <- new.env(
   parent = emptyenv()
@@ -200,8 +181,8 @@ infographic_page_contract <- function(
 
 # Deliberately split by BODY rows first. We do not silently reduce the body-row
 # count to compensate for too many headings. Instead, the page contract above
-# requires the chapter's visible section structure to fit the shared publication
-# grid defined in infographics.R.
+# requires the chapter's visible section structure to fit the common 30 + 5
+# publication grid.
 paginate_infographic_data <- function(
     data,
     build_page = NULL,
@@ -287,11 +268,8 @@ paginate_infographic_data <- function(
           contract$problems,
           collapse = "; "
         ),
-        ". Keep each page within the shared ",
-        INFOGRAPHIC_ROWS_PER_PAGE,
-        " body-row + ",
-        INFOGRAPHIC_SECTION_HEADERS_PER_PAGE,
-        " section-header contract; do not shrink typography or the canvas.",
+        ". Keep each page within 30 body rows + 5 visible section headers; ",
+        "do not shrink typography or the canvas.",
         call. = FALSE
       )
     }
@@ -1161,7 +1139,7 @@ export_current_chapter <- function(
       Latest = "Latest or<br>Projected Value",
       Change = "Change"
     ),
-    trend_right_padding_px = INFOGRAPHIC_STYLE$trend_right_padding_px,
+    trend_right_padding_px = 0,
     show_header = TRUE,
     rows_per_page = INFOGRAPHIC_ROWS_PER_PAGE
 ) {
@@ -2871,9 +2849,9 @@ export_current_chapter(
     ch1_column_labels,
 
   trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+    5,
   
-  show_header = FALSE
+  show_header = FALSE,
 )
 
 ```
@@ -3000,6 +2978,7 @@ CURRENT_REPORT_SOURCES <- unique(c(
 # 2. COMPARISON-YEAR RULES
 # ----------------------------------------------------------------------------
 
+CH2_SECTION_HEADERS_PER_PAGE <- 6L
 CH2_BASELINE_YEAR <- 2001L
 CH2_TARGET_YEAR <- 2025L
 
@@ -5375,7 +5354,7 @@ build_ch2_page <- function(
       TRUE,
 
     trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+      5,
 
     show_header =
       FALSE
@@ -5397,7 +5376,7 @@ ch2_exports <- export_paginated_infographic(
     INFOGRAPHIC_ROWS_PER_PAGE,
 
   section_headers_per_page =
-    INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+    CH2_SECTION_HEADERS_PER_PAGE
 )
 
 ```
@@ -5556,6 +5535,11 @@ CH3_INCLUDE <- c(
 # ---------------------------------------------------------------------------
 
 CH3_DEFAULT_TRUE_COUNT <- 32L
+
+CH3_ROWS_PER_PAGE <- 32L
+
+CH3_SECTION_HEADERS_PER_PAGE <- 5L
+
 
 if (
   sum(CH3_INCLUDE) !=
@@ -8531,7 +8515,7 @@ build_ch3_page <- function(
       TRUE,
 
     trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+      5,
 
     show_header =
       FALSE
@@ -8551,7 +8535,7 @@ ch3_exports <- export_paginated_infographic(
     build_ch3_page,
 
   name =
-    "infographic_ch3_by_the_numbers"
+    "infographic_ch3_by_the_numbers",
 )
 
 
@@ -11293,8 +11277,8 @@ build_ch4_infographic_table <- function(
     layout = INFOGRAPHIC_FIXED_LAYOUT,
     row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
     nowrap_values = TRUE,
-    trend_right_padding_px = INFOGRAPHIC_STYLE$trend_right_padding_px,
-    nested_indent_px = INFOGRAPHIC_STYLE$nested_indent_px
+    trend_right_padding_px = 5,
+    nested_indent_px = 18
 ) {
 
   sizes <- font_sizes(
@@ -11499,7 +11483,7 @@ build_ch4_infographic_table <- function(
           color =
             INFOGRAPHIC_PALETTE$red,
           weight =
-            gt::px(INFOGRAPHIC_STYLE$header_rule_px)
+            gt::px(3)
         ),
 
       locations =
@@ -11574,22 +11558,86 @@ build_ch4_infographic_table <- function(
   # Study-abroad subsection headers
   # --------------------------------------------------------------------------
 
-  tbl <- style_infographic_subsection_rows(
-    tbl = tbl,
-    rows = subsection_rows,
-    add_top_rule = TRUE
-  )
+  if (
+    length(subsection_rows) > 0L
+  ) {
+
+    tbl <- tbl %>%
+
+      gt::tab_style(
+        style = list(
+
+          gt::cell_fill(
+            color = "white"
+          ),
+
+          gt::cell_text(
+            color =
+              INFOGRAPHIC_PALETTE$red,
+            weight = "bold"
+          )
+        ),
+
+        locations =
+          gt::cells_stub(
+            rows =
+              subsection_rows
+          )
+      ) %>%
+
+      gt::tab_style(
+        style =
+          gt::cell_fill(
+            color = "white"
+          ),
+
+        locations =
+          gt::cells_body(
+            columns =
+              tidyselect::everything(),
+
+            rows =
+              subsection_rows
+          )
+      )
+  }
 
 
   # --------------------------------------------------------------------------
   # Latest-value highlight
   # --------------------------------------------------------------------------
 
-  tbl <- style_infographic_emphasis_column(
-    tbl = tbl,
-    column = "Latest",
-    rows = body_rows
-  )
+  if (
+    length(body_rows) > 0L
+  ) {
+
+    tbl <- tbl %>%
+
+      gt::tab_style(
+        style = list(
+
+          gt::cell_fill(
+            color =
+              INFOGRAPHIC_PALETTE$pink
+          ),
+
+          gt::cell_text(
+            color =
+              INFOGRAPHIC_PALETTE$red,
+            weight = "bold"
+          )
+        ),
+
+        locations =
+          gt::cells_body(
+            columns =
+              Latest,
+
+            rows =
+              body_rows
+          )
+      )
+  }
 
 
   # --------------------------------------------------------------------------
@@ -11605,7 +11653,7 @@ build_ch4_infographic_table <- function(
       gt::tab_style(
         style =
           gt::cell_text(
-            color = INFOGRAPHIC_PALETTE$trend_up,
+            color = "blue",
             weight = "bold"
           ),
 
@@ -11630,7 +11678,7 @@ build_ch4_infographic_table <- function(
       gt::tab_style(
         style =
           gt::cell_text(
-            color = INFOGRAPHIC_PALETTE$trend_down,
+            color = "gold",
             weight = "bold"
           ),
 
@@ -11712,7 +11760,7 @@ build_ch4_infographic_table <- function(
         INFOGRAPHIC_PALETTE$rule,
 
       table_body.hlines.width =
-        gt::px(INFOGRAPHIC_STYLE$body_rule_px),
+        gt::px(1),
 
       table.width =
         gt::px(
@@ -11927,13 +11975,57 @@ build_ch4_infographic_table <- function(
 
   # --------------------------------------------------------------------------
   # Nested study-abroad row CSS
+  #
+  # Add extra indentation beyond the standard infographic side padding.
   # --------------------------------------------------------------------------
 
-  nested_css <- infographic_nested_row_css(
-    id = id,
-    rows = nested_rows,
-    indent_px = nested_indent_px
-  )
+  nested_css <- if (
+    length(nested_rows) > 0L
+  ) {
+
+    nested_padding_px <-
+      infographic_pt_to_px(
+        PUB$spacing$infographic_side_pad_pt
+      ) +
+      nested_indent_px
+
+
+    paste0(
+      vapply(
+        nested_rows,
+
+        function(i) {
+
+          paste0(
+
+            "#",
+            id,
+            " tbody tr:nth-child(",
+            i,
+            ") .gt_stub, #",
+            id,
+            " tbody tr:nth-child(",
+            i,
+            ") .gt_rowname {",
+
+            "padding-left:",
+            nested_padding_px,
+            "px !important;",
+
+            "}"
+          )
+        },
+
+        character(1)
+      ),
+
+      collapse = ""
+    )
+
+  } else {
+
+    ""
+  }
 
 
   # --------------------------------------------------------------------------
@@ -12010,7 +12102,7 @@ build_ch4_infographic_table <- function(
     "text-align:center !important;",
 
     "font-size:",
-    sizes$data * INFOGRAPHIC_STYLE$trend_scale,
+    sizes$data * 0.82,
     "px !important;",
 
     "line-height:1 !important;",
@@ -12158,7 +12250,7 @@ build_ch4_page <- function(
       TRUE,
 
     trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+      5,
 
     nested_indent_px =
       18
@@ -13187,7 +13279,7 @@ ch5_flag_html <- function(
     "border-radius:50%;",
     "object-fit:cover;",
     "vertical-align:-1px;",
-    "margin-right:", INFOGRAPHIC_STYLE$flag_gap_px, "px;",
+    "margin-right:7px;",
 
     "'>"
   )
@@ -13240,8 +13332,16 @@ ch5_measure_html <- function(
     )
   ) {
 
-    content <- infographic_nested_label_html(
-      content
+    content <- paste0(
+
+      "<span style='",
+      "display:inline-block;",
+      "padding-left:18px;",
+      "'>",
+
+      content,
+
+      "</span>"
     )
   }
 
@@ -15591,7 +15691,7 @@ build_ch5_page <- function(
       TRUE,
 
     trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+      5,
 
     show_header =
       FALSE
@@ -15626,11 +15726,118 @@ build_ch5_page <- function(
   # Research country subheaders
   # --------------------------------------------------------------------------
 
-  tbl <- style_infographic_subsection_rows(
-    tbl = tbl,
-    rows = subsection_rows,
-    add_top_rule = TRUE
-  )
+  if (
+    length(subsection_rows) > 0L
+  ) {
+
+    tbl <- tbl %>%
+
+      # Stub formatting
+      gt::tab_style(
+
+        style =
+          list(
+
+            gt::cell_fill(
+              color =
+                "white"
+            ),
+
+            gt::cell_text(
+              color =
+                INFOGRAPHIC_PALETTE$red,
+
+              weight =
+                "bold"
+            )
+          ),
+
+        locations =
+          gt::cells_stub(
+            rows =
+              subsection_rows
+          )
+      ) %>%
+
+
+      # Blank numeric cells
+      gt::tab_style(
+
+        style =
+          list(
+
+            gt::cell_fill(
+              color =
+                "white"
+            ),
+
+            gt::cell_text(
+              color =
+                INFOGRAPHIC_PALETTE$text,
+
+              weight =
+                "normal"
+            )
+          ),
+
+        locations =
+          gt::cells_body(
+            columns =
+              tidyselect::everything(),
+
+            rows =
+              subsection_rows
+          )
+      ) %>%
+
+
+      # Divider above subsection
+      gt::tab_style(
+
+        style =
+          gt::cell_borders(
+            sides =
+              "top",
+
+            color =
+              INFOGRAPHIC_PALETTE$rule,
+
+            weight =
+              gt::px(1)
+          ),
+
+        locations =
+          gt::cells_stub(
+            rows =
+              subsection_rows
+          )
+      ) %>%
+
+
+      gt::tab_style(
+
+        style =
+          gt::cell_borders(
+            sides =
+              "top",
+
+            color =
+              INFOGRAPHIC_PALETTE$rule,
+
+            weight =
+              gt::px(1)
+          ),
+
+        locations =
+          gt::cells_body(
+            columns =
+              tidyselect::everything(),
+
+            rows =
+              subsection_rows
+          )
+      )
+  }
 
 
   tbl
@@ -16195,8 +16402,10 @@ ch6_measure_html <- function(
       nested
     )
   ) {
-    content <- infographic_nested_label_html(
-      content
+    content <- paste0(
+      "<span style='display:inline-block;padding-left:18px;'>",
+      content,
+      "</span>"
     )
   }
   content
@@ -17603,7 +17812,7 @@ build_ch6_main_table <- function() {
     nowrap_values =
       TRUE,
     trend_right_padding_px =
-      INFOGRAPHIC_STYLE$trend_right_padding_px,
+      5,
     show_header =
       FALSE
   )
@@ -17621,32 +17830,108 @@ build_ch6_main_table <- function() {
           )
         }
     )
-
-  tbl <- style_infographic_subsection_rows(
-    tbl = tbl,
-    rows = subsection_rows,
-    add_top_rule = TRUE
-  )
-
+  if (
+    length(subsection_rows) > 0L
+  ) {
+    tbl <- tbl %>%
+      gt::tab_style(
+        style =
+          list(
+            gt::cell_fill(
+              color =
+                "white"
+            ),
+            gt::cell_text(
+              color =
+                INFOGRAPHIC_PALETTE$red,
+              weight =
+                "bold"
+            )
+          ),
+        locations =
+          gt::cells_stub(
+            rows =
+              subsection_rows
+          )
+      ) %>%
+      gt::tab_style(
+        style =
+          list(
+            gt::cell_fill(
+              color =
+                "white"
+            ),
+            gt::cell_text(
+              color =
+                INFOGRAPHIC_PALETTE$text,
+              weight =
+                "normal"
+            )
+          ),
+        locations =
+          gt::cells_body(
+            columns =
+              tidyselect::everything(),
+            rows =
+              subsection_rows
+          )
+      ) %>%
+      gt::tab_style(
+        style =
+          gt::cell_borders(
+            sides =
+              "top",
+            color =
+              INFOGRAPHIC_PALETTE$rule,
+            weight =
+              gt::px(1)
+          ),
+        locations =
+          gt::cells_stub(
+            rows =
+              subsection_rows
+          )
+      ) %>%
+      gt::tab_style(
+        style =
+          gt::cell_borders(
+            sides =
+              "top",
+            color =
+              INFOGRAPHIC_PALETTE$rule,
+            weight =
+              gt::px(1)
+          ),
+        locations =
+          gt::cells_body(
+            columns =
+              tidyselect::everything(),
+            rows =
+              subsection_rows
+          )
+      )
+  }
   tbl
 }
-build_ch6_snapshot_table <- function() {
+build_ch6_snapshot_table <- function(
+    font_scale = 0.88
+) {
   snapshot_font_px <- max(
     9,
     INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
-      INFOGRAPHIC_STYLE$secondary_panel_scale
+      font_scale
   )
   snapshot_header_px <- max(
     9,
     INFOGRAPHIC_FIXED_LAYOUT$header_font_px *
-      INFOGRAPHIC_STYLE$secondary_panel_scale
+      font_scale
   )
   snapshot_source_px <-
     INFOGRAPHIC_FIXED_LAYOUT$source_font_px
   snapshot_padding_px <- max(
     1,
     INFOGRAPHIC_FIXED_LAYOUT$row_padding_px *
-      INFOGRAPHIC_STYLE$secondary_panel_row_padding_scale
+      0.55
   )
   snapshot_table_data <- ch6_snapshot_data %>%
     transmute(
@@ -17775,7 +18060,7 @@ build_ch6_snapshot_table <- function() {
           color =
             INFOGRAPHIC_PALETTE$red,
           weight =
-            gt::px(INFOGRAPHIC_STYLE$header_rule_px)
+            gt::px(3)
         ),
       locations =
         gt::cells_column_labels(
@@ -17823,8 +18108,25 @@ build_ch6_snapshot_table <- function() {
             ShareDeparting
         )
     ) %>%
-    style_infographic_emphasis_column(
-      column = "EstimatedMoneyLost"
+    gt::tab_style(
+      style =
+        list(
+          gt::cell_fill(
+            color =
+              INFOGRAPHIC_PALETTE$pink
+          ),
+          gt::cell_text(
+            color =
+              INFOGRAPHIC_PALETTE$red,
+            weight =
+              "bold"
+          )
+        ),
+      locations =
+        gt::cells_body(
+          columns =
+            EstimatedMoneyLost
+        )
     ) %>%
     gt::tab_source_note(
       source_note =
@@ -17858,9 +18160,9 @@ build_ch6_snapshot_table <- function() {
           snapshot_padding_px
         ),
       column_labels.padding =
-        gt::px(INFOGRAPHIC_STYLE$secondary_panel_col_padding_px),
+        gt::px(3),
       heading.padding =
-        gt::px(INFOGRAPHIC_STYLE$secondary_panel_heading_padding_px),
+        gt::px(4),
       source_notes.font.size =
         gt::px(
           snapshot_source_px
@@ -18013,45 +18315,77 @@ export_chapter6_composite <- function(
       png_path =
         main_raw_path
     )
+  CH6_DETACHED_GAP_PX <- 35L
   spacer <- magick::image_blank(
     width =
       INFOGRAPHIC_SPEC$output_width_px,
     height =
-      INFOGRAPHIC_STYLE$detached_panel_gap_px,
+      CH6_DETACHED_GAP_PX,
     color =
       "white"
   )
-  final_snapshot_table <-
-    build_ch6_snapshot_table()
-  final_snapshot_image <-
-    ch6_render_table_image(
-      table =
-        final_snapshot_table,
-      png_path =
-        snapshot_raw_path
+  snapshot_scale_candidates <- c(
+    0.88,
+    0.85,
+    0.82,
+    0.79
+  )
+  final_snapshot_table <- NULL
+  final_snapshot_image <- NULL
+  final_image <- NULL
+  chosen_snapshot_scale <- NA_real_
+  for (
+    snapshot_scale in
+      snapshot_scale_candidates
+  ) {
+    snapshot_table <-
+      build_ch6_snapshot_table(
+        font_scale =
+          snapshot_scale
+      )
+    snapshot_image <-
+      ch6_render_table_image(
+        table =
+          snapshot_table,
+        png_path =
+          snapshot_raw_path
+      )
+    candidate_image <- magick::image_append(
+      c(
+        main_image,
+        spacer,
+        snapshot_image
+      ),
+      stack =
+        TRUE
     )
-  final_image <- magick::image_append(
-    c(
-      main_image,
-      spacer,
-      final_snapshot_image
-    ),
-    stack =
-      TRUE
-  )
-  combined_info <- magick::image_info(
-    final_image
-  )
+    candidate_info <- magick::image_info(
+      candidate_image
+    )
+    if (
+      candidate_info$height[[1]] <=
+        INFOGRAPHIC_SPEC$output_height_px
+    ) {
+      final_snapshot_table <-
+        snapshot_table
+      final_snapshot_image <-
+        snapshot_image
+      final_image <-
+        candidate_image
+      chosen_snapshot_scale <-
+        snapshot_scale
+      break
+    }
+  }
   if (
-    combined_info$height[[1]] >
-      INFOGRAPHIC_SPEC$output_height_px
+    is.null(final_image)
   ) {
     stop(
       paste0(
         "Chapter 6 main table plus detached Figure 6.09 snapshot does not fit ",
-        "the standard infographic canvas at the fixed secondary-panel scale of ",
-        INFOGRAPHIC_STYLE$secondary_panel_scale,
-        ". Reduce snapshot content or spacing rather than changing typography."
+        "the standard infographic canvas without reducing the main-table ",
+        "typography. Reduce snapshot content or spacing rather than shrinking ",
+        "the publication table."
       ),
       call. = FALSE
     )
@@ -18174,7 +18508,7 @@ export_chapter6_composite <- function(
     " body rows + ",
     ch6_section_header_count,
     " section headers. Snapshot scale: ",
-    INFOGRAPHIC_STYLE$secondary_panel_scale,
+    chosen_snapshot_scale,
     "."
   )
   list(
@@ -18189,7 +18523,7 @@ export_chapter6_composite <- function(
     png_path =
       png_path,
     snapshot_scale =
-      INFOGRAPHIC_STYLE$secondary_panel_scale,
+      chosen_snapshot_scale,
     width_px =
       final_info$width[[1]],
     height_px =
@@ -18225,7 +18559,7 @@ knitr::include_graphics(
 #      section-header count, rendered-row-equivalent count, and PNG dimensions.
 #
 # Every NONFINAL page must be:
-#      36 body rows + 6 section headers = 42 rendered row-equivalents.
+#      30 body rows + 5 section headers = 35 rendered row-equivalents.
 #
 # Final pages may be shorter but use the identical physical canvas.
 # ============================================================================
@@ -18926,12 +19260,12 @@ audit_chapter <- function(
         !.data$PageIsFinal &
           .data$PageBodyRows !=
             INFOGRAPHIC_ROWS_PER_PAGE ~
-          paste0("CHECK: nonfinal page is not ", INFOGRAPHIC_ROWS_PER_PAGE, " body rows"),
+          "CHECK: nonfinal page is not 30 body rows",
 
         !.data$PageIsFinal &
           .data$PageSectionHeaders !=
             INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
-          paste0("CHECK: nonfinal page is not ", INFOGRAPHIC_SECTION_HEADERS_PER_PAGE, " section headers"),
+          "CHECK: nonfinal page is not 5 section headers",
 
         TRUE ~
           ""
@@ -19136,12 +19470,12 @@ infographic_page_layout_audit <- purrr::imap_dfr(
       !.data$IsFinalPage &
         .data$BodyRows !=
           INFOGRAPHIC_ROWS_PER_PAGE ~
-        paste0("CHECK: nonfinal page is not ", INFOGRAPHIC_ROWS_PER_PAGE, " body rows"),
+        "CHECK: nonfinal page is not 30 body rows",
 
       !.data$IsFinalPage &
         .data$SectionHeaders !=
           INFOGRAPHIC_SECTION_HEADERS_PER_PAGE ~
-        paste0("CHECK: nonfinal page is not ", INFOGRAPHIC_SECTION_HEADERS_PER_PAGE, " section headers"),
+        "CHECK: nonfinal page is not 5 section headers",
 
       is.finite(
         .data$ActualWidthPx

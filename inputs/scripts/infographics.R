@@ -60,26 +60,7 @@ INFOGRAPHIC_PALETTE <- list(
   tint = "#F7F4EF",
   pink = TPA_RED_LIGHT,
   text = "grey20",
-  muted = "grey40",
-  trend_up = "blue",
-  trend_down = "gold"
-)
-
-# Every non-data visual choice used by the six infographic builders lives here.
-# Chapter code may decide WHAT is shown, but should not introduce new spacing,
-# border, indentation, arrow, or secondary-panel values.
-INFOGRAPHIC_STYLE <- list(
-  header_rule_px = 3,
-  body_rule_px = 1,
-  trend_right_padding_px = 5,
-  trend_scale = 0.82,
-  nested_indent_px = 18,
-  flag_gap_px = 7,
-  detached_panel_gap_px = 35,
-  secondary_panel_scale = 0.88,
-  secondary_panel_row_padding_scale = 0.55,
-  secondary_panel_col_padding_px = 3,
-  secondary_panel_heading_padding_px = 4
+  muted = "grey40"
 )
 
 stopifnot(
@@ -796,21 +777,21 @@ INFOGRAPHIC_FIXED_LAYOUT$row_height_px <- ceiling(
 
 # Fixed editorial pagination.
 #
-# The publication target is 36 BODY rows per page, with room reserved for up
-# to six visible section headers. A section header counts as one rendered-row
+# The publication target is 30 BODY rows per page, with room reserved for up
+# to five visible section headers. A section header counts as one rendered-row
 # equivalent when pages are split.
 #
 # Therefore:
-#   body-row cap             = 36
-#   section-header allowance = 6
-#   rendered-row budget      = 42
+#   body-row cap             = 30
+#   section-header allowance = 5
+#   rendered-row budget      = 35
 #
-# A page with six section headers can contain all 36 body rows.
-# A page with more than six section headers is broken earlier so the combined
-# body-row + section-header count never exceeds 42. Pages are never resized and
+# A page with five section headers can contain all 30 body rows.
+# A page with more than five section headers is broken earlier so the combined
+# body-row + section-header count never exceeds 35. Pages are never resized and
 # typography is never reduced to force additional content onto the canvas.
-INFOGRAPHIC_ROWS_PER_PAGE <- 36L
-INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 6L
+INFOGRAPHIC_ROWS_PER_PAGE <- 30L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 5L
 INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
   INFOGRAPHIC_ROWS_PER_PAGE +
   INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
@@ -945,130 +926,6 @@ infographic_trend_arrow <- function(change) {
   out
 }
 
-# Apply the shared pink/red focal-column treatment. The main tables use
-# `Latest`; secondary panels may choose a different focal output column.
-style_infographic_emphasis_column <- function(
-    tbl,
-    column = "Latest",
-    rows = TRUE
-) {
-  if (is.null(column) || length(column) != 1L || !nzchar(column)) {
-    return(tbl)
-  }
-
-  gt::tab_style(
-    tbl,
-    style = list(
-      gt::cell_fill(color = INFOGRAPHIC_PALETTE$pink),
-      gt::cell_text(color = INFOGRAPHIC_PALETTE$red, weight = "bold")
-    ),
-    locations = gt::cells_body(
-      columns = tidyselect::all_of(column),
-      rows = rows
-    )
-  )
-}
-
-# Apply the same lower-level subsection treatment wherever a chapter needs a
-# hierarchy below the beige uppercase section band.
-style_infographic_subsection_rows <- function(
-    tbl,
-    rows,
-    add_top_rule = TRUE
-) {
-  rows <- as.integer(rows)
-  rows <- rows[is.finite(rows)]
-  if (length(rows) == 0L) return(tbl)
-
-  tbl <- tbl %>%
-    gt::tab_style(
-      style = list(
-        gt::cell_fill(color = "white"),
-        gt::cell_text(color = INFOGRAPHIC_PALETTE$red, weight = "bold")
-      ),
-      locations = gt::cells_stub(rows = rows)
-    ) %>%
-    gt::tab_style(
-      style = list(
-        gt::cell_fill(color = "white"),
-        gt::cell_text(color = INFOGRAPHIC_PALETTE$text, weight = "normal")
-      ),
-      locations = gt::cells_body(
-        columns = tidyselect::everything(),
-        rows = rows
-      )
-    )
-
-  if (isTRUE(add_top_rule)) {
-    rule <- gt::cell_borders(
-      sides = "top",
-      color = INFOGRAPHIC_PALETTE$rule,
-      weight = gt::px(INFOGRAPHIC_STYLE$body_rule_px)
-    )
-    tbl <- tbl %>%
-      gt::tab_style(
-        style = rule,
-        locations = gt::cells_stub(rows = rows)
-      ) %>%
-      gt::tab_style(
-        style = rule,
-        locations = gt::cells_body(
-          columns = tidyselect::everything(),
-          rows = rows
-        )
-      )
-  }
-
-  tbl
-}
-
-# Wrap already-safe HTML in the standard nested-label indent. This is used by
-# chapters whose hierarchy is rendered inside the stub text rather than by CSS
-# row selectors.
-infographic_nested_label_html <- function(
-    content,
-    indent_px = INFOGRAPHIC_STYLE$nested_indent_px
-) {
-  paste0(
-    "<span style='display:inline-block;padding-left:",
-    indent_px,
-    "px;'>",
-    content,
-    "</span>"
-  )
-}
-
-# Generate the common CSS used to indent nested labels below a subsection.
-infographic_nested_row_css <- function(
-    id,
-    rows,
-    indent_px = INFOGRAPHIC_STYLE$nested_indent_px
-) {
-  rows <- as.integer(rows)
-  rows <- rows[is.finite(rows)]
-  if (length(rows) == 0L) return("")
-
-  nested_padding_px <-
-    infographic_pt_to_px(PUB$spacing$infographic_side_pad_pt) +
-    indent_px
-
-  paste0(
-    vapply(
-      rows,
-      function(i) {
-        paste0(
-          "#", id, " tbody tr:nth-child(", i, ") .gt_stub, #",
-          id, " tbody tr:nth-child(", i, ") .gt_rowname {",
-          "padding-left:", nested_padding_px, "px !important;",
-          "}"
-        )
-      },
-      character(1)
-    ),
-    collapse = ""
-  )
-}
-
 build_infographic_table <- function(
     data,
     id,
@@ -1085,8 +942,7 @@ build_infographic_table <- function(
     layout = INFOGRAPHIC_FIXED_LAYOUT,
     row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
     nowrap_values = TRUE,
-    trend_right_padding_px = INFOGRAPHIC_STYLE$trend_right_padding_px,
-    emphasis_column = "Latest",
+    trend_right_padding_px = 0,
     show_header = TRUE,
     top_border = FALSE
 ) {
@@ -1205,7 +1061,7 @@ build_infographic_table <- function(
       style = gt::cell_borders(
         sides = "top",
         color = INFOGRAPHIC_PALETTE$red,
-        weight = gt::px(INFOGRAPHIC_STYLE$header_rule_px)
+        weight = gt::px(3)
       ),
       locations = gt::cells_column_labels(tidyselect::everything())
     ) %>%
@@ -1220,12 +1076,16 @@ build_infographic_table <- function(
       ),
       locations = gt::cells_row_groups()
     ) %>%
-    style_infographic_emphasis_column(
-      column = emphasis_column
+    gt::tab_style(
+      style = list(
+        gt::cell_fill(color = INFOGRAPHIC_PALETTE$pink),
+        gt::cell_text(color = INFOGRAPHIC_PALETTE$red, weight = "bold")
+      ),
+      locations = gt::cells_body(columns = Latest)
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = INFOGRAPHIC_PALETTE$trend_up,
+        color = "blue",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1235,7 +1095,7 @@ build_infographic_table <- function(
     ) %>%
     gt::tab_style(
       style = gt::cell_text(
-        color = INFOGRAPHIC_PALETTE$trend_down,
+        color = "gold",
         weight = "bold"
       ),
       locations = gt::cells_body(
@@ -1262,7 +1122,7 @@ build_infographic_table <- function(
       table.background.color = "white",
       row.striping.background_color = "white",
       table_body.hlines.color = INFOGRAPHIC_PALETTE$rule,
-      table_body.hlines.width = gt::px(INFOGRAPHIC_STYLE$body_rule_px),
+      table_body.hlines.width = gt::px(1),
       row_group.border.top.color = INFOGRAPHIC_PALETTE$rule,
       row_group.border.bottom.color = INFOGRAPHIC_PALETTE$rule,
       table.width = gt::px(INFOGRAPHIC_SPEC$css_width_px),
@@ -1337,7 +1197,7 @@ build_infographic_table <- function(
     "#", id, " td[data-column-id='Trend'] {",
     "padding-left:0 !important;padding-right:", trend_right_padding_px, "px !important;",
     "text-align:center !important;",
-    "font-size:", sizes$data * INFOGRAPHIC_STYLE$trend_scale, "px !important;",
+    "font-size:", sizes$data * 0.82, "px !important;",
     "line-height:1 !important;}",
     "#", id, " .gt_source_notes {line-height:", PUB$type_metrics$infographic_source_lineheight, " !important;",
     "padding-left:", infographic_pt_to_px(PUB$spacing$infographic_side_pad_pt), "px !important;",
