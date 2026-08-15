@@ -215,12 +215,12 @@ PUB <- list(
     table_source_pad_pt   = 5,
     
     # Infographic spacing. These are converted to the infographic CSS density.
-    infographic_row_pad_pt     = 2,
+    infographic_row_pad_pt     = 2.7,
     infographic_col_pad_pt     = 2.5,
     infographic_heading_pad_pt = 4,
     infographic_source_pad_pt  = 2.5,
     infographic_side_pad_pt    = 4,
-    infographic_group_pad_pt   = 2
+    infographic_group_pad_pt   = 2.7
   ),
   
   # Unitless type metrics and letter spacing.
@@ -237,8 +237,8 @@ PUB <- list(
     infographic_subtitle_lineheight     = 1.15,
     infographic_panel_label_lineheight  = 1.35,
     infographic_panel_title_lineheight  = 1.00,
-    infographic_group_lineheight        = 1.10,
-    infographic_row_lineheight          = 1.15,
+    infographic_group_lineheight        = 1.21,
+    infographic_row_lineheight          = 1.21,
     infographic_source_lineheight       = 1.15,
     infographic_column_lineheight       = 1.10,
     

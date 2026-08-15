@@ -1170,7 +1170,7 @@ export_current_chapter <- function(
         paste0(
           "**Source:** Derived from the current report figures and tables: ",
           paste(source_figures, collapse = ", "),
-          ". See the cited figures and tables for full source information."
+          "."
         )
       )
     }
@@ -1220,7 +1220,8 @@ export_current_chapter <- function(
 #   - Historical column = 1995 for all current/historical measures.
 #   - *  = source series contains usable data before 1995.
 #   - Current column = 2025 where available.
-#   - ** = latest usable observation is 2024 rather than 2025.
+#   - A superscript year on a current value marks a latest usable observation
+#     earlier than 2025 (e.g. 2024).
 #   - Projection rows remain optional and are off by default.
 #
 # Current report sources:
@@ -1296,6 +1297,22 @@ CH1_INCLUDE <- c(
 CH1_BASELINE_YEAR <- 1995L
 CH1_TARGET_YEAR <- 2025L
 CH1_FALLBACK_YEAR <- 2024L
+
+
+# Render a year as Unicode superscript digits, following the Chapter 3 and
+# Chapter 4 convention for marking rows whose latest endpoint is not 2025.
+ch1_superscript_year <- function(year) {
+
+  year <- as.character(
+    as.integer(year)
+  )
+
+  chartr(
+    "0123456789",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹",
+    year
+  )
+}
 
 
 # ----------------------------------------------------------------------------
@@ -1545,8 +1562,8 @@ ch1_current_endpoint <- function(
 #     value
 #     if 2025 exists
 #
-#     value**
-#     if 2024 is used instead
+#     value with a superscript year
+#     if an earlier year (e.g. 2024) is used instead
 
 ch1_metric_series <- function(
     stat_id,
@@ -1644,7 +1661,8 @@ ch1_metric_series <- function(
   )
 
 
-  # Column header already says 2025.
+  # Column header already says 2025. Mark any earlier latest endpoint with a
+  # superscript of its actual year.
   out$Latest <- paste0(
 
     format_value(
@@ -1653,14 +1671,12 @@ ch1_metric_series <- function(
     ),
 
     if (
-      identical(
-        as.integer(
-          last$year
-        ),
-        CH1_FALLBACK_YEAR
-      )
+      as.integer(last$year) !=
+        CH1_TARGET_YEAR
     ) {
-      "**"
+      ch1_superscript_year(
+        last$year
+      )
     } else {
       ""
     }
@@ -1996,14 +2012,12 @@ field_share_metric <- function(
     ),
 
     if (
-      identical(
-        as.integer(
-          last$Year[[1]]
-        ),
-        CH1_FALLBACK_YEAR
-      )
+      as.integer(last$Year[[1]]) !=
+        CH1_TARGET_YEAR
     ) {
-      "**"
+      ch1_superscript_year(
+        last$Year[[1]]
+      )
     } else {
       ""
     }
@@ -2703,13 +2717,13 @@ ch1_has_prebaseline_history <- any(
 )
 
 
-# A double ** in the 2025 column means that the latest available observation
-# is 2024 rather than 2025.
+# A superscript year in the 2025 column means that the latest available
+# observation is earlier than 2025.
 
 ch1_has_2024_fallback <- any(
   stringr::str_detect(
     ch1_data$Latest,
-    "\\*\\*$"
+    "[\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079]$"
   )
 )
 
@@ -2769,29 +2783,24 @@ ch1_note_text <- c(
   },
 
 
-  if (
-    ch1_has_2024_fallback
-  ) {
-
-    paste0(
-      "\\*\\* Latest data are available through ",
-      CH1_FALLBACK_YEAR,
-      " for marked series."
-    )
-
-  } else {
-
-    NULL
-  },
-
-
   paste0(
 
     "**Note:** Historical comparisons use ",
     CH1_BASELINE_YEAR,
     " and ",
     CH1_TARGET_YEAR,
-    " observations. ",
+    " observations",
+
+    if (
+      ch1_has_2024_fallback
+    ) {
+
+      ". Superscript years mark rows with an earlier latest endpoint than 2025. "
+
+    } else {
+
+      ". "
+    },
 
     if (
       ch1_has_projections
@@ -2856,6 +2865,7 @@ export_current_chapter(
 
 ```
 
+
 # Chapter 2
 ```{r infographic_ch2_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -2866,7 +2876,8 @@ export_current_chapter(
 #   - Standard comparison = 2001 → 2025.
 #   - Years appear in column headers, not individual cells.
 #
-#   - * means the left-column value is not 2001:
+#   - A superscript year on a value marks an endpoint other than the column
+#     header:
 #       • STEM-country rows use their first available observation.
 #       • Recruitment/barrier rows use 2015.
 #       • Enrollment-projection rows use 2025 actual.
@@ -2920,7 +2931,7 @@ CH2_INCLUDE <- c(
   india_graduate_share = TRUE,
   china_graduate_share = TRUE,
   south_korea_graduate_share = TRUE,
-  india_china_graduate_share = TRUE,
+  india_china_graduate_share = FALSE,
   europe_share = TRUE,
   sub_saharan_africa_share = TRUE,
 
@@ -2981,6 +2992,23 @@ CURRENT_REPORT_SOURCES <- unique(c(
 CH2_SECTION_HEADERS_PER_PAGE <- 6L
 CH2_BASELINE_YEAR <- 2001L
 CH2_TARGET_YEAR <- 2025L
+
+
+# Render a year as Unicode superscript digits, following the Chapter 3 and
+# Chapter 4 convention. A superscript year on a value marks an endpoint other
+# than the one named in the column header.
+ch2_superscript_year <- function(year) {
+
+  year <- as.character(
+    as.integer(year)
+  )
+
+  chartr(
+    "0123456789",
+    "⁰¹²³⁴⁵⁶⁷⁸⁹",
+    year
+  )
+}
 
 
 # ----------------------------------------------------------------------------
@@ -3615,7 +3643,8 @@ ch2_metric_series <- function(
   )
 
 
-  # Column header already says 2001.
+  # Column header already says 2001. Mark any other baseline year with a
+  # superscript of its actual year.
   out$Earlier <- paste0(
     format_value(
       first$value,
@@ -3625,7 +3654,9 @@ ch2_metric_series <- function(
     if (
       first$used_fallback
     ) {
-      "*"
+      ch2_superscript_year(
+        first$year
+      )
     } else {
       ""
     }
@@ -3798,13 +3829,13 @@ ch2_projection_metric <- function(
   )
 
 
-  # * = left-column value is 2025 actual rather than 2001.
+  # Superscript 2025 = left-column value is the 2025 actual, not 2001.
   out$Earlier <- paste0(
     format_value(
       first_value,
       "count"
     ),
-    "*"
+    ch2_superscript_year(2025)
   )
 
 
@@ -3972,13 +4003,13 @@ ch2_recruitment_top3_stats <- purrr::pmap_dfr(
     )
 
 
-    # * = left-column value is 2015 rather than 2001.
+    # Superscript 2015 = left-column value is 2015, not 2001.
     out$Earlier <- paste0(
       format_value(
         Value2015,
         "percent_value"
       ),
-      "*"
+      ch2_superscript_year(2015)
     )
 
 
@@ -4054,7 +4085,8 @@ ch2_top_recruitment_target <- metric_text(
       ch2_top_target_2015$Percent[[1]],
       accuracy = 0.1
     ),
-    "%*"
+    "%",
+    ch2_superscript_year(2015)
   ),
 
   latest = paste0(
@@ -4230,13 +4262,13 @@ ch2_barrier_top3_stats <- purrr::pmap_dfr(
     )
 
 
-    # * = left-column value is 2015 rather than 2001.
+    # Superscript 2015 = left-column value is 2015, not 2001.
     out$Earlier <- paste0(
       format_value(
         Value2015,
         "percent_value"
       ),
-      "*"
+      ch2_superscript_year(2015)
     )
 
 
@@ -5292,14 +5324,19 @@ build_ch2_page <- function(
     c(
 
       paste0(
-        "\\* Marked rows use a baseline other than 2001, see note below. ",
-        "ᴾ marks 2026 projected enrollment."
+        "ᴾ Projected values are drawn directly from the Open Doors Fall ",
+        "2025 snapshot's 2026 enrollment projection."
       ),
 
       paste0(
-        "**Note:** Unless otherwise indicated rows compare 2001 and 2025.",
-        "STEM-country rows compare 2010 and 2025. Recruitment and barrier rows compare 2015 and 2025.",
-        "Arrow colors indicate direction of change only."
+        "**Note:** Historical comparisons use ",
+        CH2_BASELINE_YEAR,
+        " and ",
+        CH2_TARGET_YEAR,
+        " observations. Superscript years mark rows with an earlier latest ",
+        "endpoint than ",
+        CH2_TARGET_YEAR,
+        ". Arrow colors indicate direction of change only."
       ),
 
       paste0(
@@ -5511,7 +5548,7 @@ CH3_INCLUDE <- c(
   visa_engineers = TRUE,
   visa_biological = TRUE,
   visa_physical = TRUE,
-  visa_social = TRUE,
+  visa_social = FALSE,
   visa_se_related = FALSE,
   visa_nonse = FALSE,
 
@@ -5534,9 +5571,9 @@ CH3_INCLUDE <- c(
 # 1. PAGE / EDITORIAL RULES
 # ---------------------------------------------------------------------------
 
-CH3_DEFAULT_TRUE_COUNT <- 32L
+CH3_DEFAULT_TRUE_COUNT <- 31L
 
-CH3_ROWS_PER_PAGE <- 32L
+CH3_ROWS_PER_PAGE <- 31L
 
 CH3_SECTION_HEADERS_PER_PAGE <- 5L
 
@@ -8450,17 +8487,15 @@ build_ch3_page <- function(
       "\\* FFRDCs = federally funded research and development centers.",
 
       paste0(
-        "**Note:** Most rows compare 2000 and 2025; superscript years mark ",
-        "different endpoints. Average rows are population-weighted across ",
-        "bachelor’s, master’s, and doctorate levels. ", 
-        "Arrow colors indicate direction of change only."
+        "**Note:** Historical comparisons use 2000 and 2025",
+        " observations. Superscript years mark rows with an earlier latest ",
+        "endpoint than 2025. Average rows are population-wegithed across",
+        " degree levels. Arrow colors indicate direction of change only."
       ),
 
       paste0(
         "**Source:** Derived from the current report Figures and Tables: ",
-        "Figures 3.01–3.06 and Tables 3.01–3.03. Additional weighted-average ",
-        "calculations use the underlying NSCG custom tabulation and NCSES ",
-        "Table 6-4."
+        "Figures 3.01–3.06 and Tables 3.01–3.03."
       )
     )
 
@@ -8551,6 +8586,7 @@ knitr::include_graphics(
 ```
 
 # Chapter 4
+
 ```{r infographic_ch4_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 
 # ============================================================================
@@ -8598,7 +8634,7 @@ CH4_TAB402_LATEST_SURVEY  <- "2012/2017 Survey"
 CH4_STUDY_EARLIER_YEAR <- 2005L
 CH4_STUDY_LATEST_YEAR  <- 2024L
 
-CH4_DEFAULT_TRUE_COUNT <- 33L
+CH4_DEFAULT_TRUE_COUNT <- 31L
 
 
 # ----------------------------------------------------------------------------
@@ -8827,7 +8863,7 @@ CH4_INCLUDE <- c(
   study_region_europe = TRUE,
   study_region_latin = TRUE,
   study_region_asia = TRUE,
-  study_region_multiple = TRUE,
+  study_region_multiple = FALSE,
   study_region_oceania = TRUE,
   study_region_ssa = TRUE,
   study_region_mena = TRUE,
@@ -8842,7 +8878,7 @@ CH4_INCLUDE <- c(
 
   study_field_stem = TRUE,
   study_field_social = TRUE,
-  study_field_arts = TRUE,
+  study_field_arts = FALSE,
   study_field_humanities = TRUE,
 
   study_field_business = TRUE,
@@ -10864,7 +10900,7 @@ CH4_SECTION_HEADERS <- tibble::tribble(
 #
 # Study-abroad child rows receive IsNested = TRUE.
 #
-# This allows the renderer to indent:
+# Nested labels use the same two Unicode em spaces as Chapters 2 and 3:
 #
 #   Where US students study abroad
 #       Europe
@@ -10932,9 +10968,18 @@ ch4_render_page_data <- function(
     tibble::tibble(
 
       Measure =
-        as.character(
-          block$Measure
-        ),
+        if (isTRUE(nested)) {
+          paste0(
+            "\u2003\u2003",
+            as.character(
+              block$Measure
+            )
+          )
+        } else {
+          as.character(
+            block$Measure
+          )
+        },
 
       Earlier =
         as.character(
@@ -11278,7 +11323,7 @@ build_ch4_infographic_table <- function(
     row_padding_px = INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
     nowrap_values = TRUE,
     trend_right_padding_px = 5,
-    nested_indent_px = 18
+    nested_indent_px = 0
 ) {
 
   sizes <- font_sizes(
@@ -11976,7 +12021,7 @@ build_ch4_infographic_table <- function(
   # --------------------------------------------------------------------------
   # Nested study-abroad row CSS
   #
-  # Add extra indentation beyond the standard infographic side padding.
+  # Keep the standard side padding; the two em-space characters provide the indent.
   # --------------------------------------------------------------------------
 
   nested_css <- if (
@@ -12202,21 +12247,21 @@ build_ch4_page <- function(
     is_last_page
   ) {
 
-    c(
+     c(
+
+      "† Open Doors revised its field classifications in 2014, so values before and after that year are not strictly comparable.",
 
       paste0(
-        "**Note:** PISA = Programme for International Student Assessment; ",
-        "ROW = rest of world. Science scores use 2006 because earlier ",
-        "scores are not comparable. † Open Doors changed ",
-        "field classifications in 2014; affected values are not strictly ",
-        "comparable."
+        "**Note:** Historical comparisons use the endpoints shown in each subheader; ",
+        "PISA = Programme for International Student Assessment; ROW = rest of world."
       ),
 
       paste0(
-        "**Sources:** INF4-01; Figures 4.01 and 4.06–4.08; ",
-        "Tables 4.02–4.04. Study-abroad total values supplied separately."
+        "**Source:** Derived from the current report Figures and Tables: ",
+        "Figures 4.01–4.08 and Tables 4.02–4.04."
       )
     )
+
 
   } else {
 
@@ -12253,7 +12298,7 @@ build_ch4_page <- function(
       5,
 
     nested_indent_px =
-      18
+      0
   )
 }
 
@@ -12292,6 +12337,7 @@ knitr::include_graphics(
   )
 )
 ```
+
 
 # Chapter 5
 ```{r infographic_ch5_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
@@ -12348,7 +12394,7 @@ knitr::include_graphics(
 CH5_EARLIER_YEAR <- 2014L
 CH5_LATEST_YEAR  <- 2025L
 
-CH5_DEFAULT_TRUE_COUNT <- 31L
+CH5_DEFAULT_TRUE_COUNT <- 29L
 
 
 # ============================================================================
@@ -12384,7 +12430,7 @@ CH5_INCLUDE <- c(
   top_papers_us = TRUE,
   highly_cited_us = TRUE,
   neurips_oral_us = TRUE,
-  conference_icml_us = TRUE,
+  conference_icml_us = FALSE,
 
 
   # --------------------------------------------------------------------------
@@ -12395,7 +12441,7 @@ CH5_INCLUDE <- c(
   top_papers_china = TRUE,
   highly_cited_china = TRUE,
   neurips_oral_china = TRUE,
-  conference_icml_china = TRUE,
+  conference_icml_china = FALSE,
 
 
   # --------------------------------------------------------------------------
@@ -13327,23 +13373,16 @@ ch5_measure_html <- function(
 
 
   if (
-    isTRUE(
-      nested
-    )
-  ) {
+  isTRUE(
+    nested
+  )
+) {
 
-    content <- paste0(
-
-      "<span style='",
-      "display:inline-block;",
-      "padding-left:18px;",
-      "'>",
-
-      content,
-
-      "</span>"
-    )
-  }
+  content <- paste0(
+    "\u2003\u2003",
+    content
+  )
+}
 
 
   content
@@ -15619,17 +15658,19 @@ build_ch5_page <- function(
     c(
 
       paste0(
-        "**Note:** Columns are normalized to 2014 and 2025. ",
-        "Superscript years identify observations from different years; ",
-        "\\* indicates that earlier data are available before 2014. ",
-        "NeurIPS = Conference on Neural Information Processing Systems; ",
-        "ICML = International Conference on Machine Learning. ",
-        "Arrow colors indicate numeric direction only."
+        "\\* Data are available further back than 2014 for marked series"
       ),
 
       paste0(
-        "**Sources:** Derived from the current report Figures and Tables: ",
-        "Figures 5.01–5.04 and 5.06; Tables 5.01 and 5.03–5.06."
+        "**Note:** Historical comparisons use 2014 and 2025",
+        " observations. Superscript years mark rows with an earlier latest ",
+        "endpoint than 2025. NeurIPS = Conference on Neural Information ",
+        "Processing Systems.Arrow colors indicate direction of change only."
+      ),
+
+      paste0(
+        "**Source:** Derived from the current report Figures and Tables: ",
+        "Figures 5.01–5.06, Tables 5.01-5.06."
       )
     )
 
@@ -15880,11 +15921,21 @@ knitr::include_graphics(
 ```{r infographic_ch6_by_the_numbers, echo=FALSE, message=FALSE, warning=FALSE}
 CH6_EARLIER_YEAR <- 2021L
 CH6_LATEST_YEAR  <- 2025L
-CH6_DEFAULT_TRUE_COUNT <- 25L
-CH6_EXPECTED_MAIN_DISPLAY_ROWS <- 27L
+
+CH6_DEFAULT_TRUE_COUNT <- 22L
+CH6_EXPECTED_MAIN_DISPLAY_ROWS <- 24L
 CH6_EXPECTED_SECTION_HEADERS   <- 5L
+
+
+# ============================================================================
+# 1. INCLUDE / EXCLUDE CONTROLS
+# ============================================================================
+
 CH6_INCLUDE <- c(
+
+  # Stay intentions
   intent_overall = TRUE,
+
   intent_region_africa = TRUE,
   intent_region_asia = TRUE,
   intent_region_americas = TRUE,
@@ -15892,9 +15943,10 @@ CH6_INCLUDE <- c(
   intent_region_middle_east = TRUE,
   intent_region_australia_oceania = FALSE,
   intent_region_region_and_country_or_economy_unknown = FALSE,
+
   intent_field_computer_and_information_sciences = TRUE,
   intent_field_engineering = TRUE,
-  intent_field_social_sciences = TRUE,
+  intent_field_social_sciences = FALSE,
   intent_field_physical_sciences = TRUE,
   intent_field_agricultural_sciences_and_natural_resources = FALSE,
   intent_field_biological_and_biomedical_sciences = FALSE,
@@ -15904,36 +15956,49 @@ CH6_INCLUDE <- c(
   intent_field_multidisciplinary_interdisciplinary_sciences = FALSE,
   intent_field_psychology = FALSE,
   intent_field_non_science_and_engineering = FALSE,
+
+  # Realized retention
   stay_5yr = TRUE,
   stay_10yr = TRUE,
+
+  # Career paths after the PhD
   career_us_academe = TRUE,
   career_us_industry_or_business = TRUE,
   career_us_government = FALSE,
   career_us_nonprofit_organization = FALSE,
   career_us_other_or_unknown = FALSE,
+
   career_temp_academe = TRUE,
   career_temp_industry_or_business = TRUE,
   career_temp_government = FALSE,
   career_temp_nonprofit_organization = FALSE,
   career_temp_other_or_unknown = FALSE,
+
+  # Work-visa bridge
   opt_received = TRUE,
   opt_approved = TRUE,
-  opt_approval_gap = TRUE,
+  opt_approval_gap = FALSE,
   opt_denied = FALSE,
   opt_approval_rate = FALSE,
-  h1b_all_approvals = TRUE,
+
+  h1b_all_approvals = FALSE,
   h1b_tech_approvals = TRUE,
   h1b_all_denial_rate = FALSE,
   h1b_tech_denial_rate = FALSE,
+
+  # Immigration pathways and bottlenecks
   wait_row_eb1 = FALSE,
   wait_row_eb2 = TRUE,
   wait_row_eb3 = FALSE,
+
   wait_india_eb1 = FALSE,
   wait_india_eb2 = TRUE,
   wait_india_eb3 = FALSE,
+
   wait_china_eb1 = FALSE,
   wait_china_eb2 = TRUE,
   wait_china_eb3 = FALSE,
+
   j1_china = FALSE,
   j1_germany = FALSE,
   j1_united_kingdom = FALSE,
@@ -15946,10 +16011,13 @@ CH6_INCLUDE <- c(
   j1_colombia = FALSE,
   j1_turkey = FALSE
 )
+
+
 if (
   sum(CH6_INCLUDE) !=
     CH6_DEFAULT_TRUE_COUNT
 ) {
+
   stop(
     paste0(
       "CH6_INCLUDE currently has ",
@@ -15961,27 +16029,41 @@ if (
     call. = FALSE
   )
 }
+
+
 CH6_SNAPSHOT_INCLUDE <- c(
   loss_engineering = TRUE,
   loss_life = TRUE,
   loss_physical = TRUE,
   loss_computer = TRUE
 )
+
+
+# ============================================================================
+# 2. CURRENT REPORT SOURCES
+# ============================================================================
+
 fig601 <- read_current_figure("FIG601") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig602 <- read_current_figure("FIG602") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig603 <- read_current_figure("FIG603") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig604_all <- read_current_figure(
   "FIG604a",
   meta_id = "FIG604"
@@ -15990,6 +16072,8 @@ fig604_all <- read_current_figure(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig604_tech <- read_current_figure(
   "FIG604b",
   meta_id = "FIG604"
@@ -15998,6 +16082,8 @@ fig604_tech <- read_current_figure(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig605_all <- read_current_figure(
   "FIG605a",
   meta_id = "FIG605"
@@ -16006,6 +16092,8 @@ fig605_all <- read_current_figure(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig605_tech <- read_current_figure(
   "FIG605b",
   meta_id = "FIG605"
@@ -16014,40 +16102,54 @@ fig605_tech <- read_current_figure(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig607 <- read_current_figure("FIG607") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 fig609 <- read_current_figure("FIG609") %>%
   transmute(
+
     Field =
       as.character(
         .data$field
       ),
+
     Recipients =
       numeric_clean(
         .data$recipients
       ),
+
     StayRate10yr =
       numeric_clean(
         .data$stay_rate_10yr
       ),
+
     TimeToDegree =
       numeric_clean(
         .data$ttd_years
       )
   )
+
+
 tab601 <- read_current_table("TAB601") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 tab602 <- read_current_table("TAB602") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 tab603_us <- read_current_table(
   "TAB603a",
   meta_id = "TAB603"
@@ -16056,6 +16158,8 @@ tab603_us <- read_current_table(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 tab603_temp <- read_current_table(
   "TAB603b",
   meta_id = "TAB603"
@@ -16064,12 +16168,19 @@ tab603_temp <- read_current_table(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
+
+
 tab605_row <- read_current_table(
   "TAB605a",
   meta_id = "TAB605"
 ) %>%
   mutate(
-    Year = year_number(.data$Year),
+
+    Year =
+      year_number(
+        .data$Year
+      ),
+
     across(
       c(
         EB1,
@@ -16079,12 +16190,19 @@ tab605_row <- read_current_table(
       numeric_clean
     )
   )
+
+
 tab605_china <- read_current_table(
   "TAB605b",
   meta_id = "TAB605"
 ) %>%
   mutate(
-    Year = year_number(.data$Year),
+
+    Year =
+      year_number(
+        .data$Year
+      ),
+
     across(
       c(
         EB1,
@@ -16094,12 +16212,19 @@ tab605_china <- read_current_table(
       numeric_clean
     )
   )
+
+
 tab605_india <- read_current_table(
   "TAB605c",
   meta_id = "TAB605"
 ) %>%
   mutate(
-    Year = year_number(.data$Year),
+
+    Year =
+      year_number(
+        .data$Year
+      ),
+
     across(
       c(
         EB1,
@@ -16109,7 +16234,14 @@ tab605_india <- read_current_table(
       numeric_clean
     )
   )
+
+
+# ============================================================================
+# 3. HELPERS
+# ============================================================================
+
 ch6_slug <- function(x) {
+
   x %>%
     stringr::str_to_lower() %>%
     stringr::str_replace_all(
@@ -16121,21 +16253,28 @@ ch6_slug <- function(x) {
       ""
     )
 }
+
+
 ch6_superscript_year <- function(year) {
+
   year <- as.character(
     as.integer(year)
   )
+
   chartr(
     "0123456789",
     "⁰¹²³⁴⁵⁶⁷⁸⁹",
     year
   )
 }
+
+
 ch6_endpoint_pair <- function(
     df,
     column,
     year_column = "Year"
 ) {
+
   if (
     !all(
       c(
@@ -16146,45 +16285,62 @@ ch6_endpoint_pair <- function(
   ) {
     return(NULL)
   }
+
+
   tmp <- tibble::tibble(
+
     Year =
       year_number(
         df[[year_column]]
       ),
+
     Value =
       numeric_clean(
         df[[column]]
       )
   ) %>%
+
     filter(
       is.finite(.data$Year),
       is.finite(.data$Value),
       .data$Year <=
         CH6_LATEST_YEAR
     ) %>%
+
     arrange(
       .data$Year
     )
+
+
   if (
     nrow(tmp) == 0L
   ) {
     return(NULL)
   }
+
+
   has_earlier_data <- any(
     tmp$Year <
       CH6_EARLIER_YEAR
   )
+
+
   exact_earlier <- tmp %>%
     filter(
       .data$Year ==
         CH6_EARLIER_YEAR
     )
+
+
   if (
     nrow(exact_earlier) > 0L
   ) {
+
     earlier <- exact_earlier %>%
       slice(1)
+
   } else {
+
     later_candidates <- tmp %>%
       filter(
         .data$Year >
@@ -16193,12 +16349,17 @@ ch6_endpoint_pair <- function(
       arrange(
         .data$Year
       )
+
+
     if (
       nrow(later_candidates) > 0L
     ) {
+
       earlier <- later_candidates %>%
         slice(1)
+
     } else {
+
       earlier <- tmp %>%
         arrange(
           desc(.data$Year)
@@ -16206,23 +16367,32 @@ ch6_endpoint_pair <- function(
         slice(1)
     }
   }
+
+
   exact_latest <- tmp %>%
     filter(
       .data$Year ==
         CH6_LATEST_YEAR
     )
+
+
   if (
     nrow(exact_latest) > 0L
   ) {
+
     latest <- exact_latest %>%
       slice(1)
+
   } else {
+
     latest <- tmp %>%
       arrange(
         desc(.data$Year)
       ) %>%
       slice(1)
   }
+
+
   if (
     nrow(earlier) != 1L ||
     nrow(latest) != 1L ||
@@ -16231,23 +16401,32 @@ ch6_endpoint_pair <- function(
   ) {
     return(NULL)
   }
+
+
   list(
+
     earlier_value =
       earlier$Value[[1]],
+
     earlier_year =
       as.integer(
         earlier$Year[[1]]
       ),
+
     latest_value =
       latest$Value[[1]],
+
     latest_year =
       as.integer(
         latest$Year[[1]]
       ),
+
     has_earlier_data =
       has_earlier_data
   )
 }
+
+
 ch6_endpoint_suffix <- function(
     year,
     column = c(
@@ -16256,9 +16435,12 @@ ch6_endpoint_suffix <- function(
     ),
     has_earlier_data = FALSE
 ) {
+
   column <- match.arg(
     column
   )
+
+
   target_year <- if (
     column == "earlier"
   ) {
@@ -16266,31 +16448,45 @@ ch6_endpoint_suffix <- function(
   } else {
     CH6_LATEST_YEAR
   }
+
+
   year_marker <- if (
     as.integer(year) !=
       target_year
   ) {
+
     ch6_superscript_year(
       year
     )
+
   } else {
+
     ""
   }
+
+
   earlier_marker <- if (
     column == "earlier" &&
     isTRUE(
       has_earlier_data
     )
   ) {
+
     "*"
+
   } else {
+
     ""
   }
+
+
   paste0(
     year_marker,
     earlier_marker
   )
 }
+
+
 ch6_display_endpoint <- function(
     value,
     value_type,
@@ -16301,14 +16497,19 @@ ch6_display_endpoint <- function(
     ),
     has_earlier_data = FALSE
 ) {
+
   column <- match.arg(
     column
   )
+
+
   paste0(
+
     format_value(
       value,
       value_type
     ),
+
     ch6_endpoint_suffix(
       year =
         year,
@@ -16319,6 +16520,8 @@ ch6_display_endpoint <- function(
     )
   )
 }
+
+
 ch6_series_metric <- function(
     df,
     column,
@@ -16330,26 +16533,36 @@ ch6_series_metric <- function(
     change_type,
     emphasis = FALSE
 ) {
+
   endpoints <- ch6_endpoint_pair(
     df =
       df,
     column =
       column
   )
+
+
   if (
     is.null(endpoints)
   ) {
     return(NULL)
   }
+
+
   tibble::tibble(
+
     StatID =
       stat_id,
+
     SectionID =
       section_id,
+
     Section =
       section,
+
     Measure =
       measure,
+
     Earlier =
       ch6_display_endpoint(
         value =
@@ -16363,6 +16576,7 @@ ch6_series_metric <- function(
         has_earlier_data =
           endpoints$has_earlier_data
       ),
+
     Latest =
       ch6_display_endpoint(
         value =
@@ -16374,61 +16588,88 @@ ch6_series_metric <- function(
         column =
           "latest"
       ),
+
     Change =
       format_change(
         endpoints$earlier_value,
         endpoints$latest_value,
         change_type
       ),
+
     Emphasis =
       emphasis,
+
     EarlierYear =
       endpoints$earlier_year,
+
     LatestYear =
       endpoints$latest_year,
+
     HasEarlierData =
       endpoints$has_earlier_data
   )
 }
+
+
 ch6_measure_html <- function(
     measure,
     nested = FALSE
 ) {
+
   content <- htmltools::htmlEscape(
     measure
   )
+
+
   if (
     isTRUE(
       nested
     )
   ) {
+
     content <- paste0(
-      "<span style='display:inline-block;padding-left:18px;'>",
-      content,
-      "</span>"
+      "\u2003\u2003",
+      content
     )
   }
+
+
   content
 }
+
+
+# ============================================================================
+# 4. STAY INTENTIONS
+# ============================================================================
+
 CH6_INTENTION_COLUMN <- setdiff(
   names(fig601),
   "Year"
 )
+
+
 if (
   length(CH6_INTENTION_COLUMN) !=
     1L
 ) {
+
   stop(
     "FIG601 must contain exactly one intention series in addition to Year.",
     call. = FALSE
   )
 }
+
+
 CH6_INTENTION_COLUMN <-
   CH6_INTENTION_COLUMN[[1]]
+
+
 CH6_REGION_COLUMNS <- setdiff(
   names(tab601),
   "Year"
 )
+
+
 ch6_region_stats <- purrr::map_dfr(
 
   CH6_REGION_COLUMNS,
@@ -16493,10 +16734,14 @@ ch6_region_stats <- purrr::map_dfr(
     )
   }
 )
+
+
 CH6_FIELD_COLUMNS <- setdiff(
   names(tab602),
   "Year"
 )
+
+
 ch6_field_intention_stats <- purrr::map_dfr(
 
   CH6_FIELD_COLUMNS,
@@ -16568,6 +16813,12 @@ ch6_field_intention_stats <- purrr::map_dfr(
     )
   }
 )
+
+
+# ============================================================================
+# 5. CAREER PATHS
+# ============================================================================
+
 CH6_CAREER_COLUMNS <- c(
   "Academe",
   "Industry or business",
@@ -16575,6 +16826,8 @@ CH6_CAREER_COLUMNS <- c(
   "Nonprofit organization",
   "Other or unknown"
 )
+
+
 ch6_career_metric <- function(
     df,
     population,
@@ -16582,15 +16835,21 @@ ch6_career_metric <- function(
     column,
     emphasis = FALSE
 ) {
+
   ch6_series_metric(
+
     df =
       df,
+
     column =
       column,
+
     section_id =
       "career",
+
     section =
       "Career paths after the PhD",
+
     measure =
       paste0(
         population,
@@ -16599,6 +16858,7 @@ ch6_career_metric <- function(
           column
         )
       ),
+
     stat_id =
       paste0(
         "career_",
@@ -16608,27 +16868,41 @@ ch6_career_metric <- function(
           column
         )
       ),
+
     value_type =
       "share",
+
     change_type =
       "pp_share",
+
     emphasis =
       emphasis
   )
 }
+
+
 ch6_all_career_stats <- purrr::map_dfr(
+
   CH6_CAREER_COLUMNS,
+
   function(column) {
+
     bind_rows(
+
       ch6_career_metric(
+
         df =
           tab603_us,
+
         population =
           "US citizens",
+
         population_id =
           "us",
+
         column =
           column,
+
         emphasis =
           column %in%
           c(
@@ -16636,15 +16910,21 @@ ch6_all_career_stats <- purrr::map_dfr(
             "Industry or business"
           )
       ),
+
       ch6_career_metric(
+
         df =
           tab603_temp,
+
         population =
           "Temporary visa holders",
+
         population_id =
           "temp",
+
         column =
           column,
+
         emphasis =
           column %in%
           c(
@@ -16655,10 +16935,18 @@ ch6_all_career_stats <- purrr::map_dfr(
     )
   }
 )
+
+
+# ============================================================================
+# 6. WORK-VISA SERIES
+# ============================================================================
+
 ch6_opt_approval_gap <- fig603 %>%
   transmute(
+
     Year =
       .data$Year,
+
     Gap =
       numeric_clean(
         .data$Received
@@ -16667,25 +16955,33 @@ ch6_opt_approval_gap <- fig603 %>%
         .data$Approved
       )
   ) %>%
+
   filter(
     is.finite(.data$Gap)
   ) %>%
+
   arrange(
     .data$Year
   )
+
+
 ch6_sum_series <- function(
     df,
     columns
 ) {
+
   row_sum_data(
     df,
     columns
   ) %>%
+
     rename(
       Total =
         .data$Value
     )
 }
+
+
 h1b_all_approvals <- ch6_sum_series(
   fig604_all,
   c(
@@ -16693,6 +16989,8 @@ h1b_all_approvals <- ch6_sum_series(
     "Renewal Approved"
   )
 )
+
+
 h1b_tech_approvals <- ch6_sum_series(
   fig604_tech,
   c(
@@ -16700,34 +16998,46 @@ h1b_tech_approvals <- ch6_sum_series(
     "Renewal Approved"
   )
 )
+
+
 ch6_h1b_denial_series <- function(
     approved_df,
     denied_df
 ) {
+
   approved <- series_data(
     approved_df,
     "New Approved"
   ) %>%
+
     rename(
       Approved =
         .data$Value
     )
+
+
   denied <- series_data(
     denied_df,
     "New Denials"
   ) %>%
+
     rename(
       Denied =
         .data$Value
     )
+
+
   inner_join(
     approved,
     denied,
     by = "Year"
   ) %>%
+
     transmute(
+
       Year =
         .data$Year,
+
       Value =
         .data$Denied /
         (
@@ -16735,29 +17045,44 @@ ch6_h1b_denial_series <- function(
           .data$Denied
         )
     ) %>%
+
     filter(
       is.finite(
         .data$Value
       )
     ) %>%
+
     arrange(
       .data$Year
     )
 }
+
+
 h1b_all_denial_rate <- ch6_h1b_denial_series(
   fig604_all,
   fig605_all
 )
+
+
 h1b_tech_denial_rate <- ch6_h1b_denial_series(
   fig604_tech,
   fig605_tech
 )
+
+
+# ============================================================================
+# 7. GREEN-CARD WAIT SERIES
+# ============================================================================
+
 ch6_wait_label <- function(
     months
 ) {
+
   months <- round(
     months
   )
+
+
   if (
     !is.finite(
       months
@@ -16765,6 +17090,8 @@ ch6_wait_label <- function(
   ) {
     return("—")
   }
+
+
   if (
     months == 0L
   ) {
@@ -16772,13 +17099,19 @@ ch6_wait_label <- function(
       "0 mo"
     )
   }
+
+
   years <-
     months %/% 12
+
   remainder <-
     months %% 12
+
+
   if (
     years == 0L
   ) {
+
     return(
       paste0(
         remainder,
@@ -16786,9 +17119,12 @@ ch6_wait_label <- function(
       )
     )
   }
+
+
   if (
     remainder == 0L
   ) {
+
     return(
       paste0(
         years,
@@ -16796,6 +17132,8 @@ ch6_wait_label <- function(
       )
     )
   }
+
+
   paste0(
     years,
     "y ",
@@ -16803,14 +17141,19 @@ ch6_wait_label <- function(
     "m"
   )
 }
+
+
 ch6_wait_change_label <- function(
     first_months,
     last_months
 ) {
+
   difference <- round(
     last_months -
       first_months
   )
+
+
   if (
     !is.finite(
       difference
@@ -16818,17 +17161,26 @@ ch6_wait_change_label <- function(
   ) {
     return("—")
   }
+
+
   sign <- if (
     difference > 0
   ) {
+
     "+"
+
   } else if (
     difference < 0
   ) {
+
     "-"
+
   } else {
+
     ""
   }
+
+
   paste0(
     sign,
     ch6_wait_label(
@@ -16838,6 +17190,8 @@ ch6_wait_change_label <- function(
     )
   )
 }
+
+
 ch6_wait_metric <- function(
     df,
     geography,
@@ -16845,12 +17199,15 @@ ch6_wait_metric <- function(
     stat_id,
     emphasis = FALSE
 ) {
+
   endpoints <- ch6_endpoint_pair(
     df =
       df,
     column =
       category
   )
+
+
   if (
     is.null(
       endpoints
@@ -16858,13 +17215,19 @@ ch6_wait_metric <- function(
   ) {
     return(NULL)
   }
+
+
   tibble::tibble(
+
     StatID =
       stat_id,
+
     SectionID =
       "immigration",
+
     Section =
       "Immigration pathways and bottlenecks",
+
     Measure =
       paste0(
         geography,
@@ -16876,11 +17239,14 @@ ch6_wait_metric <- function(
         ),
         " green-card wait"
       ),
+
     Earlier =
       paste0(
+
         ch6_wait_label(
           endpoints$earlier_value
         ),
+
         ch6_endpoint_suffix(
           year =
             endpoints$earlier_year,
@@ -16890,11 +17256,14 @@ ch6_wait_metric <- function(
             endpoints$has_earlier_data
         )
       ),
+
     Latest =
       paste0(
+
         ch6_wait_label(
           endpoints$latest_value
         ),
+
         ch6_endpoint_suffix(
           year =
             endpoints$latest_year,
@@ -16902,36 +17271,51 @@ ch6_wait_metric <- function(
             "latest"
         )
       ),
+
     Change =
       ch6_wait_change_label(
         endpoints$earlier_value,
         endpoints$latest_value
       ),
+
     Emphasis =
       emphasis,
+
     EarlierYear =
       endpoints$earlier_year,
+
     LatestYear =
       endpoints$latest_year,
+
     HasEarlierData =
       endpoints$has_earlier_data
   )
 }
+
+
 ch6_all_wait_stats <- bind_rows(
+
   purrr::map_dfr(
+
     c(
       "EB1",
       "EB2",
       "EB3"
     ),
+
     function(category) {
+
       ch6_wait_metric(
+
         df =
           tab605_row,
+
         geography =
           "Rest of world",
+
         category =
           category,
+
         stat_id =
           paste0(
             "wait_row_",
@@ -16939,26 +17323,36 @@ ch6_all_wait_stats <- bind_rows(
               category
             )
           ),
+
         emphasis =
           category ==
           "EB2"
       )
     }
   ),
+
+
   purrr::map_dfr(
+
     c(
       "EB1",
       "EB2",
       "EB3"
     ),
+
     function(category) {
+
       ch6_wait_metric(
+
         df =
           tab605_india,
+
         geography =
           "India",
+
         category =
           category,
+
         stat_id =
           paste0(
             "wait_india_",
@@ -16966,26 +17360,36 @@ ch6_all_wait_stats <- bind_rows(
               category
             )
           ),
+
         emphasis =
           category ==
           "EB2"
       )
     }
   ),
+
+
   purrr::map_dfr(
+
     c(
       "EB1",
       "EB2",
       "EB3"
     ),
+
     function(category) {
+
       ch6_wait_metric(
+
         df =
           tab605_china,
+
         geography =
           "China",
+
         category =
           category,
+
         stat_id =
           paste0(
             "wait_china_",
@@ -16993,6 +17397,7 @@ ch6_all_wait_stats <- bind_rows(
               category
             )
           ),
+
         emphasis =
           category ==
           "EB2"
@@ -17000,27 +17405,44 @@ ch6_all_wait_stats <- bind_rows(
     }
   )
 )
+
+
+# ============================================================================
+# 8. J-1 SERIES
+# ============================================================================
+
 CH6_J1_COUNTRIES <- setdiff(
   names(fig607),
   "Year"
 )
+
+
 ch6_all_j1_stats <- purrr::map_dfr(
+
   CH6_J1_COUNTRIES,
+
   function(country) {
+
     ch6_series_metric(
+
       df =
         fig607,
+
       column =
         country,
+
       section_id =
         "immigration",
+
       section =
         "Immigration pathways and bottlenecks",
+
       measure =
         paste0(
           country,
           ": share of J-1 research scholars"
         ),
+
       stat_id =
         paste0(
           "j1_",
@@ -17028,269 +17450,445 @@ ch6_all_j1_stats <- purrr::map_dfr(
             country
           )
         ),
+
       value_type =
         "share",
+
       change_type =
         "pp_share",
+
       emphasis =
         country ==
         "China"
     )
   }
 )
+
+
+# ============================================================================
+# 9. BUILD ALL LONGITUDINAL STATISTICS
+# ============================================================================
+
 ch6_all_stats <- bind_rows(
+
+  # --------------------------------------------------------------------------
+  # Stay intentions
+  # --------------------------------------------------------------------------
+
   ch6_series_metric(
+
     df =
       fig601,
+
     column =
       CH6_INTENTION_COLUMN,
+
     section_id =
       "intentions",
+
     section =
       "Stay intentions",
+
     measure =
       "Overall",
+
     stat_id =
       "intent_overall",
+
     value_type =
       "share",
+
     change_type =
       "pp_share",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_region_stats,
+
   ch6_field_intention_stats,
+
+
+  # --------------------------------------------------------------------------
+  # Realized retention
+  # --------------------------------------------------------------------------
+
   ch6_series_metric(
+
     df =
       fig602,
+
     column =
       "5-year stay rate",
+
     section_id =
       "retention",
+
     section =
       "Realized retention",
+
     measure =
       "Five-year stay rate",
+
     stat_id =
       "stay_5yr",
+
     value_type =
       "share",
+
     change_type =
       "pp_share",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_series_metric(
+
     df =
       fig602,
+
     column =
       "10-year stay rate",
+
     section_id =
       "retention",
+
     section =
       "Realized retention",
+
     measure =
       "Ten-year stay rate",
+
     stat_id =
       "stay_10yr",
+
     value_type =
       "share",
+
     change_type =
       "pp_share",
+
     emphasis =
       TRUE
   ),
+
+
+  # --------------------------------------------------------------------------
+  # Career paths
+  # --------------------------------------------------------------------------
+
   ch6_all_career_stats,
+
+
+  # --------------------------------------------------------------------------
+  # Work-visa bridge
+  # --------------------------------------------------------------------------
+
   ch6_series_metric(
+
     df =
       fig603,
+
     column =
       "Received",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "STEM OPT applications received",
+
     stat_id =
       "opt_received",
+
     value_type =
       "count",
+
     change_type =
       "multiple"
   ),
+
+
   ch6_series_metric(
+
     df =
       fig603,
+
     column =
       "Approved",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "STEM OPT applications approved",
+
     stat_id =
       "opt_approved",
+
     value_type =
       "count",
+
     change_type =
       "multiple",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_series_metric(
+
     df =
       ch6_opt_approval_gap,
+
     column =
       "Gap",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "STEM OPT approval gap",
+
     stat_id =
       "opt_approval_gap",
+
     value_type =
       "count",
+
     change_type =
       "count_delta",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_series_metric(
+
     df =
       fig603,
+
     column =
       "Denied",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "STEM OPT applications denied",
+
     stat_id =
       "opt_denied",
+
     value_type =
       "count",
+
     change_type =
       "percent"
   ),
+
+
   ch6_series_metric(
+
     df =
       fig603,
+
     column =
       "Approval Rate",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "STEM OPT approval rate",
+
     stat_id =
       "opt_approval_rate",
+
     value_type =
       "share",
+
     change_type =
       "pp_share"
   ),
+
+
   ch6_series_metric(
+
     df =
       h1b_all_approvals,
+
     column =
       "Total",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "H-1B approvals: all industries",
+
     stat_id =
       "h1b_all_approvals",
+
     value_type =
       "count",
+
     change_type =
       "percent",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_series_metric(
+
     df =
       h1b_tech_approvals,
+
     column =
       "Total",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "H-1B approvals: tech occupations",
+
     stat_id =
       "h1b_tech_approvals",
+
     value_type =
       "count",
+
     change_type =
       "percent"
   ),
+
+
   ch6_series_metric(
+
     df =
       h1b_all_denial_rate,
+
     column =
       "Value",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "Initial H-1B denial rate: all industries",
+
     stat_id =
       "h1b_all_denial_rate",
+
     value_type =
       "share",
+
     change_type =
       "pp_share",
+
     emphasis =
       TRUE
   ),
+
+
   ch6_series_metric(
+
     df =
       h1b_tech_denial_rate,
+
     column =
       "Value",
+
     section_id =
       "work_visas",
+
     section =
       "Work-visa bridge",
+
     measure =
       "Initial H-1B denial rate: tech occupations",
+
     stat_id =
       "h1b_tech_denial_rate",
+
     value_type =
       "share",
+
     change_type =
       "pp_share"
   ),
+
+
+  # --------------------------------------------------------------------------
+  # Immigration pathways
+  # --------------------------------------------------------------------------
+
   ch6_all_wait_stats,
+
   ch6_all_j1_stats
 )
+
+
+# ============================================================================
+# 10. FILTER SELECTED STATISTICS
+# ============================================================================
+
 CH6_SELECTED_STATS <- names(
   CH6_INCLUDE
 )[
   CH6_INCLUDE
 ]
+
+
 missing_selected_stats <- setdiff(
+
   CH6_SELECTED_STATS,
+
   unique(
     ch6_all_stats$StatID
   )
 )
+
+
 if (
   length(
     missing_selected_stats
   ) > 0L
 ) {
+
   stop(
     paste0(
       "Chapter 6 could not build the following selected statistics: ",
@@ -17303,11 +17901,15 @@ if (
     call. = FALSE
   )
 }
+
+
 ch6_selected <- ch6_all_stats %>%
+
   filter(
     .data$StatID %in%
       CH6_SELECTED_STATS
   ) %>%
+
   mutate(
     DisplayOrder =
       match(
@@ -17317,13 +17919,17 @@ ch6_selected <- ch6_all_stats %>%
         )
       )
   ) %>%
+
   arrange(
     .data$DisplayOrder
   )
+
+
 if (
   nrow(ch6_selected) !=
     CH6_DEFAULT_TRUE_COUNT
 ) {
+
   stop(
     paste0(
       "Chapter 6 built ",
@@ -17335,39 +17941,60 @@ if (
     call. = FALSE
   )
 }
+
+
+# ============================================================================
+# 11. DISPLAY HIERARCHY
+# ============================================================================
+
 ch6_subheader_row <- function(
     section_id,
     section,
     label,
     stat_id
 ) {
+
   tibble::tibble(
+
     StatID =
       stat_id,
+
     SectionID =
       section_id,
+
     Section =
       section,
+
     Measure =
       label,
+
     Earlier =
       "",
+
     Latest =
       "",
+
     Change =
       "",
+
     Emphasis =
       FALSE,
+
     EarlierYear =
       NA_integer_,
+
     LatestYear =
       NA_integer_,
+
     HasEarlierData =
       FALSE,
+
     DisplayOrder =
       NA_integer_,
+
     IsSubsectionHeader =
       TRUE,
+
     MeasureHTML =
       paste0(
         "<strong>",
@@ -17378,20 +18005,28 @@ ch6_subheader_row <- function(
       )
   )
 }
+
+
 ch6_intention_overall <- ch6_selected %>%
+
   filter(
     .data$StatID ==
       "intent_overall"
   ) %>%
+
   mutate(
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
         ch6_measure_html
       )
   )
+
+
 CH6_REGION_DISPLAY_ORDER <- c(
   "intent_region_africa",
   "intent_region_americas",
@@ -17399,19 +18034,26 @@ CH6_REGION_DISPLAY_ORDER <- c(
   "intent_region_europe",
   "intent_region_middle_east"
 )
+
+
 ch6_intention_regions <- ch6_selected %>%
+
   filter(
     .data$StatID %in%
       CH6_REGION_DISPLAY_ORDER
   ) %>%
+
   mutate(
+
     InternalOrder =
       match(
         .data$StatID,
         CH6_REGION_DISPLAY_ORDER
       ),
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
@@ -17421,12 +18063,16 @@ ch6_intention_regions <- ch6_selected %>%
         )
       )
   ) %>%
+
   arrange(
     .data$InternalOrder
   ) %>%
+
   select(
     -.data$InternalOrder
   )
+
+
 CH6_FIELD_DISPLAY_ORDER <- c(
   "intent_field_computer_and_information_sciences",
   "intent_field_engineering",
@@ -17434,19 +18080,26 @@ CH6_FIELD_DISPLAY_ORDER <- c(
   "intent_field_physical_sciences",
   "intent_field_social_sciences"
 )
+
+
 ch6_intention_fields <- ch6_selected %>%
+
   filter(
     .data$StatID %in%
       CH6_FIELD_DISPLAY_ORDER
   ) %>%
+
   mutate(
+
     InternalOrder =
       match(
         .data$StatID,
         CH6_FIELD_DISPLAY_ORDER
       ),
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
@@ -17456,57 +18109,78 @@ ch6_intention_fields <- ch6_selected %>%
         )
       )
   ) %>%
+
   arrange(
     .data$InternalOrder
   ) %>%
+
   select(
     -.data$InternalOrder
   )
+
+
 ch6_retention_display <- ch6_selected %>%
+
   filter(
     .data$SectionID ==
       "retention"
   ) %>%
+
   mutate(
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
         ch6_measure_html
       )
   )
+
+
 CH6_CAREER_DISPLAY_ORDER <- c(
   "career_us_academe",
   "career_us_industry_or_business",
   "career_temp_academe",
   "career_temp_industry_or_business"
 )
+
+
 ch6_career_display <- ch6_selected %>%
+
   filter(
     .data$StatID %in%
       CH6_CAREER_DISPLAY_ORDER
   ) %>%
+
   mutate(
+
     InternalOrder =
       match(
         .data$StatID,
         CH6_CAREER_DISPLAY_ORDER
       ),
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
         ch6_measure_html
       )
   ) %>%
+
   arrange(
     .data$InternalOrder
   ) %>%
+
   select(
     -.data$InternalOrder
   )
+
+
 CH6_WORK_DISPLAY_ORDER <- c(
   "opt_received",
   "opt_approved",
@@ -17516,41 +18190,57 @@ CH6_WORK_DISPLAY_ORDER <- c(
   "h1b_all_denial_rate",
   "h1b_tech_denial_rate"
 )
+
+
 ch6_work_display <- ch6_selected %>%
+
   filter(
     .data$StatID %in%
       CH6_WORK_DISPLAY_ORDER
   ) %>%
+
   mutate(
+
     InternalOrder =
       match(
         .data$StatID,
         CH6_WORK_DISPLAY_ORDER
       ),
+
     IsSubsectionHeader =
       FALSE,
+
     MeasureHTML =
       purrr::map_chr(
         .data$Measure,
         ch6_measure_html
       )
   ) %>%
+
   arrange(
     .data$InternalOrder
   ) %>%
+
   select(
     -.data$InternalOrder
   )
+
+
 ch6_immigration_india <- ch6_selected %>%
+
   filter(
     .data$StatID ==
       "wait_india_eb2"
   ) %>%
+
   mutate(
+
     IsSubsectionHeader =
       FALSE,
+
     Measure =
       "EB-2 green-card wait for Indian nationals",
+
     MeasureHTML =
       paste0(
         "EB-2 green-card wait for ",
@@ -17558,16 +18248,23 @@ ch6_immigration_india <- ch6_selected %>%
         " nationals"
       )
   )
+
+
 ch6_immigration_china <- ch6_selected %>%
+
   filter(
     .data$StatID ==
       "wait_china_eb2"
   ) %>%
+
   mutate(
+
     IsSubsectionHeader =
       FALSE,
+
     Measure =
       "EB-2 green-card wait for Chinese nationals",
+
     MeasureHTML =
       paste0(
         "EB-2 green-card wait for ",
@@ -17575,23 +18272,34 @@ ch6_immigration_china <- ch6_selected %>%
         " nationals"
       )
   )
+
+
 ch6_immigration_row <- ch6_selected %>%
+
   filter(
     .data$StatID ==
       "wait_row_eb2"
   ) %>%
+
   mutate(
+
     IsSubsectionHeader =
       FALSE,
+
     Measure =
       "EB-2 green-card wait for all other nationalities",
+
     MeasureHTML =
       ch6_measure_html(
         "EB-2 green-card wait for all other nationalities"
       )
   )
+
+
 ch6_display_data <- bind_rows(
+
   ch6_intention_overall,
+
   ch6_subheader_row(
     section_id =
       "intentions",
@@ -17602,7 +18310,9 @@ ch6_display_data <- bind_rows(
     stat_id =
       "intentions_subheader_region"
   ),
+
   ch6_intention_regions,
+
   ch6_subheader_row(
     section_id =
       "intentions",
@@ -17613,18 +18323,28 @@ ch6_display_data <- bind_rows(
     stat_id =
       "intentions_subheader_field"
   ),
+
   ch6_intention_fields,
+
   ch6_retention_display,
+
   ch6_career_display,
+
   ch6_work_display,
+
   ch6_immigration_india,
+
   ch6_immigration_china,
+
   ch6_immigration_row
+
 ) %>%
+
   mutate(
     DisplayOrder =
       row_number()
   ) %>%
+
   select(
     .data$StatID,
     .data$SectionID,
@@ -17638,10 +18358,13 @@ ch6_display_data <- bind_rows(
     .data$IsSubsectionHeader,
     .data$MeasureHTML
   )
+
+
 if (
   nrow(ch6_display_data) !=
     CH6_EXPECTED_MAIN_DISPLAY_ROWS
 ) {
+
   stop(
     paste0(
       "Chapter 6 main table has ",
@@ -17653,12 +18376,18 @@ if (
     call. = FALSE
   )
 }
+
+
 ch6_section_vector <-
   as.character(
     ch6_display_data$Section
   )
+
+
 ch6_section_header_count <- as.integer(
+
   1L +
+
     sum(
       ch6_section_vector[-1] !=
         ch6_section_vector[
@@ -17668,10 +18397,13 @@ ch6_section_header_count <- as.integer(
         ]
     )
 )
+
+
 if (
   ch6_section_header_count !=
     CH6_EXPECTED_SECTION_HEADERS
 ) {
+
   stop(
     paste0(
       "Chapter 6 main table has ",
@@ -17683,44 +18415,65 @@ if (
     call. = FALSE
   )
 }
+
+
+# ============================================================================
+# 12. FIGURE 6.09 SNAPSHOT DATA
+# ============================================================================
+
 CH6_TRAINING_COST_PER_YEAR <- 53000
+
+
 CH6_SNAPSHOT_FIELD_IDS <- c(
+
   "Engineering" =
     "loss_engineering",
+
   "Life, health & ag. sciences" =
     "loss_life",
+
   "Physical sciences" =
     "loss_physical",
+
   "Computer & math sciences" =
     "loss_computer"
 )
+
+
 ch6_snapshot_data <- fig609 %>%
+
   mutate(
+
     StatID =
       unname(
         CH6_SNAPSHOT_FIELD_IDS[
           .data$Field
         ]
       ),
+
     EstimatedDepartingRaw =
       .data$Recipients *
       (
         1 -
         .data$StayRate10yr
       ),
+
     EstimatedDeparting =
       round(
         .data$EstimatedDepartingRaw /
           100
       ) *
       100,
+
     ShareDeparting =
       1 -
       .data$StayRate10yr,
+
     EstimatedMoneyLostRaw =
       .data$EstimatedDepartingRaw *
       .data$TimeToDegree *
       CH6_TRAINING_COST_PER_YEAR,
+
     SnapshotOrder =
       match(
         .data$Field,
@@ -17729,19 +18482,24 @@ ch6_snapshot_data <- fig609 %>%
         )
       )
   ) %>%
+
   filter(
     !is.na(.data$StatID),
     CH6_SNAPSHOT_INCLUDE[
       .data$StatID
     ]
   ) %>%
+
   arrange(
     .data$SnapshotOrder
   )
+
+
 if (
   nrow(ch6_snapshot_data) !=
     sum(CH6_SNAPSHOT_INCLUDE)
 ) {
+
   stop(
     paste0(
       "Figure 6.09 snapshot built ",
@@ -17753,25 +18511,43 @@ if (
     call. = FALSE
   )
 }
+
+
 ch6_total_departing <- round(
+
   sum(
     ch6_snapshot_data$EstimatedDepartingRaw,
     na.rm = TRUE
   ) /
     100
+
 ) *
   100
+
+
 ch6_total_money_lost <- sum(
   ch6_snapshot_data$EstimatedMoneyLostRaw,
   na.rm = TRUE
 )
+
+
+# ============================================================================
+# 13. MAIN TABLE
+# ============================================================================
+
 build_ch6_main_table <- function() {
+
   subsection_rows <- which(
     ch6_display_data$IsSubsectionHeader
   )
+
+
   measure_html <-
     ch6_display_data$MeasureHTML
+
+
   table_data <- ch6_display_data %>%
+
     select(
       .data$Section,
       .data$Measure,
@@ -17783,17 +18559,25 @@ build_ch6_main_table <- function() {
       .data$Emphasis,
       .data$DisplayOrder
     )
+
+
   tbl <- build_infographic_table(
+
     data =
       table_data,
+
     id =
       "infographic_ch6_by_the_numbers_longitudinal",
+
     chapter_number =
       6,
+
     title =
       "THE RETENTION GAP: BY THE NUMBERS",
+
     subtitle =
       NULL,
+
     column_labels =
       c(
         Earlier =
@@ -17803,44 +18587,63 @@ build_ch6_main_table <- function() {
         Change =
           "Change"
       ),
+
     notes =
       character(),
+
     layout =
       INFOGRAPHIC_FIXED_LAYOUT,
+
     row_padding_px =
       INFOGRAPHIC_FIXED_LAYOUT$row_padding_px,
+
     nowrap_values =
       TRUE,
+
     trend_right_padding_px =
       5,
+
     show_header =
       FALSE
   )
+
+
   tbl <- tbl %>%
+
     gt::text_transform(
+
       locations =
         gt::cells_stub(
           rows = TRUE
         ),
+
       fn =
         function(x) {
+
           lapply(
             measure_html,
             gt::html
           )
         }
     )
+
+
   if (
     length(subsection_rows) > 0L
   ) {
+
     tbl <- tbl %>%
+
       gt::tab_style(
+
         style =
           list(
+
             gt::cell_fill(
               color =
                 "white"
             ),
+
             gt::cell_text(
               color =
                 INFOGRAPHIC_PALETTE$red,
@@ -17848,35 +18651,16 @@ build_ch6_main_table <- function() {
                 "bold"
             )
           ),
+
         locations =
           gt::cells_stub(
             rows =
               subsection_rows
           )
       ) %>%
+
       gt::tab_style(
-        style =
-          list(
-            gt::cell_fill(
-              color =
-                "white"
-            ),
-            gt::cell_text(
-              color =
-                INFOGRAPHIC_PALETTE$text,
-              weight =
-                "normal"
-            )
-          ),
-        locations =
-          gt::cells_body(
-            columns =
-              tidyselect::everything(),
-            rows =
-              subsection_rows
-          )
-      ) %>%
-      gt::tab_style(
+
         style =
           gt::cell_borders(
             sides =
@@ -17886,13 +18670,16 @@ build_ch6_main_table <- function() {
             weight =
               gt::px(1)
           ),
+
         locations =
           gt::cells_stub(
             rows =
               subsection_rows
           )
       ) %>%
+
       gt::tab_style(
+
         style =
           gt::cell_borders(
             sides =
@@ -17902,6 +18689,7 @@ build_ch6_main_table <- function() {
             weight =
               gt::px(1)
           ),
+
         locations =
           gt::cells_body(
             columns =
@@ -17911,32 +18699,95 @@ build_ch6_main_table <- function() {
           )
       )
   }
+
+
   tbl
 }
-build_ch6_snapshot_table <- function(
-    font_scale = 0.88
-) {
-  snapshot_font_px <- max(
-    9,
-    INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
-      font_scale
+
+
+# ============================================================================
+# 14. CHAPTER 6 SHARED VERTICAL GRID
+# ============================================================================
+#
+# One vertical unit equals one standard infographic body row.
+#
+# The detached gap, snapshot title, snapshot column-header band, and snapshot
+# body rows all use this same unit. The conversion to output pixels uses the
+# actual CSS-width-to-output-width ratio, so it stays correct even if the
+# exporter rescales the rendered image.
+
+CH6_STANDARD_ROW_HEIGHT_CSS_PX <-
+  INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
+    PUB$type_metrics$infographic_row_lineheight +
+  2 *
+    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px +
+  1
+
+
+CH6_CSS_TO_OUTPUT_SCALE <-
+
+  INFOGRAPHIC_SPEC$output_width_px /
+
+    INFOGRAPHIC_SPEC$css_width_px
+
+
+CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX <- as.integer(
+
+  round(
+
+    CH6_STANDARD_ROW_HEIGHT_CSS_PX *
+
+      CH6_CSS_TO_OUTPUT_SCALE
   )
-  snapshot_header_px <- max(
-    9,
-    INFOGRAPHIC_FIXED_LAYOUT$header_font_px *
-      font_scale
-  )
+)
+
+
+# ============================================================================
+# 15. FIGURE 6.09 SNAPSHOT TABLE
+# ============================================================================
+
+build_ch6_snapshot_table <- function() {
+
+  snapshot_font_px <-
+    INFOGRAPHIC_FIXED_LAYOUT$data_font_px
+
+  snapshot_header_px <-
+    INFOGRAPHIC_FIXED_LAYOUT$header_font_px * .87
+
+
   snapshot_source_px <-
     INFOGRAPHIC_FIXED_LAYOUT$source_font_px
-  snapshot_padding_px <- max(
-    1,
-    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px *
-      0.55
-  )
+
+
+  # Keep the underlying GT padding on the same publication setting as the
+  # main table. Exact rendered heights are then locked below with CSS.
+
+  snapshot_padding_px <-
+    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px
+
+
   snapshot_table_data <- ch6_snapshot_data %>%
-    transmute(
-      Field =
-        .data$Field,
+
+  transmute(
+
+    Field =
+      dplyr::case_when(
+
+        .data$Field %in%
+          c(
+            "Life, health & ag. sciences",
+            "Life, health, & ag. sciences"
+          ) ~
+          "Life, health, and agricultural sciences",
+
+        .data$Field ==
+          "Computer & math sciences" ~
+          "Computer and math sciences",
+
+        TRUE ~
+          .data$Field
+      ),
+
       EstimatedDeparting =
         formatC(
           .data$EstimatedDeparting,
@@ -17944,6 +18795,7 @@ build_ch6_snapshot_table <- function(
           digits = 0,
           big.mark = ","
         ),
+
       ShareDeparting =
         paste0(
           round(
@@ -17952,6 +18804,7 @@ build_ch6_snapshot_table <- function(
           ),
           "%"
         ),
+
       EstimatedMoneyLost =
         paste0(
           "$",
@@ -17964,36 +18817,48 @@ build_ch6_snapshot_table <- function(
           "B"
         )
     )
+
+
   snapshot_table_data %>%
+
     gt::gt(
       id =
         "infographic_ch6_departing_snapshot"
     ) %>%
+
     gt::cols_label(
+
       Field =
         "FIELD",
+
       EstimatedDeparting =
         gt::html(
           "NO. DEPARTING"
         ),
+
       ShareDeparting =
         gt::html(
           "SHARE DEPARTING"
         ),
+
       EstimatedMoneyLost =
         gt::html(
           "MONEY LOST"
         )
     ) %>%
+
     gt::cols_align(
       align =
         "left",
       columns =
         Field
     ) %>%
+
     gt::cols_align(
+
       align =
         "center",
+
       columns =
         c(
           EstimatedDeparting,
@@ -18001,40 +18866,67 @@ build_ch6_snapshot_table <- function(
           EstimatedMoneyLost
         )
     ) %>%
+
     gt::cols_width(
+
       Field ~
         gt::pct(50),
+
       EstimatedDeparting ~
         gt::pct(16),
+
       ShareDeparting ~
         gt::pct(20),
+
       EstimatedMoneyLost ~
         gt::pct(13)
     ) %>%
+
     theme_gt_tpa() %>%
+    
+    fixed_table_width(
+      profile =
+        "ultrawide",
+      width_px =
+        INFOGRAPHIC_SPEC$css_width_px
+    ) %>%
+
     gt::tab_header(
+
       title =
         gt::html(
+
           paste0(
+
             "<span style='",
+
             "color:",
             INFOGRAPHIC_PALETTE$red,
             ";",
+
             "font-weight:700;",
+
             "text-transform:uppercase;",
+
             "'>",
+
             "Estimated loss from departing STEM talent",
+
             "</span>"
           )
         )
     ) %>%
+
     gt::tab_style(
+
       style =
         list(
+
           gt::cell_fill(
             color =
               INFOGRAPHIC_PALETTE$gray
           ),
+
           gt::cell_text(
             color =
               "white",
@@ -18046,35 +18938,24 @@ build_ch6_snapshot_table <- function(
               )
           )
         ),
+
       locations =
         gt::cells_column_labels(
           columns =
             tidyselect::everything()
         )
     ) %>%
+
     gt::tab_style(
-      style =
-        gt::cell_borders(
-          sides =
-            "top",
-          color =
-            INFOGRAPHIC_PALETTE$red,
-          weight =
-            gt::px(3)
-        ),
-      locations =
-        gt::cells_column_labels(
-          columns =
-            tidyselect::everything()
-        )
-    ) %>%
-    gt::tab_style(
+
       style =
         list(
+
           gt::cell_fill(
             color =
               "white"
           ),
+
           gt::cell_text(
             color =
               INFOGRAPHIC_PALETTE$text,
@@ -18082,19 +18963,24 @@ build_ch6_snapshot_table <- function(
               "normal"
           )
         ),
+
       locations =
         gt::cells_body(
           columns =
             EstimatedDeparting
         )
     ) %>%
+
     gt::tab_style(
+
       style =
         list(
+
           gt::cell_fill(
             color =
               "white"
           ),
+
           gt::cell_text(
             color =
               INFOGRAPHIC_PALETTE$text,
@@ -18102,19 +18988,24 @@ build_ch6_snapshot_table <- function(
               "normal"
           )
         ),
+
       locations =
         gt::cells_body(
           columns =
             ShareDeparting
         )
     ) %>%
+
     gt::tab_style(
+
       style =
         list(
+
           gt::cell_fill(
             color =
               INFOGRAPHIC_PALETTE$pink
           ),
+
           gt::cell_text(
             color =
               INFOGRAPHIC_PALETTE$red,
@@ -18122,51 +19013,78 @@ build_ch6_snapshot_table <- function(
               "bold"
           )
         ),
+
       locations =
         gt::cells_body(
           columns =
             EstimatedMoneyLost
         )
     ) %>%
+
     gt::tab_source_note(
+
       source_note =
         gt::md(
+          "\\* Data are available further back than 2021 for marked series."
+        )
+    ) %>%
+
+    gt::tab_source_note(
+
+      source_note =
+        gt::md(
+
           paste0(
-            "**Note:** Columns above are normalized to 2021 and 2025; ",
-            "superscripts show alternate years and \\* indicates earlier data. ",
-            "STEM OPT gap = applications received minus approved. ",
-            "Estimated departures = recipients × (1 − 10-year stay rate); ",
-            "estimated money lost = departures × field-specific time to degree × ",
+
+            "**Note:** Historical comparisons use 2021 and 2025 observations. ",
+
+            "Superscript years mark rows with an earlier latest endpoint than 2025. ",
+
+            "Estimated money lost = departures × field-specific time to degree × ",
+
             "$53,000 annual NSF GRFP support."
           )
         )
     ) %>%
+
     gt::tab_source_note(
+
       source_note =
         gt::md(
+
           paste0(
-            "**Source:** Derived from Figures 6.01–6.05 and 6.09; ",
-            "Tables 6.01–6.03 and 6.05."
+            "**Source:** Derived from Figures 6.01-6.09; ",
+            "Tables 6.01–6.05."
           )
         )
     ) %>%
+
     gt::tab_options(
+
       table.font.size =
         gt::px(
           snapshot_font_px
         ),
+
       data_row.padding =
         gt::px(
           snapshot_padding_px
         ),
+
+      # Padding is zero here because the complete height of both title/header
+      # rows is explicitly controlled by the shared-grid CSS below.
+
       column_labels.padding =
-        gt::px(3),
+        gt::px(0),
+
       heading.padding =
-        gt::px(4),
+        gt::px(0),
+
       source_notes.font.size =
         gt::px(
           snapshot_source_px
         ),
+
       source_notes.padding =
         gt::px(
           infographic_pt_to_px(
@@ -18174,140 +19092,338 @@ build_ch6_snapshot_table <- function(
           )
         )
     ) %>%
+
     gt::tab_style(
+
       style =
         gt::cell_text(
           color =
             INFOGRAPHIC_PALETTE$muted
         ),
+
       locations =
         gt::cells_source_notes()
     ) %>%
+
     gt::opt_css(
-      css =
-        paste0(
-          "#infographic_ch6_departing_snapshot ",
-          "tbody td {",
-          "white-space:nowrap !important;",
-          "}"
-        )
+
+  css =
+    paste0(
+
+      # --------------------------------------------------------------
+      # Snapshot body rows = exactly one standard infographic row
+      # --------------------------------------------------------------
+
+      "#infographic_ch6_departing_snapshot tbody tr {",
+      "height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      "}",
+
+      "#infographic_ch6_departing_snapshot tbody td {",
+      "height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      "box-sizing:border-box !important;",
+      "padding-top:0 !important;",
+      "padding-bottom:0 !important;",
+      "vertical-align:middle !important;",
+      "line-height:",
+      PUB$type_metrics$infographic_row_lineheight,
+      " !important;",
+      "white-space:nowrap !important;",
+      "}",
+
+
+      # --------------------------------------------------------------
+      # Snapshot title = exactly one standard infographic row
+      # --------------------------------------------------------------
+
+      "#infographic_ch6_departing_snapshot .gt_heading {",
+      "height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      "box-sizing:border-box !important;",
+      "padding-top:0 !important;",
+      "padding-bottom:0 !important;",
+      "}",
+
+      "#infographic_ch6_departing_snapshot .gt_title {",
+      "height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      "box-sizing:border-box !important;",
+      "padding-top:0 !important;",
+      "padding-bottom:0 !important;",
+      "line-height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      "vertical-align:middle !important;",
+      "}",
+
+
+      # --------------------------------------------------------------
+      # Snapshot column-header band = exactly one standard row
+      # No red top border
+      # --------------------------------------------------------------
+
+      "#infographic_ch6_departing_snapshot .gt_col_heading {",
+
+      "height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      
+      "min-height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      
+      "max-height:",
+      CH6_STANDARD_ROW_HEIGHT_CSS_PX,
+      "px !important;",
+      
+      "box-sizing:border-box !important;",
+      
+      "border-top:none !important;",
+      
+      "padding-top:0 !important;",
+      "padding-bottom:0 !important;",
+      
+      "vertical-align:middle !important;",
+      
+      "white-space:nowrap !important;",
+      
+      "line-height:",
+      PUB$type_metrics$infographic_column_lineheight,
+      " !important;",
+      
+      "}",
+      
+      # --------------------------------------------------------------
+      # Source notes = exactly the same typography as Chapters 1–5
+      # --------------------------------------------------------------
+      
+      "#infographic_ch6_departing_snapshot .gt_source_notes {",
+      
+      "font-size:",
+      INFOGRAPHIC_FIXED_LAYOUT$source_font_px,
+      "px !important;",
+      
+      "font-family:'Gotham' !important;",
+      
+      "font-weight:400 !important;",
+      
+      "line-height:",
+      PUB$type_metrics$infographic_source_lineheight,
+      " !important;",
+      
+      "padding-left:",
+      infographic_pt_to_px(
+        PUB$spacing$infographic_side_pad_pt
+      ),
+      "px !important;",
+      
+      "padding-right:",
+      infographic_pt_to_px(
+        PUB$spacing$infographic_side_pad_pt
+      ),
+      "px !important;",
+      
+      "}",
+      
+      "#infographic_ch6_departing_snapshot .gt_source_notes p {",
+      "margin-top:0 !important;",
+      "margin-bottom:0 !important;",
+      "}"
     )
+)
 }
+
+
+# ============================================================================
+# 16. TABLE-TO-IMAGE RENDERER
+# ============================================================================
+
 ch6_render_table_image <- function(
     table,
     png_path
 ) {
+
   gt::gtsave(
+
     table,
+
     png_path,
+
     vwidth =
       INFOGRAPHIC_SPEC$css_width_px,
+
     vheight =
       max(
         INFOGRAPHIC_SPEC$css_height_px,
         2400
       ),
+
     zoom =
       INFOGRAPHIC_SPEC$zoom,
+
     expand =
       0
   )
+
+
   image <- magick::image_read(
     png_path
   )
+
+
   image_info <- magick::image_info(
     image
   )
+
+
   if (
     image_info$width[[1]] !=
       INFOGRAPHIC_SPEC$output_width_px
   ) {
+
     image <- magick::image_resize(
+
       image,
+
       paste0(
         INFOGRAPHIC_SPEC$output_width_px,
         "x"
       )
     )
   }
+
+
   image
 }
+
+
+# ============================================================================
+# 17. COMPOSITE EXPORT
+# ============================================================================
+
 export_chapter6_composite <- function(
     name =
       "infographic_ch6_by_the_numbers"
 ) {
+
   if (
     !requireNamespace(
       "magick",
       quietly = TRUE
     )
   ) {
+
     stop(
       "The magick package is required for the Chapter 6 composite infographic.",
       call. = FALSE
     )
   }
+
+
   output_dir <-
     PATHS$final_infographics
+
+
   html_dir <- file.path(
     output_dir,
     "html"
   )
+
+
   png_dir <- file.path(
     output_dir,
     "pngs"
   )
+
+
   dir.create(
     html_dir,
     recursive = TRUE,
     showWarnings = FALSE
   )
+
+
   dir.create(
     png_dir,
     recursive = TRUE,
     showWarnings = FALSE
   )
+
+
   main_html_path <- file.path(
+
     html_dir,
+
     paste0(
       name,
       "_longitudinal.html"
     )
   )
+
+
   snapshot_html_path <- file.path(
+
     html_dir,
+
     paste0(
       name,
       "_snapshot.html"
     )
   )
+
+
   main_raw_path <- file.path(
+
     png_dir,
+
     paste0(
       name,
       "_longitudinal_raw.png"
     )
   )
+
+
   snapshot_raw_path <- file.path(
+
     png_dir,
+
     paste0(
       name,
       "_snapshot_raw.png"
     )
   )
+
+
   png_path <- file.path(
+
     png_dir,
+
     paste0(
       name,
       ".png"
     )
   )
+
+
+  # --------------------------------------------------------------------------
+  # Main longitudinal table
+  # --------------------------------------------------------------------------
+
   main_table <-
     build_ch6_main_table()
+
+
   gt::gtsave(
     main_table,
     main_html_path
   )
+
+
   main_image <-
     ch6_render_table_image(
       table =
@@ -18315,104 +19431,124 @@ export_chapter6_composite <- function(
       png_path =
         main_raw_path
     )
-  CH6_DETACHED_GAP_PX <- 35L
+
+
+  # --------------------------------------------------------------------------
+  # Exactly one standard infographic row between the two tables
+  # --------------------------------------------------------------------------
+
+  CH6_DETACHED_GAP_PX <-
+    CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX
+
+
   spacer <- magick::image_blank(
+
     width =
       INFOGRAPHIC_SPEC$output_width_px,
+
     height =
       CH6_DETACHED_GAP_PX,
+
     color =
       "white"
   )
-  snapshot_scale_candidates <- c(
-    0.88,
-    0.85,
-    0.82,
-    0.79
+
+
+  # --------------------------------------------------------------------------
+# Snapshot
+#
+# The snapshot now uses the same fixed typography and row height as the
+# rest of the infographic. No adaptive font scaling is used.
+# --------------------------------------------------------------------------
+
+final_snapshot_table <-
+  build_ch6_snapshot_table()
+
+
+final_snapshot_image <-
+  ch6_render_table_image(
+    table =
+      final_snapshot_table,
+    png_path =
+      snapshot_raw_path
   )
-  final_snapshot_table <- NULL
-  final_snapshot_image <- NULL
-  final_image <- NULL
-  chosen_snapshot_scale <- NA_real_
-  for (
-    snapshot_scale in
-      snapshot_scale_candidates
-  ) {
-    snapshot_table <-
-      build_ch6_snapshot_table(
-        font_scale =
-          snapshot_scale
-      )
-    snapshot_image <-
-      ch6_render_table_image(
-        table =
-          snapshot_table,
-        png_path =
-          snapshot_raw_path
-      )
-    candidate_image <- magick::image_append(
-      c(
-        main_image,
-        spacer,
-        snapshot_image
-      ),
-      stack =
-        TRUE
-    )
-    candidate_info <- magick::image_info(
-      candidate_image
-    )
-    if (
-      candidate_info$height[[1]] <=
-        INFOGRAPHIC_SPEC$output_height_px
-    ) {
-      final_snapshot_table <-
-        snapshot_table
-      final_snapshot_image <-
-        snapshot_image
-      final_image <-
-        candidate_image
-      chosen_snapshot_scale <-
-        snapshot_scale
-      break
-    }
-  }
-  if (
-    is.null(final_image)
-  ) {
-    stop(
-      paste0(
-        "Chapter 6 main table plus detached Figure 6.09 snapshot does not fit ",
-        "the standard infographic canvas without reducing the main-table ",
-        "typography. Reduce snapshot content or spacing rather than shrinking ",
-        "the publication table."
-      ),
-      call. = FALSE
-    )
-  }
+
+
+final_image <- magick::image_append(
+
+  c(
+    main_image,
+    spacer,
+    final_snapshot_image
+  ),
+
+  stack =
+    TRUE
+)
+
+
+candidate_info <- magick::image_info(
+  final_image
+)
+
+
+if (
+  candidate_info$height[[1]] >
+    INFOGRAPHIC_SPEC$output_height_px
+) {
+
+  stop(
+    paste0(
+      "Chapter 6 main table plus detached Figure 6.09 snapshot is ",
+      candidate_info$height[[1]],
+      " px tall; the standard infographic canvas is ",
+      INFOGRAPHIC_SPEC$output_height_px,
+      " px tall. ",
+      "The snapshot is using the fixed publication typography and was not shrunk."
+    ),
+    call. = FALSE
+  )
+}
+
   gt::gtsave(
     final_snapshot_table,
     snapshot_html_path
   )
+
+
+  # --------------------------------------------------------------------------
+  # Extend to exact publication canvas
+  # --------------------------------------------------------------------------
+
   final_image <- magick::image_extent(
+
     final_image,
+
     geometry =
       paste0(
         INFOGRAPHIC_SPEC$output_width_px,
         "x",
         INFOGRAPHIC_SPEC$output_height_px
       ),
+
     gravity =
       "north",
+
     color =
       "white"
   )
+
+
   magick::image_write(
+
     final_image,
+
     path =
       png_path,
+
     format =
       "png",
+
     density =
       paste0(
         INFOGRAPHIC_SPEC$dpi,
@@ -18420,17 +19556,27 @@ export_chapter6_composite <- function(
         INFOGRAPHIC_SPEC$dpi
       )
   )
+
+
+  # --------------------------------------------------------------------------
+  # Final dimensions
+  # --------------------------------------------------------------------------
+
   final_info <- magick::image_info(
+
     magick::image_read(
       png_path
     )
   )
+
+
   if (
     final_info$width[[1]] !=
       INFOGRAPHIC_SPEC$output_width_px ||
     final_info$height[[1]] !=
       INFOGRAPHIC_SPEC$output_height_px
   ) {
+
     stop(
       paste0(
         "Final Chapter 6 PNG is ",
@@ -18446,95 +19592,143 @@ export_chapter6_composite <- function(
       call. = FALSE
     )
   }
+
+
+  # --------------------------------------------------------------------------
+  # Audit registry
+  # --------------------------------------------------------------------------
+
   INFOGRAPHIC_EXPORT_REGISTRY[[name]] <-
     tibble::tibble(
+
       Name =
         name,
+
       Page =
         1L,
+
       TotalPages =
         1L,
+
       BodyRows =
         nrow(
           ch6_display_data
         ),
+
       SectionHeaders =
         ch6_section_header_count,
+
       RenderedRows =
         nrow(
           ch6_display_data
         ) +
         ch6_section_header_count,
+
       IsFinalPage =
         TRUE,
+
       WidthIn =
         INFOGRAPHIC_SPEC$width_in,
+
       HeightIn =
         INFOGRAPHIC_SPEC$height_in,
+
       ExpectedWidthPx =
         INFOGRAPHIC_SPEC$output_width_px,
+
       ExpectedHeightPx =
         INFOGRAPHIC_SPEC$output_height_px,
+
       ActualWidthPx =
         final_info$width[[1]],
+
       ActualHeightPx =
         final_info$height[[1]],
+
       DimensionVerification =
         "PASS",
+
       PNG =
         png_path
     )
+
+
+  # --------------------------------------------------------------------------
+  # Remove temporary raw PNGs
+  # --------------------------------------------------------------------------
+
   if (
     file.exists(
       main_raw_path
     )
   ) {
+
     unlink(
       main_raw_path
     )
   }
+
+
   if (
     file.exists(
       snapshot_raw_path
     )
   ) {
+
     unlink(
       snapshot_raw_path
     )
   }
+
+
   message(
-    "Saved Chapter 6 composite infographic. Main table: ",
-    nrow(ch6_display_data),
-    " body rows + ",
-    ch6_section_header_count,
-    " section headers. Snapshot scale: ",
-    chosen_snapshot_scale,
-    "."
+  "Saved Chapter 6 composite infographic. Main table: ",
+  nrow(ch6_display_data),
+  " body rows + ",
+  ch6_section_header_count,
+  " section headers. Snapshot uses fixed publication typography."
   )
+
+
   list(
+
     main_table =
       main_table,
+
     snapshot_table =
       final_snapshot_table,
+
     main_html_path =
       main_html_path,
+
     snapshot_html_path =
       snapshot_html_path,
+
     png_path =
       png_path,
-    snapshot_scale =
-      chosen_snapshot_scale,
+
     width_px =
       final_info$width[[1]],
+
     height_px =
       final_info$height[[1]]
   )
 }
+
+
+# ============================================================================
+# 18. EXPORT
+# ============================================================================
+
 ch6_export <-
   export_chapter6_composite()
+
+
 ch6_exports <- list(
   ch6_export
 )
+
+
 knitr::include_graphics(
   ch6_export$png_path
 )
