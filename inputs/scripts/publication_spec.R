@@ -237,8 +237,8 @@ PUB <- list(
     infographic_subtitle_lineheight     = 1.15,
     infographic_panel_label_lineheight  = 1.35,
     infographic_panel_title_lineheight  = 1.00,
-    infographic_group_lineheight        = 1.21,
-    infographic_row_lineheight          = 1.21,
+    infographic_group_lineheight        = 1.22,
+    infographic_row_lineheight          = 1.22,
     infographic_source_lineheight       = 1.15,
     infographic_column_lineheight       = 1.10,
     

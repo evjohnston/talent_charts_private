@@ -18720,8 +18720,7 @@ CH6_STANDARD_ROW_HEIGHT_CSS_PX <-
   INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
     PUB$type_metrics$infographic_row_lineheight +
   2 *
-    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px +
-  1
+    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px
 
 
 CH6_CSS_TO_OUTPUT_SCALE <-
@@ -18754,7 +18753,9 @@ build_ch6_snapshot_table <- function() {
   snapshot_header_px <-
     INFOGRAPHIC_FIXED_LAYOUT$header_font_px * .87
 
-
+  snapshot_title_px <-
+    INFOGRAPHIC_FIXED_LAYOUT$group_font_px
+  
   snapshot_source_px <-
     INFOGRAPHIC_FIXED_LAYOUT$source_font_px
 
@@ -19079,6 +19080,10 @@ build_ch6_snapshot_table <- function() {
 
       heading.padding =
         gt::px(0),
+      
+      heading.title.font.size =
+        gt::px(
+        snapshot_title_px),
 
       source_notes.font.size =
         gt::px(
@@ -19203,7 +19208,7 @@ build_ch6_snapshot_table <- function() {
       # --------------------------------------------------------------
       
       "#infographic_ch6_departing_snapshot .gt_source_notes {",
-      
+
       "font-size:",
       INFOGRAPHIC_FIXED_LAYOUT$source_font_px,
       "px !important;",
@@ -19228,11 +19233,8 @@ build_ch6_snapshot_table <- function() {
       ),
       "px !important;",
       
-      "}",
+      "padding-bottom:0 !important;",
       
-      "#infographic_ch6_departing_snapshot .gt_source_notes p {",
-      "margin-top:0 !important;",
-      "margin-bottom:0 !important;",
       "}"
     )
 )
