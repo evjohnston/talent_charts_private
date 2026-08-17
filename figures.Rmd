@@ -103,8 +103,8 @@ blocks <- tibble::tribble(
   "Noncitizens",             "~22.8M",  0.00,  1.20,  0.50,  0.75,  RED_FILL,  "white",
   "Naturalized\ncitizens",   "~25M",    1.20,  2.00,  0.00,  0.75,  GREY_FILL, "grey20",
   "Temporary\nvisa holders", "~3.5M",   0.00,  0.60,  0.25,  0.50,  RED_FILL,  "white",
-  "Green card\nholders",     "12.8M",   0.60,  0.94,  0.00,  0.50,  GREY_FILL, "grey20",
-  "Unauthorized\n& other",   "~11M",    0.94,  1.20,  0.00,  0.50,  GREY_FILL, "grey20",
+  "Green card\nholders",     "12.8M",   0.60,  0.90,  0.00,  0.50,  GREY_FILL, "grey20",
+  "Unauthorized\n& other",   "~11M",    0.90,  1.20,  0.00,  0.50,  GREY_FILL, "grey20",
   "Int.\nstudents",  "~1.1M",   0.00,  0.20,  0.00,  0.25,  RED_FILL,  "white",
   "Int.\nworkers",   "~1.4M",   0.20,  0.40,  0.00,  0.25,  RED_FILL,  "white",
   "Exchange\n& other",       "~1M",     0.40,  0.60,  0.00,  0.25,  GREY_FILL, "grey20"
@@ -114,7 +114,7 @@ blocks <- tibble::tribble(
     ly     = (ymin + ymax) / 2,
     n_line = vapply(strsplit(label, "\n"), length, integer(1)),
     size   = c(TITLE_SIZE, SUBTITLE_SIZE, AXIS_SIZE + 0.5, AXIS_SIZE,
-               COMPACT_LABEL_SIZE, SMALL_LABEL_SIZE + 0.5, SWATCH_SIZE,
+               COMPACT_LABEL_SIZE, COMPACT_LABEL_SIZE, SWATCH_SIZE,
                SWATCH_SIZE, SWATCH_SIZE) / .pt,
     c_size = c(DATA_LABEL_SIZE - 0.5, DATA_LABEL_SIZE - 0.5, COMPACT_LABEL_SIZE,
                SMALL_LABEL_SIZE + 0.5, SMALL_LABEL_SIZE, SWATCH_SIZE,
@@ -2744,7 +2744,6 @@ FIG606
 # rate), split into four STEM fields. Each field's departures valued at that
 # field's own time to degree x the NSF GRFP support rate. Benchmark, not a
 # per-person accounting (see note).
-
 cohort <- read_fig("FIG607") %>%
   mutate(across(c(recipients, stay_rate_10yr, ttd_years), as.numeric))
 
@@ -2792,15 +2791,15 @@ FIG607 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
     size = DATA_LABEL_SIZE / .pt, color = tpa_colors[1]
   ) +
   annotate(
-    "text", x = 0, y = 0.32, hjust = 0,
+    "text", x = 0, y = 0.39, hjust = 0,
     label = sprintf("\u2248 $%.1f billion in STEM training investment left with them",
                     value_total / 1e9),
     family = FONT_FAMILY, fontface = "bold",
-    size = TITLE_SIZE / .pt, color = tpa_colors[1]
+    size = SUBTITLE_SIZE / .pt, color = tpa_colors[1]
   ) +
   scale_x_continuous(labels = label_comma(), limits = c(0, x_max),
                      expand = expansion(mult = c(0, 0.05))) +
-  scale_y_discrete(expand = expansion(add = c(0, 0.6))) +
+  scale_y_discrete(expand = expansion(add = c(0.9, 0.3))) +
   scale_fill_manual(values = outcome_fill, breaks = c("Stayed", "Left")) +
   labs_meta(meta, x = NULL, y = NULL) +
   theme_horizontal_bar()
@@ -2808,5 +2807,6 @@ FIG607 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
 save_chart_aligned(FIG607, "fig_6_07", size = "standard", left_pt = 125)
 FIG607
 ```
+
 
 

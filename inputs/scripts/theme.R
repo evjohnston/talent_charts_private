@@ -110,9 +110,9 @@ EXPAND_LABEL_RIGHT <- expansion(mult = c(0,    0.15))
 
 # ---- Colors -------------------------------------------------
 tpa_colors <- c(
-  "#8c1515", "#2F5D7C", "#F5B427",
-  "#92A045", "#5E3762", "#F68F1F",
-  "#5D4738", "#918881", "#B9B4AC"
+  "#98002E", "#1F6E80", "#FF9A2E",
+  "#7BA82E", "#6E1F6B", "#FF6A2E",
+  "#6E3A2E", "#918881", "#B9B4AC"
 )
 
 arrow_fill <- c(
@@ -129,15 +129,15 @@ TPA_RED_MID   <- "#C46C5D"   # mid red, used in mobility gradient
 TPA_RED_LIGHT <- "#F4D6D6"   # light red, used as gradient low end in tables
 
 level_colors <- c(
-  "Bachelors" = "#F5B427",
-  "Bachelor's" = "#F5B427",
-  "Masters"   = "#2F5D7C",
-  "Master's"   = "#2F5D7C",
-  "Doctorate" = "#8C1515",
-  "Doctorate" = "#8C1515",
-  "Doctorates" = "#8C1515",
-  "All Doctorates (IPEDS)" = "#8C1515",
-  "Research Doctorates (SED)" = "#92A045"
+  "Bachelors" = "#FF9A2E",
+  "Bachelor's" = "#FF9A2E",
+  "Masters"   = "#1F6E80",
+  "Master's"   = "#1F6E80",
+  "Doctorate" = "#98002E",
+  "Doctorate" = "#98002E",
+  "Doctorates" = "#98002E",
+  "All Doctorates (IPEDS)" = "#98002E",
+  "Research Doctorates (SED)" = "#7BA82E"
 )
 
 acad_level_colors <- c(

@@ -161,7 +161,7 @@ PUB <- list(
     caption_pt   = font_pt(8),
     body_pt      = font_pt(10),
     label_pt     = font_pt(10),
-    compact_pt   = font_pt(10),
+    compact_pt   = font_pt(9),
     small_pt     = font_pt(9),
     micro_pt     = font_pt(8),
     milestone_pt = font_pt(7.5),
