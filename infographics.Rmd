@@ -622,8 +622,7 @@ CURRENT_FIGURE_SOURCES <- c(
   "FIG405", "FIG406", "FIG407", "FIG408", "FIG409", "FIG410",
   "FIG501", "FIG502", "FIG503", "FIG504", "FIG505", "FIG506",
   "FIG507", "FIG508", "FIG601", "FIG602", "FIG603", "FIG604a",
-  "FIG604b", "FIG605a", "FIG605b", "FIG606", "FIG607", "FIG608",
-  "FIG609"
+  "FIG604b", "FIG605a", "FIG605b", "FIG606", "FIG607"
 )
 
 CURRENT_TABLE_SOURCES <- c(
@@ -631,9 +630,9 @@ CURRENT_TABLE_SOURCES <- c(
   "TAB202d", "TAB202e", "TAB202f", "TAB202g", "TAB202h", "TAB301",
   "TAB302", "TAB303", "TAB401", "TAB402", "TAB403", "TAB404",
   "TAB501", "TAB502", "TAB503", "TAB504", "TAB505", "TAB505a",
-  "TAB505b", "TAB505c", "TAB506", "TAB601", "TAB602", "TAB603",
-  "TAB603a", "TAB603b", "TAB604", "TAB605", "TAB605a", "TAB605b",
-  "TAB605c"
+  "TAB505b", "TAB505c", "TAB506", "TAB601", "TAB602",
+  "TAB603a", "TAB603b", "TAB604", "TAB604a", "TAB604b",
+  "TAB604c"
 )
 
 CURRENT_REPORT_SOURCES <- unique(c(
@@ -8838,7 +8837,7 @@ CH4_INCLUDE <- c(
   exit_year5 = FALSE,
 
 
-  # Additional Figure 4.08 measures
+  # Additional Figure 4.09 measures
 
   exit_first_two_years = FALSE,
   fig408_still_enrolled = FALSE,
@@ -8922,7 +8921,7 @@ inf4_01 <- read_infographic_source(
   )
 
 
-fig401 <- read_current_figure("FIG401") %>%
+fig402 <- read_current_figure("FIG402") %>%
   mutate(
     Year = year_number(.data$Year),
 
@@ -8933,20 +8932,20 @@ fig401 <- read_current_figure("FIG401") %>%
   )
 
 
-fig406 <- read_current_figure("FIG406") %>%
+fig407 <- read_current_figure("FIG407") %>%
   mutate(
     pct = numeric_clean(.data$pct)
   )
 
 
-fig407 <- read_current_figure("FIG407") %>%
+fig408 <- read_current_figure("FIG408") %>%
   mutate(
     entry_2003 = numeric_clean(.data$entry_2003),
     entry_2011 = numeric_clean(.data$entry_2011)
   )
 
 
-fig408 <- read_current_figure("FIG408") %>%
+fig409 <- read_current_figure("FIG409") %>%
   rename(
     Cohort = Year
   ) %>%
@@ -9707,7 +9706,7 @@ ch4_pisa_gap_metric <- function(
   }
 
 
-  rows <- fig401 %>%
+  rows <- fig402 %>%
     transmute(
       Year = .data$Year,
       Value = .data[[subject]]
@@ -9807,7 +9806,7 @@ ch4_pisa_gap_stats <- bind_rows(
 
 
 # ----------------------------------------------------------------------------
-# Figure 4.06 — entry field to degree field
+# Figure 4.07 — entry field to degree field
 #
 # IMPORTANT:
 #
@@ -9904,7 +9903,7 @@ ch4_transition_metric <- function(
     measure
 ) {
 
-  rows <- fig406 %>%
+  rows <- fig407 %>%
     filter(
       .data$entry_field ==
         .env$entry_field,
@@ -9980,7 +9979,7 @@ ch4_transition_stats <- purrr::pmap_dfr(
 
 
 # ----------------------------------------------------------------------------
-# Figure 4.07 — staying in original field
+# Figure 4.08 — staying in original field
 # ----------------------------------------------------------------------------
 
 ch4_retention_metric <- function(
@@ -9990,7 +9989,7 @@ ch4_retention_metric <- function(
     emphasis = FALSE
 ) {
 
-  row <- fig407 %>%
+  row <- fig408 %>%
     filter(
       .data$field ==
         .env$field
@@ -10076,7 +10075,7 @@ ch4_retention_stats <- bind_rows(
 
 
 # ----------------------------------------------------------------------------
-# Figure 4.08 — exit timing
+# Figure 4.09 — exit timing
 # ----------------------------------------------------------------------------
 
 ch4_fig408_metric <- function(
@@ -10087,7 +10086,7 @@ ch4_fig408_metric <- function(
 ) {
 
   ch4_fixed_id_metric(
-    df = fig408,
+    df = fig409,
     id_col = "Cohort",
     earlier_id = CH4_FIG408_EARLIER_SURVEY,
     latest_id = CH4_FIG408_LATEST_SURVEY,
@@ -10209,14 +10208,14 @@ ch4_exit_first_two_years <- {
   )
 
 
-  earlier <- fig408 %>%
+  earlier <- fig409 %>%
     filter(
       .data$Cohort ==
         CH4_FIG408_EARLIER_SURVEY
     )
 
 
-  latest <- fig408 %>%
+  latest <- fig409 %>%
     filter(
       .data$Cohort ==
         CH4_FIG408_LATEST_SURVEY
@@ -10226,7 +10225,7 @@ ch4_exit_first_two_years <- {
   if (
     nrow(earlier) == 1L &&
     nrow(latest) == 1L &&
-    all(columns %in% names(fig408))
+    all(columns %in% names(fig409))
   ) {
 
     first_value <- sum(
@@ -12258,7 +12257,7 @@ build_ch4_page <- function(
 
       paste0(
         "**Source:** Derived from the current report Figures and Tables: ",
-        "Figures 4.01–4.08 and Tables 4.02–4.04."
+        "Figures 4.02, 4.07–4.09 and Tables 4.02–4.04."
       )
     )
 
@@ -16104,14 +16103,14 @@ fig605_tech <- read_current_figure(
   )
 
 
-fig607 <- read_current_figure("FIG607") %>%
+fig606 <- read_current_figure("FIG606") %>%
   mutate(
     Year = year_number(.data$Year),
     across(-Year, numeric_clean)
   )
 
 
-fig609 <- read_current_figure("FIG609") %>%
+fig607 <- read_current_figure("FIG607") %>%
   transmute(
 
     Field =
@@ -16170,9 +16169,9 @@ tab603_temp <- read_current_table(
   )
 
 
-tab605_row <- read_current_table(
-  "TAB605a",
-  meta_id = "TAB605"
+TAB604_row <- read_current_table(
+  "TAB604a",
+  meta_id = "TAB604"
 ) %>%
   mutate(
 
@@ -16192,9 +16191,9 @@ tab605_row <- read_current_table(
   )
 
 
-tab605_china <- read_current_table(
-  "TAB605b",
-  meta_id = "TAB605"
+TAB604_china <- read_current_table(
+  "TAB604b",
+  meta_id = "TAB604"
 ) %>%
   mutate(
 
@@ -16214,9 +16213,9 @@ tab605_china <- read_current_table(
   )
 
 
-tab605_india <- read_current_table(
-  "TAB605c",
-  meta_id = "TAB605"
+TAB604_india <- read_current_table(
+  "TAB604c",
+  meta_id = "TAB604"
 ) %>%
   mutate(
 
@@ -17308,7 +17307,7 @@ ch6_all_wait_stats <- bind_rows(
       ch6_wait_metric(
 
         df =
-          tab605_row,
+          TAB604_row,
 
         geography =
           "Rest of world",
@@ -17345,7 +17344,7 @@ ch6_all_wait_stats <- bind_rows(
       ch6_wait_metric(
 
         df =
-          tab605_india,
+          TAB604_india,
 
         geography =
           "India",
@@ -17382,7 +17381,7 @@ ch6_all_wait_stats <- bind_rows(
       ch6_wait_metric(
 
         df =
-          tab605_china,
+          TAB604_china,
 
         geography =
           "China",
@@ -17412,7 +17411,7 @@ ch6_all_wait_stats <- bind_rows(
 # ============================================================================
 
 CH6_J1_COUNTRIES <- setdiff(
-  names(fig607),
+  names(fig606),
   "Year"
 )
 
@@ -17426,7 +17425,7 @@ ch6_all_j1_stats <- purrr::map_dfr(
     ch6_series_metric(
 
       df =
-        fig607,
+        fig606,
 
       column =
         country,
@@ -18440,7 +18439,7 @@ CH6_SNAPSHOT_FIELD_IDS <- c(
 )
 
 
-ch6_snapshot_data <- fig609 %>%
+ch6_snapshot_data <- fig607 %>%
 
   mutate(
 
@@ -18629,76 +18628,86 @@ build_ch6_main_table <- function() {
 
 
   if (
-    length(subsection_rows) > 0L
-  ) {
+  length(subsection_rows) > 0L
+) {
 
-    tbl <- tbl %>%
+  tbl <- tbl %>%
 
-      gt::tab_style(
-
-        style =
-          list(
-
-            gt::cell_fill(
-              color =
-                "white"
-            ),
-
-            gt::cell_text(
-              color =
-                INFOGRAPHIC_PALETTE$red,
-              weight =
-                "bold"
-            )
+    # Subheader label: white background + red bold text
+    gt::tab_style(
+      style =
+        list(
+          gt::cell_fill(
+            color = "white"
           ),
-
-        locations =
-          gt::cells_stub(
-            rows =
-              subsection_rows
-          )
-      ) %>%
-
-      gt::tab_style(
-
-        style =
-          gt::cell_borders(
-            sides =
-              "top",
+          gt::cell_text(
             color =
-              INFOGRAPHIC_PALETTE$rule,
+              INFOGRAPHIC_PALETTE$red,
             weight =
-              gt::px(1)
-          ),
-
-        locations =
-          gt::cells_stub(
-            rows =
-              subsection_rows
+              "bold"
           )
-      ) %>%
+        ),
+      locations =
+        gt::cells_stub(
+          rows =
+            subsection_rows
+        )
+    ) %>%
 
-      gt::tab_style(
+    # IMPORTANT:
+    # Clear the normal Latest-column pink fill across the ENTIRE
+    # synthetic subheader row, matching Chapter 4.
+    gt::tab_style(
+      style =
+        gt::cell_fill(
+          color = "white"
+        ),
+      locations =
+        gt::cells_body(
+          columns =
+            tidyselect::everything(),
+          rows =
+            subsection_rows
+        )
+    ) %>%
 
-        style =
-          gt::cell_borders(
-            sides =
-              "top",
-            color =
-              INFOGRAPHIC_PALETTE$rule,
-            weight =
-              gt::px(1)
-          ),
+    # Keep the normal divider above the subheader
+    gt::tab_style(
+      style =
+        gt::cell_borders(
+          sides =
+            "top",
+          color =
+            INFOGRAPHIC_PALETTE$rule,
+          weight =
+            gt::px(1)
+        ),
+      locations =
+        gt::cells_stub(
+          rows =
+            subsection_rows
+        )
+    ) %>%
 
-        locations =
-          gt::cells_body(
-            columns =
-              tidyselect::everything(),
-            rows =
-              subsection_rows
-          )
-      )
-  }
+    gt::tab_style(
+      style =
+        gt::cell_borders(
+          sides =
+            "top",
+          color =
+            INFOGRAPHIC_PALETTE$rule,
+          weight =
+            gt::px(1)
+        ),
+      locations =
+        gt::cells_body(
+          columns =
+            tidyselect::everything(),
+          rows =
+            subsection_rows
+        )
+    )
+}
 
 
   tbl
@@ -18720,7 +18729,7 @@ CH6_STANDARD_ROW_HEIGHT_CSS_PX <-
   INFOGRAPHIC_FIXED_LAYOUT$data_font_px *
     PUB$type_metrics$infographic_row_lineheight +
   2 *
-    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px
+    INFOGRAPHIC_FIXED_LAYOUT$row_padding_px + .75
 
 
 CH6_CSS_TO_OUTPUT_SCALE <-
@@ -20025,19 +20034,15 @@ CH6_AUDIT_SOURCE <- c(
   "h1b_tech_approvals" = "FIG604b",
   "h1b_denial_spike" = "FIG604a + FIG605a",
   "h1b_denial_recovery" = "FIG604a + FIG605a",
-  "perm_certifications" = "FIG606",
-  "perm_expired_india" = "TAB604",
-  "perm_expired_china" = "TAB604",
-  "wait_india_eb2" = "TAB605c",
-  "wait_india_eb3" = "TAB605c",
-  "wait_china_eb2" = "TAB605b",
-  "wait_china_eb3" = "TAB605b",
-  "j1_china" = "FIG607",
-  "workforce_gap_us_vs_oecd" = "FIG608",
-  "trained_total" = "FIG609",
-  "loss_engineering" = "FIG609",
-  "loss_physical" = "FIG609",
-  "loss_computer" = "FIG609"
+  "wait_india_eb2" = "TAB604c",
+  "wait_india_eb3" = "TAB604c",
+  "wait_china_eb2" = "TAB604b",
+  "wait_china_eb3" = "TAB604b",
+  "j1_china" = "FIG606",
+  "trained_total" = "FIG607",
+  "loss_engineering" = "FIG607",
+  "loss_physical" = "FIG607",
+  "loss_computer" = "FIG607"
 )
 
 

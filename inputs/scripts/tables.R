@@ -1316,9 +1316,9 @@ build_occupation_share_table <- function(df, name, meta, level_cols,
 
 # ---- Build Employment Based Visa Processing Times ----
 build_eb_combined_table <- function(meta,
-                                    sources = c(`Rest of World` = "TAB605a",
-                                                China            = "TAB605b",
-                                                India            = "TAB605c"),
+                                    sources = c(`Rest of World` = "TAB604a",
+                                                China            = "TAB604b",
+                                                India            = "TAB604c"),
                                     years   = c(2005, 2010, 2015, 2020, 2025),
                                     keys    = c("all", "chn", "ind")) {
   
@@ -2094,6 +2094,326 @@ build_change_table_wide <- function(
     with_size(
       "long"
     )
+}
+
+# -----------------------------------------------------------------------------
+# Late per-column width transfer
+#
+# Used when a specific table needs selected data columns narrowed while keeping
+# every other data column at the width chosen by scale_columns_to_width().
+# All space recovered from the selected columns is added to the stub.
+# -----------------------------------------------------------------------------
+
+with_compact_columns <- function(
+    gt_tbl,
+    columns,
+    width_px
+) {
+  
+  attr(gt_tbl, "tpa_compact_columns") <- as.character(columns)
+  attr(gt_tbl, "tpa_compact_width_px") <- as.numeric(width_px)
+  
+  gt_tbl
+}
+
+
+apply_compact_columns <- function(gt_tbl) {
+  
+  compact_cols <-
+    attr(gt_tbl, "tpa_compact_columns")
+  
+  compact_width <-
+    attr(gt_tbl, "tpa_compact_width_px")
+  
+  
+  # Nothing requested: return unchanged.
+  if (
+    is.null(compact_cols) ||
+    length(compact_cols) == 0L ||
+    is.null(compact_width) ||
+    !is.finite(compact_width)
+  ) {
+    return(gt_tbl)
+  }
+  
+  
+  # Widths already calculated by scale_columns_to_width().
+  widths <-
+    attr(gt_tbl, "tpa_actual_col_widths_px")
+  
+  stub_w <-
+    attr(gt_tbl, "tpa_actual_stub_width_px")
+  
+  
+  if (
+    is.null(widths) ||
+    is.null(stub_w) ||
+    !is.finite(stub_w)
+  ) {
+    warning(
+      paste0(
+        "Could not apply compact-column widths because ",
+        "the final table widths have not yet been calculated."
+      ),
+      call. = FALSE
+    )
+    
+    return(gt_tbl)
+  }
+  
+  
+  compact_cols <-
+    intersect(
+      compact_cols,
+      names(widths)
+    )
+  
+  
+  if (length(compact_cols) == 0L) {
+    return(gt_tbl)
+  }
+  
+  
+  # ---------------------------------------------------------------------------
+  # 1. CALCULATE NEW WIDTHS
+  # ---------------------------------------------------------------------------
+  
+  old_widths <- widths
+  
+  widths[compact_cols] <-
+    compact_width
+  
+  
+  # Every pixel removed from the selected columns goes to the stub.
+  recovered_px <-
+    sum(
+      old_widths[compact_cols] -
+        widths[compact_cols]
+    )
+  
+  
+  new_stub_w <-
+    as.numeric(stub_w + recovered_px)
+  
+  
+  # ---------------------------------------------------------------------------
+  # 2. IDENTIFY TABLE + STUB COLUMN
+  # ---------------------------------------------------------------------------
+  
+  id_tbl <- gt_tbl[["_options"]]
+  
+  tbl_id <- tryCatch(
+    id_tbl$value[[
+      which(
+        id_tbl$parameter == "table_id"
+      )[1]
+    ]],
+    error = function(e) NULL
+  )
+  
+  
+  if (
+    is.null(tbl_id) ||
+    length(tbl_id) == 0L ||
+    is.na(tbl_id) ||
+    !nzchar(tbl_id)
+  ) {
+    return(gt_tbl)
+  }
+  
+  
+  boxhead <-
+    gt_tbl[["_boxhead"]]
+  
+  
+  stub_col <- if (
+    is.data.frame(boxhead) &&
+    all(
+      c("var", "type") %in%
+      names(boxhead)
+    )
+  ) {
+    
+    sv <-
+      boxhead$var[
+        boxhead$type == "stub"
+      ]
+    
+    sv <-
+      sv[
+        !is.na(sv)
+      ]
+    
+    if (length(sv)) {
+      sv[[1]]
+    } else {
+      NA_character_
+    }
+    
+  } else {
+    
+    NA_character_
+  }
+  
+  
+  data_cols <-
+    names(widths)
+  
+  
+  # ---------------------------------------------------------------------------
+  # 3. APPLY NEW STUB WIDTH
+  #
+  # IMPORTANT:
+  # Inject the numeric value into the formula now, rather than leaving
+  # `new_stub_w` to be evaluated later by gt.
+  # ---------------------------------------------------------------------------
+  
+  out <- gt_tbl
+  
+  
+  if (!is.na(stub_col)) {
+    
+    stub_formula <-
+      rlang::new_formula(
+        rlang::sym(stub_col),
+        rlang::expr(
+          gt::px(!!new_stub_w)
+        )
+      )
+    
+    
+    out <-
+      out %>%
+      gt::cols_width(
+        stub_formula
+      )
+  }
+  
+  
+  # ---------------------------------------------------------------------------
+  # 4. APPLY EACH DATA-COLUMN WIDTH
+  #
+  # Again, inject each numeric width directly into its formula.
+  # ---------------------------------------------------------------------------
+  
+  for (v in data_cols) {
+    
+    w <-
+      as.numeric(
+        widths[[v]]
+      )
+    
+    
+    width_formula <-
+      rlang::new_formula(
+        rlang::sym(v),
+        rlang::expr(
+          gt::px(!!w)
+        )
+      )
+    
+    
+    out <-
+      out %>%
+      gt::cols_width(
+        width_formula
+      )
+  }
+  
+  
+  # ---------------------------------------------------------------------------
+  # 5. FORCE FINAL BROWSER WIDTHS
+  # ---------------------------------------------------------------------------
+  
+  data_css <-
+    vapply(
+      seq_along(data_cols),
+      
+      function(i) {
+        
+        w <-
+          as.numeric(
+            widths[[data_cols[[i]]]]
+          )
+        
+        pos <-
+          i + 1L
+        
+        
+        sprintf(
+          paste0(
+            "#%s tbody td:nth-child(%d), ",
+            "#%s thead tr:last-child th:nth-child(%d) { ",
+            "width:%spx !important; ",
+            "min-width:%spx !important; ",
+            "max-width:%spx !important; ",
+            "}"
+          ),
+          tbl_id,
+          pos,
+          tbl_id,
+          pos,
+          w,
+          w,
+          w
+        )
+      },
+      
+      character(1)
+    )
+  
+  
+  stub_css <-
+    sprintf(
+      paste0(
+        "#%s .gt_stub, ",
+        "#%s .gt_rowname { ",
+        "width:%spx !important; ",
+        "min-width:%spx !important; ",
+        "max-width:%spx !important; ",
+        "}"
+      ),
+      tbl_id,
+      tbl_id,
+      new_stub_w,
+      new_stub_w,
+      new_stub_w
+    )
+  
+  
+  out <-
+    out %>%
+    gt::opt_css(
+      css =
+        paste(
+          c(
+            stub_css,
+            data_css
+          ),
+          collapse = "\n"
+        )
+    )
+  
+  
+  # ---------------------------------------------------------------------------
+  # 6. SAVE FINAL WIDTHS BACK TO THE TABLE
+  # ---------------------------------------------------------------------------
+  
+  attr(
+    out,
+    "tpa_actual_stub_width_px"
+  ) <-
+    new_stub_w
+  
+  
+  attr(
+    out,
+    "tpa_actual_col_widths_px"
+  ) <-
+    widths
+  
+  
+  out
 }
 
 # ---- Field share-change table -------------------------------
@@ -3555,6 +3875,12 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
     gt_tbl,
     profile = profile,
     stub_width_px = stub_width_px
+  )
+  
+  # Apply any table-specific column-width transfer AFTER the normal
+  # publication width system has finished.
+  gt_tbl <- apply_compact_columns(
+    gt_tbl
   )
   
   overflow_px <- attr(gt_tbl, "tpa_overflow_px") %||% 0

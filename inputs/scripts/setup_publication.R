@@ -18,6 +18,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(ggimage)
+  library(ggnewscale)  
 })
 
 # ============================================================================
@@ -90,7 +91,6 @@ for (script in c(
   "tables.R",
   "chart_layers.R",
   "maps.R",
-  "infographics.R"
-)) {
+  "infographics.R")) {
   source(file.path(PATHS$scripts, script))
 }

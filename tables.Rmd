@@ -497,6 +497,7 @@ save_table(tab_017, "tab_4_04", profile = "standard", stub_width_px = 250)
 
 ### Table 5.01 - When Did China Catch At Each AI Conference
 ```{r table 019}
+
 change_type <- "ppt"  # choose "relative" or "ppt"
 
 conf_names <- c(
@@ -518,28 +519,44 @@ conf_names <- c(
   acl          = "ACL (NLP)",
   aistats      = "AISTATS (Stats)",
   colt         = "COLT (Theory)",
-  siggraphasia = "SIGGRAPH Asia",
+  siggraphasia = "SIGGRAPH Asia (Graphics)",
   wacv         = "WACV (Vision)"
 )
 
 tab_501a <- build_conference_summary_table_split(
-  name       = "tab_019a",
-  meta       = get_meta("TAB501"),
-  conf_names = conf_names,
-  data_name  = "TAB501",
-  row_slice  = 1:20,
+  name        = "tab_019a",
+  meta        = get_meta("TAB501"),
+  conf_names  = conf_names,
+  data_name   = "TAB501",
+  row_slice   = 1:20,
   change_type = change_type
 ) %>%
+
+  # Narrow ONLY these four columns.
+  # Every pixel removed from them is transferred to the stub.
+  with_compact_columns(
+    columns = c(
+      "US_First",
+      "US_Last",
+      "CN_First",
+      "CN_Last"
+    ),
+    width_px = 80
+  ) %>%
+
   opt_css(css = "
-    #tab_019a .gt_col_heading { white-space: nowrap !important; }
-    #tab_019a tbody td:nth-child(3), #tab_019a tbody td:nth-child(4),
-    #tab_019a tbody td:nth-child(6), #tab_019a tbody td:nth-child(7)
-      { width: 52px !important; min-width: 52px !important; max-width: 52px !important; }
-    #tab_019a tbody td:last-child, #tab_019a thead th:last-child
-      { width: 96px !important; min-width: 96px !important; }
+    #tab_019a .gt_col_heading {
+      white-space: nowrap !important;
+    }
   ")
 
-save_table(tab_501a, "tab_5_01", profile = "ultrawide", stub_width_px = 160)
+
+save_table(
+  tab_501a,
+  "tab_5_01",
+  profile = "ultrawide",
+  stub_width_px = 160
+)
 ```
 
 ### Table 5.02 - How Many U.S. Universities Rank in the Global Top 100? 
@@ -547,7 +564,7 @@ save_table(tab_501a, "tab_5_01", profile = "ultrawide", stub_width_px = 160)
 meta <- get_meta("TAB502")
 change_type <- "ppt"  # choose "relative" or "ppt"
 num  <- function(x) parse_number(as.character(x))
-field_order <- c("Physical Sciences", "Life Sciences", "Engineering", "Computer Science")
+field_order <- c("Average", "Physical Sciences", "Life Sciences", "Engineering", "Computer Science")
 years_shown <- c(2014, 2018, 2022, 2026)
 raw <- read_fig("TAB502") %>%
   rename(Year = 1) %>%
@@ -582,7 +599,12 @@ TAB502 <- build_occupation_share_table(
     "Computer science was first ranked in 2017; its 2017 count is shown in the",
     "2014 column so its change can be computed"
   )
-)
+) %>%
+  gt::fmt_number(
+    columns  = c(Y2014, Y2018, Y2022, Y2026),
+    rows     = Occupation == "Average",
+    decimals = 1
+  )
 save_table(TAB502, "tab_5_02", profile = "standard")
 ```
 
@@ -723,7 +745,6 @@ meta <- get_meta("TAB506")
 # an absolute count difference rather than a percentage-point move.
 change_type <- "ppt"
 num  <- function(x) parse_number(as.character(x))
-
 flag_slug <- c(
   "United States" = "united-states",
   "Japan"         = "japan",
@@ -732,7 +753,6 @@ flag_slug <- c(
   "Germany"       = "germany",
   "China"         = "china"
 )
-
 df_023 <- read_fig("TAB506") %>%
   rename(Company = 1, Country = 2, Y2005 = 3, Y2015 = 4, Y2025 = 5) %>%
   mutate(across(c(Y2005, Y2015, Y2025), num)) %>%
@@ -742,7 +762,6 @@ df_023 <- read_fig("TAB506") %>%
     Rank2005 = dplyr::min_rank(dplyr::desc(Y2005)),   # 1 = most 2005 grants
     Rank2025 = dplyr::min_rank(dplyr::desc(Y2025))    # 1 = most 2025 grants
   )
-
 # mark the five firms that were top 5 in 2005 with a colored rank arrow.
 # arrow points down (fell in rank) or up (rose) between 2005 and 2025.
 arrow_span <- function(rank2005, fell) {
@@ -751,7 +770,6 @@ arrow_span <- function(rank2005, fell) {
   paste0(" <span style='color:", color, ";font-weight:700;'>",
          glyph, " #", rank2005, "</span>")
 }
-
 df_023 <- df_023 %>%
   mutate(
     Company = ifelse(
@@ -761,27 +779,22 @@ df_023 <- df_023 %>%
     )
   ) %>%
   arrange(Rank2025) %>%                            # sort by 2025 rank, not net change
-  select(Company, flag, Y2005, Y2025, Change)
-
+  select(Company, flag, Y2005, Y2015, Y2025, Change)
 TAB506 <- build_patent_company_delta_table(
   df_023, "TAB506", meta,
-  level_cols  = c("Y2005", "Y2025"),
+  level_cols  = c("Y2005", "Y2015", "Y2025"),
   chg_cols    = character(0),
   change_type = change_type,
   footnote = end_sentence(
-    "The first and last columns are patent grants in 2005 and 2025.",
+    "The first three columns are patent grants in 2005, 2015, and 2025.",
     change_col_label(FALSE), "is the", change_phrase(change_type, "count"),
-    "across the window. Arrows mark the five firms that ranked in the top five",
+    "from 2005 to 2025. Arrows mark the five firms that ranked in the top five",
     "by 2005 grants, with their 2005 rank; a down arrow marks a fall in rank",
     "by 2025 and an up arrow marks a rise. Rows are ordered by 2025 grants"
   )
 )
 save_table(TAB506, "tab_5_06", profile = "ultrawide", stub_width_px = 360)
 ```
-
-
-
-
 
 # Chapter 6
 
@@ -831,24 +844,14 @@ save_table(TAB603, "tab_6_03", profile = "standard")
 TAB603
 ```
 
-### Table 6.04 - How Many PERM Certifications Go Unusued
-```{r table 029}
+### Table 6.04 - Employment-Based Green Card Wait Times by Nationality
+```{r table 026}
 meta <- get_meta("TAB604")
-change_type <- "ppt"  # choose "relative" or "ppt"
 
-TAB604 <- build_perm_expiry_table(meta, change_type = change_type)
+TAB604 <- build_eb_combined_table(meta)
 
 save_table(TAB604, "tab_6_04", profile = "standard")
-```
-
-### Table 6.05 - Employment-Based Green Card Wait Times by Nationality
-```{r table 026}
-meta <- get_meta("TAB605")
-
-TAB605 <- build_eb_combined_table(meta)
-
-save_table(TAB605, "tab_6_05", profile = "standard")
-TAB605
+TAB604
 ```
 
 ```{r}

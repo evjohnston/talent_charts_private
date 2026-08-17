@@ -1432,13 +1432,110 @@ FIG310
 
 # Chapter 4
 
-### Figure 4.01 - How Do American Students Score on International Test?
-```{r figure 035}
+### Figure 4.01 - US Math Performance Over Time
+```{r}
 meta <- get_meta("FIG401")
+
+df_400 <- read_fig("FIG401") %>%
+  mutate(across(everything(), as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Assessment", values_to = "Score") %>%
+  filter(!is.na(Score)) %>%
+  arrange(Assessment, Year) %>%
+  group_by(Assessment) %>%
+  mutate(
+    Change   = Score - first(Score),
+    baseline = first(Score),
+    peak_val = max(Score)
+  ) %>%
+  ungroup()
+
+level_order <- df_400 %>%
+  group_by(Assessment) %>%
+  slice_max(Year, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  arrange(desc(Change)) %>%
+  pull(Assessment)
+
+df_400 <- df_400 %>%
+  mutate(Assessment = factor(Assessment, levels = level_order)) %>%
+  arrange(Assessment, Year)
+
+# peak marker + label; skip PISA (downward-only) and any series peaking at its end.
+# NAEP 13 sits just under NAEP 9's peak, so label it below its own line.
+peaks_400 <- df_400 %>%
+  group_by(Assessment) %>%
+  slice_max(Change, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  filter(Year != max(df_400$Year), Assessment != "PISA Math") 
+
+# right-edge: both drops only, in parentheses
+labels_400 <- last_by_group(df_400, Year, Assessment) %>%
+  mutate(
+    d_base = round(Score - baseline),
+    d_peak = round(Score - peak_val),
+    .label = paste0(
+      as.character(Assessment), ": ",
+      sprintf("%+d", d_base))
+  ) %>%
+  prepare_right_labels(df_400$Year, allow_multiline = TRUE)
+
+FIG401 <- ggplot(df_400, aes(Year, Change, color = Assessment, group = Assessment)) +
+  geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_point(data = peaks_400, size = POINT_SIZE) +
+  geom_text_tpa(
+    data    = filter(peaks_400, !Assessment %in% c("NAEP 13", "PISA")),
+    mapping = aes(label = paste0("Peak: ", round(Score)))
+  ) +
+  geom_text(
+    data     = filter(peaks_400, Assessment %in% c("NAEP 13")),
+    mapping  = aes(label = paste0("Peak: ", round(Score))),
+    vjust    = 2.2,
+    color    = tpa_colors[3],
+    fontface = "bold",
+    family   = FONT_FAMILY,
+    size     = DATA_LABEL_SIZE / .pt,
+    show.legend = FALSE
+  ) +
+    geom_text(
+    data     = filter(peaks_400, Assessment %in% c("PISA")),
+    mapping  = aes(label = paste0("Peak: ", round(Score))),
+    vjust    = 2.2,
+    hjust    = 1,
+    nudge_x  = -0.4,
+    color    = tpa_colors[5],
+    fontface = "bold",
+    family   = FONT_FAMILY,
+    size     = DATA_LABEL_SIZE / .pt,
+    show.legend = FALSE
+  ) +
+  geom_label_repel_tpa(
+    data    = labels_400,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_400$Year, right_labels = labels_400) +
+  scale_y_continuous(expand = EXPAND_LINE) +
+  scale_color_tpa() +
+  guides(color = "none") +
+  labs_meta(meta, y = "Change in score since first assessment") +
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_400)
+
+save_chart_aligned(FIG401, "fig_4_01")
+FIG401
+```
+
+### Figure 4.02 - How Do American Students Score on International Tests?
+```{r figure 035}
+meta <- get_meta("FIG402")
 
 subject_order <- c("Reading", "Science", "Math")   # Math last -> drawn on top
 
-df_035 <- read_fig("FIG401") %>%
+df_035 <- read_fig("FIG402") %>%
   mutate(across(-Year, as.numeric)) %>%
   pivot_longer(-Year, names_to = "Subject", values_to = "Score") %>%
   filter(!is.na(Score)) %>%
@@ -1462,7 +1559,7 @@ end_labels <- last_by_group(df_035, Year, Subject) %>%
   mutate(.label = as.character(Subject)) %>%
   prepare_right_labels(df_035$Year)
 
-FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
+FIG402 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
   geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_line(data = df_muted, linewidth = LINE_WIDTH) +
   geom_point(data = df_muted, size = 1.8) +
@@ -1485,8 +1582,8 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
            hjust = 0, vjust = 0, color = "grey50",
            size = SMALL_LABEL_SIZE / .pt, family = FONT_FAMILY) +
   scale_x_years(df_035$Year, pad_left = 0.03, right_labels = end_labels) +
-  scale_y_continuous(limits = c(-20, 32), breaks = seq(-20, 30, 5),
-                     expand = expansion(mult = c(0.02, 0.05))) +
+  scale_y_continuous(limits = c(-25, 32), breaks = seq(-25, 30, 5),
+                     expand = expansion(mult = c(0.00, 0.05))) +
   scale_color_manual(values = palette_035) +
   guides(color = "none") +
   labs_meta(meta, y = "Points above or below OECD average") +
@@ -1495,13 +1592,13 @@ FIG401 <- ggplot(df_035, aes(Year, Score, color = Subject, group = Subject)) +
   theme_right_labels(end_labels) +
   theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
 
-save_chart_aligned(FIG401, "fig_4_01")
-FIG401
+save_chart_aligned(FIG402, "fig_4_02")
+FIG402
 ```
 
-### Figure 4.02 - How Do OECD Countries Rank in Math?
+### Figure 4.03 - How Do OECD Countries Rank in Math?
 ```{r FIG402}
-meta <- get_meta("FIG402")
+meta <- get_meta("FIG403")
 num  <- function(x) parse_number(as.character(x))
 
 OECD_MATH_MEAN <- 472  # OECD 2022 mathematics average
@@ -1515,7 +1612,7 @@ oecd_members <- c(
   "United Kingdom","United States"
 )
 
-df_120 <- read_fig("FIG402") %>%
+df_120 <- read_fig("FIG403") %>%
   filter(Country %in% oecd_members) %>%
   mutate(Gap = num(PISA_Math_Mean) - OECD_MATH_MEAN,
          Country = fct_reorder(Country, Gap))
@@ -1527,7 +1624,7 @@ palette_120 <- highlight_colors(
   default     = tpa_colors[2]    # navy
 )
 
-FIG402 <- ggplot(df_120, aes(Gap, Country, fill = Country)) +
+FIG403 <- ggplot(df_120, aes(Gap, Country, fill = Country)) +
   geom_vline(xintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_col(width = 0.75, alpha = ALPHA_COL) +
   geom_text(aes(label = if_else(Gap == 0, "0", sprintf("%+.0f", Gap)),
@@ -1548,13 +1645,13 @@ FIG402 <- ggplot(df_120, aes(Gap, Country, fill = Country)) +
                                     size = SMALL_LABEL_SIZE,
                                     color = "grey25",
                                     margin = margin(t = PUB$spacing$axis_title_compact_pt)))
-save_chart_aligned(FIG402, "fig_4_02", size = "medium", left_pt = 71)
-FIG402
+save_chart_aligned(FIG403, "fig_4_03", size = "medium", left_pt = 71)
+FIG403
 ```
 
-### Figure 4.03 - How Do OECD Countries Rank in Math Proficiency?
+### Figure 4.04 - How Do OECD Countries Rank in Math Proficiency?
 ```{r}
-meta <- get_meta("FIG403")
+meta <- get_meta("FIG404")
 num  <- function(x) parse_number(as.character(x))
 
 keep_rows <- c(
@@ -1566,7 +1663,7 @@ keep_rows <- c(
   "United Kingdom","United States","OECD average"
 )
 
-df_122 <- read_fig("FIG403") %>%
+df_122 <- read_fig("FIG404") %>%
   rename(Country = 1) %>%
   mutate(Country = str_remove(Country, "\\*+$"),      # drop sampling asterisks
          `Level 5` = num(`Level 5`),
@@ -1582,7 +1679,7 @@ palette_122 <- highlight_colors(
   default     = tpa_colors[2]                       # navy
 )
 
-FIG403 <- ggplot(df_122, aes(Top, Country, fill = Country)) +
+FIG404 <- ggplot(df_122, aes(Top, Country, fill = Country)) +
   geom_col(width = 0.75, alpha = ALPHA_COL) +
   geom_text(aes(label = sprintf("%.1f", Top), hjust = -0.2),
             family = FONT_FAMILY,
@@ -1601,18 +1698,16 @@ FIG403 <- ggplot(df_122, aes(Top, Country, fill = Country)) +
                                     size = SMALL_LABEL_SIZE,
                                     color = "grey25",
                                     margin = margin(t = PUB$spacing$axis_title_compact_pt)))
-save_chart_aligned(FIG403, "fig_4_03", size = "medium", left_pt = 71)
-FIG403
+save_chart_aligned(FIG404, "fig_4_04", size = "medium", left_pt = 71)
+FIG404
 ```
 
 
-### Figure 4.04 - Does Spending More on Schools Buy Better Results?
+### Figure 4.05 - Does Spending More on Schools Buy Better Results?
 ```{r fig_119}
-meta <- get_meta("FIG404")
-
+meta <- get_meta("FIG405")
 num <- function(x) parse_number(as.character(x))
-
-df_119 <- read_fig("FIG404") %>%
+df_119 <- read_fig("FIG405") %>%
   mutate(
     K12  = num(`K-12 (in USD)`),
     PISA = as.numeric(`OECD Math Average`)
@@ -1624,11 +1719,17 @@ df_119 <- read_fig("FIG404") %>%
     Group == "OECD average"  ~ "OECD average",
     TRUE                     ~ "Other"
   ))
-
 oecd_x <- df_119$K12[df_119$Country == "OECD average"]
 oecd_y <- df_119$PISA[df_119$Country == "OECD average"]
 
-# manually placed anchors (US, OECD average) vs. repelled grey labels
+reg_df    <- filter(df_119, pt_group != "OECD average")
+reg_hi    <- filter(reg_df, K12 >= 10000)
+
+# fit labels (factor order controls legend order)
+fit_lvls  <- c("All countries", "Above ~$10K per pupil")
+fit_cols  <- c("All countries" = "grey55", "Above ~$10K per pupil" = tpa_colors[1])
+fit_ltys  <- c("All countries" = "dashed", "Above ~$10K per pupil" = "longdash")
+
 key_countries  <- c("United States", "OECD average")
 label_grey <- df_119 %>%
   filter(Country %in% c("Korea", "Japan", "Peru", "Luxembourg",
@@ -1639,41 +1740,51 @@ label_key  <- df_119 %>%
     nx = if_else(Country == "United States",  1200, -1600),
     ny = if_else(Country == "United States",    -6,     9)
   )
-
 pal_c <- c("United States" = tpa_colors[1],
            "OECD average"  = tpa_colors[3],
            "Other"         = "grey80")
 
-FIG404 <- ggplot(df_119, aes(K12, PISA)) +
+FIG405 <- ggplot(df_119, aes(K12, PISA)) +
   geom_hline(yintercept = oecd_y, color = "grey70",
              linetype = "dashed", linewidth = LINE_WIDTH_REF) +
   geom_vline(xintercept = oecd_x, color = "grey70",
              linetype = "dashed", linewidth = LINE_WIDTH_REF) +
   geom_point(aes(color = pt_group, size = pt_group), alpha = ALPHA_BUBBLE) +
-  # grey country labels: let repel place them
+  scale_color_manual(values = pal_c) +
+  scale_size_manual(values = c("United States" = 4, "OECD average" = 3.5, "Other" = 2.4)) +
+  guides(color = "none", size = "none") +
+  # country labels
   geom_label_repel_tpa(
-    data          = label_grey,
-    mapping       = aes(label = Country, color = pt_group),
-    seed          = 42,
-    force         = 3,
-    with_segment  = TRUE,
-    direction     = "both"
+    data = label_grey,
+    mapping = aes(label = Country, color = pt_group),
+    seed = 42, force = 3, with_segment = TRUE, direction = "both"
   ) +
-  # US and OECD average: placed by hand
   geom_label_repel_tpa(
-    data         = label_key,
-    mapping      = aes(label = Country, color = pt_group),
-    nudge_x      = label_key$nx,
-    nudge_y      = label_key$ny,
-    seed         = 42,
-    force        = 0,
-    with_segment = TRUE,
-    direction    = "both"
+    data = label_key,
+    mapping = aes(label = Country, color = pt_group),
+    nudge_x = label_key$nx, nudge_y = label_key$ny,
+    seed = 42, force = 0, with_segment = TRUE, direction = "both"
   ) +
+  # ---- new colour scale so fit lines get their own legend ----
+  new_scale_color() +
+  geom_smooth(
+    data = reg_df,
+    aes(color = fit_lvls[1], linetype = fit_lvls[1]),
+    method = "lm", se = FALSE,
+    linewidth = LINE_WIDTH_REF * 1.6, alpha = 0.7
+  ) +
+  geom_smooth(
+    data = reg_hi,
+    aes(color = fit_lvls[2], linetype = fit_lvls[2]),
+    method = "lm", se = FALSE, fullrange = FALSE,
+    linewidth = LINE_WIDTH_REF * 1.6, alpha = 0.7
+  ) +
+  scale_color_manual(name = NULL, values = fit_cols, breaks = fit_lvls) +
+  scale_linetype_manual(name = NULL, values = fit_ltys, breaks = fit_lvls) +
+  # reference annotations
   annotate("text", x = max(df_119$K12) * 0.98, y = oecd_y - 6,
            label = "OECD average score", hjust = .5, vjust = 0,
-           color = "grey55", size = MICRO_LABEL_SIZE / .pt,
-           family = FONT_FAMILY) +
+           color = "grey55", size = MICRO_LABEL_SIZE / .pt, family = FONT_FAMILY) +
   annotate("text", x = oecd_x - 350, y = min(df_119$PISA) + 4,
            label = "OECD average spending", angle = 90,
            hjust = .10, vjust = 2.5, color = "grey55",
@@ -1681,31 +1792,82 @@ FIG404 <- ggplot(df_119, aes(K12, PISA)) +
   scale_x_continuous(labels = label_dollar(scale = 1e-3, suffix = "K"),
                      expand = expansion(mult = c(0.04, 0.08))) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.08))) +
-  scale_color_manual(values = pal_c) +
-  scale_size_manual(values = c("United States" = 4, "OECD average" = 3.5, "Other" = 2.4)) +
-  guides(color = "none", size = "none") +
   coord_cartesian(clip = "off") +
   labs_meta(meta,
             x = "K-12 spending per student (USD, PPP)",
             y = "PISA math score, 2022") +
   theme_tpa() +
   theme(
-    axis.text.y = element_text(size = SMALL_LABEL_SIZE),
+    axis.text.y  = element_text(size = SMALL_LABEL_SIZE),
     axis.title.x = element_text(family = FONT_FAMILY, color = "grey25",
-                             size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt))
+                                size = AXIS_SIZE,
+                                margin = margin(t = PUB$spacing$axis_title_gap_pt)),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.key.width = unit(28, "pt"),
+    legend.text = element_text(family = FONT_FAMILY, size = MICRO_LABEL_SIZE,
+                               color = "grey25")
+  ) +
+  guides(
+    color    = guide_legend(override.aes = list(alpha = 1, linewidth = LINE_WIDTH_REF * 1.6)),
+    linetype = guide_legend()
   )
-
-save_chart_aligned(FIG404, "fig_4_04", size = "standard")
-FIG404
+save_chart_aligned(FIG405, "fig_4_05", size = "standard")
+FIG405
 ```
 
-### Figure 4.05 - How Lopsided Is U.S. Education Spending?
+#### Figure 4.05 Regression
+```{r}
+# Regression on the plotted data (annual K-12 spend vs 2022 PISA math)
+reg_df <- df_119 %>% filter(pt_group != "OECD average")  # drop the aggregate row
+
+fit_all <- lm(PISA ~ K12, data = reg_df)
+summary(fit_all)
+
+# Above-threshold subset: does more money still predict scores among high spenders?
+# pick the threshold your prose uses; here annual ~$10K as an example
+fit_hi <- lm(PISA ~ K12, data = filter(reg_df, K12 >= 10000))
+summary(fit_hi)
+
+# tidy numbers for the footnote
+broom::glance(fit_all)   # r.squared, p.value
+broom::tidy(fit_all)     # slope, std.error, p.value
+
+library(dplyr)
+library(broom)
+
+hi <- filter(reg_df, K12 >= 10000)
+
+candidates <- c("United States", "Luxembourg")   # add any far-right/high-leverage points
+base_fit <- lm(PISA ~ K12, data = hi)
+
+results <- purrr::map_dfr(c("(none)", candidates), function(ctry) {
+  d <- if (ctry == "(none)") hi else filter(hi, Country != ctry)
+  f <- lm(PISA ~ K12, data = d)
+  broom::tidy(f) %>%
+    filter(term == "K12") %>%
+    transmute(
+      dropped      = ctry,
+      n            = nrow(d),
+      slope_per_1k = estimate * 1000,
+      p_value      = p.value,
+      r_squared    = broom::glance(f)$r.squared
+    )
+})
+print(results)
+
+# Also flag the highest-leverage points automatically
+hi$cook <- cooks.distance(base_fit)
+hi %>% arrange(desc(cook)) %>% select(Country, K12, PISA, cook) %>% head(5)
+```
+
+### Figure 4.06 - How Lopsided Is U.S. Education Spending?
 ```{r fig_118}
-meta <- get_meta("FIG405")
+meta <- get_meta("FIG406")
 
 num <- function(x) parse_number(as.character(x))
 
-df_118 <- read_fig("FIG405") %>%
+df_118 <- read_fig("FIG406") %>%
   mutate(
     K12   = num(`K-12 (in USD)`),
     Tert  = num(`Tertiary (in USD)`),
@@ -1721,11 +1883,11 @@ pal_b <- highlight_colors(
   default     = tpa_colors[2]
 )
 
-FIG405 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
+FIG406 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
   geom_vline(xintercept = 1, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_col(width = 0.72, alpha = ALPHA_COL) +
-  geom_text(aes(label = sprintf("%.1f\u00d7", Ratio),
-                hjust = if_else(Ratio >= 1, -0.2, -0.2)),
+  geom_text(aes(label = sprintf("%.2f\u00d7", Ratio),
+                hjust = -0.2),
             family = FONT_FAMILY, fontface = "bold",
             size = SMALL_LABEL_SIZE / .pt, color = "grey25") +
   annotate("text", x = 1.02, y = 25, label = "spends equally on both levels",
@@ -1745,14 +1907,14 @@ FIG405 <- ggplot(df_118, aes(Ratio, Country, fill = Country)) +
                              size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt))
   )
 
-save_chart_aligned(FIG405, "fig_4_05", size = "medium", left_pt = 71)
-FIG405
+save_chart_aligned(FIG406, "fig_4_06", size = "medium", left_pt = 71)
+FIG406
 ```
 
 
-### Figure 4.06 - STEM's Losses are Lateral: More Switch Fields Than Drop Out
+### Figure 4.07 - STEM's Losses are Lateral: More Switch Fields Than Drop Out
 ```{r figure 038b}
-meta <- get_meta("FIG406")
+meta <- get_meta("FIG407")
 
 short_fields <- c(
   "Computer & information sciences"   = "Computer science",
@@ -1764,7 +1926,7 @@ short_fields <- c(
 field_order <- c("Computer science", "Engineering", "Sciences & math")
 col_order   <- c(field_order, "Non-STEM")
 
-df_038b <- read_fig("FIG406") %>%
+df_038b <- read_fig("FIG407") %>%
   mutate(pct = as.numeric(pct),
          is_diag      = as.character(entry_field) == as.character(degree_field),
          entry_field  = recode(entry_field, !!!short_fields),
@@ -1777,7 +1939,7 @@ df_038b <- read_fig("FIG406") %>%
            reliability %in% c("unstable_30_50", "unstable_50plus") ~ paste0(fmt_pct_1(pct), "*"),
            TRUE                              ~ fmt_pct_1(pct)))
 
-FIG406 <- ggplot(df_038b, aes(degree_field, entry_field, fill = pct)) +
+FIG407 <- ggplot(df_038b, aes(degree_field, entry_field, fill = pct)) +
   geom_tile(color = "white", linewidth = 1.5) +
   geom_tile(data = ~filter(.x, is_diag),
             color = "grey15", linewidth = 1, fill = NA) +
@@ -1797,13 +1959,13 @@ FIG406 <- ggplot(df_038b, aes(degree_field, entry_field, fill = pct)) +
         axis.text.x  = element_text(angle = 30, hjust = 1),
         panel.grid   = element_blank())
 
-save_chart_aligned(FIG406, "fig_4_06")
-FIG406
+save_chart_aligned(FIG407, "fig_4_07")
+FIG407
 ```
 
-### Figure 4.07 - Computing Holds its Majors While Broad Science Loses Half of Its Graduates
+### Figure 4.08 - Computing Holds its Majors While Broad Science Loses Half of Its Graduates
 ```{r figure 038c}
-meta <- get_meta("FIG407")
+meta <- get_meta("FIG408")
 
 short_fields <- c(
   "Computer & information sciences"   = "Computer science",
@@ -1814,7 +1976,7 @@ short_fields <- c(
 
 field_order <- c("Computer science", "Engineering", "Sciences & math")
 
-df_038c <- read_fig("FIG407") %>%
+df_038c <- read_fig("FIG408") %>%
   mutate(across(-field, as.numeric)) %>%
   pivot_longer(-field, names_to = "cohort", values_to = "pct") %>%
   mutate(cohort = recode(cohort,
@@ -1823,7 +1985,7 @@ df_038c <- read_fig("FIG407") %>%
          field  = recode(field, !!!short_fields),
          field  = factor(field, levels = field_order))
 
-FIG407 <- ggplot(df_038c, aes(x = field, y = pct, fill = cohort)) +
+FIG408 <- ggplot(df_038c, aes(x = field, y = pct, fill = cohort)) +
   geom_col(width = 0.6, position = position_dodge(width = 0.65)) +
   geom_text(aes(label = fmt_pct_1(pct)),
             position = position_dodge(width = 0.65), vjust = -0.4,
@@ -1837,13 +1999,13 @@ FIG407 <- ggplot(df_038c, aes(x = field, y = pct, fill = cohort)) +
   theme(axis.title.y = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = AXIS_SIZE, margin = margin(r = PUB$spacing$axis_label_right_gap_pt)))
 
-save_chart_aligned(FIG407, "fig_4_07")
-FIG307
+save_chart_aligned(FIG408, "fig_4_08")
+FIG408
 ```
 
-### Figure 4.08 - When Do Non-Completers Leave College
+### Figure 4.09 - When Do Non-Completers Leave College
 ```{r figure 083}
-meta <- get_meta("FIG408")
+meta <- get_meta("FIG409")
 
 year_levels <- c(
   "No degree, left without return year 1" = "Year 1",
@@ -1854,7 +2016,7 @@ year_levels <- c(
   "No degree, left without return year 6" = "Year 6"
 )
 
-df_083 <- read_fig("FIG408") %>%
+df_083 <- read_fig("FIG409") %>%
   rename(Cohort = 1) %>%
   select(Cohort, all_of(names(year_levels))) %>%   # timing only; still-enrolled/attained live in fig_084 + text
   mutate(across(-Cohort, as.numeric)) %>%
@@ -1862,7 +2024,7 @@ df_083 <- read_fig("FIG408") %>%
   mutate(ExitYear = recode(ExitYear, !!!year_levels),
          Cohort   = factor(Cohort, levels = c("1996/2001", "2004/2009", "2012/2017")))
 
-FIG408 <- ggplot(df_083, aes(ExitYear, Share, fill = Cohort)) +
+FIG409 <- ggplot(df_083, aes(ExitYear, Share, fill = Cohort)) +
   geom_col(width = 0.7, position = position_dodge(width = 0.78)) +
   geom_text(aes(label = fmt_pct_1(Share), color = Cohort),
             position = position_dodge(width = 0.78), vjust = -0.4,
@@ -1879,19 +2041,19 @@ FIG408 <- ggplot(df_083, aes(ExitYear, Share, fill = Cohort)) +
   theme(axis.title.y = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = AXIS_SIZE, margin = margin(r = PUB$spacing$axis_label_right_gap_pt)))
 
-save_chart_aligned(FIG408, "fig_4_08")
-FIG408
+save_chart_aligned(FIG409, "fig_4_09")
+FIG409
 ```
 
 
-### Figure 4.09 - How Many Students Study Abroad From Each Country### Figure 4.09 - How Many Students Study Abroad From Each Country
+### Figure 4.10 - How Many Students Study Abroad From Each Country### Figure 4.09 - How Many Students Study Abroad From Each Country
 ```{r FIG410}
-meta <- get_meta("FIG409")
+meta <- get_meta("FIG410")
 num  <- function(x) parse_number(as.character(x))   # parse_number chokes on numeric cols
 
 # Wide CSV: one column per year (1997–2023); first column is labelled
 # "Year" but holds country names. Pivot long, coerce, keep latest year.
-mobility <- read_fig("FIG409") %>%
+mobility <- read_fig("FIG410") %>%
   rename(country = 1) %>%
   select(-any_of("Grand Total")) %>%
   pivot_longer(-country, names_to = "year", values_to = "ratio") %>%
@@ -1935,9 +2097,10 @@ palette_124 <- highlight_colors(
   default     = tpa_colors[2]
 )
 
-FIG409 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
+FIG410 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
   geom_col(width = 0.75, alpha = ALPHA_COL) +
-  geom_text(aes(label = sprintf("%.1f", ratio), hjust = -0.2),
+  geom_text(aes(label = sprintf("%.2f%%", ratio),
+                hjust = -0.2),
             family = FONT_FAMILY, fontface = "bold",
             size = SMALL_LABEL_SIZE / .pt, color = "grey25") +
   scale_x_continuous(labels = label_number(suffix = "%"),
@@ -1951,15 +2114,15 @@ FIG409 <- ggplot(df_124, aes(ratio, Country, fill = grp)) +
         axis.title.x = element_text(family = FONT_FAMILY, color = "grey25",
                                     size = SMALL_LABEL_SIZE, margin = margin(t = PUB$spacing$axis_title_compact_pt)))
 
-save_chart_aligned(FIG409, "fig_4_09", size = "medium", left_pt = 71)
-FIG409
+save_chart_aligned(FIG410, "fig_4_10", size = "medium", left_pt = 71)
+FIG410
 ```
 
-### Figure 4.10 - Who Imports Students
+### Figure 4.11 - Who Imports Students
 ```{r figure 042}
-meta <- get_meta("FIG410")
+meta <- get_meta("FIG411")
 
-df_042 <- read_fig("FIG410") %>%
+df_042 <- read_fig("FIG411") %>%
   mutate(across(-Year, as.numeric)) %>%
   pivot_longer(-Year, names_to = "Country", values_to = "Flow") %>%
   mutate(Flow = Flow / 1e6) %>%              # keep NA rows so lines break at gaps
@@ -1981,7 +2144,7 @@ labels_042 <- df_042 %>%
   ) %>%
   prepare_right_labels(df_042$Year)
 
-FIG410 <- ggplot() +
+FIG411 <- ggplot() +
   geom_hline(yintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
   geom_line(data = filter(df_042, !is_hi),
             aes(Year, Flow, group = Country),
@@ -2009,8 +2172,8 @@ FIG410 <- ggplot() +
   theme_tpa() +
   theme_right_labels(labels_042)
 
-save_chart_aligned(FIG410, "fig_4_10")
-FIG410
+save_chart_aligned(FIG411, "fig_4_11")
+FIG411
 ```
 
 
@@ -2290,7 +2453,9 @@ FIG507 <- ggplot(df, aes(Year, value, fill = Type)) +
     expand = EXPAND_BAR_TIGHT
   ) +
   labs_meta(meta) +
+  labs(y = "R&D spending (2020 USD, PPP conv, $B)") +
   theme_facet()
+
 save_chart_aligned(FIG507, "fig_5_07")
 FIG507
 ```
@@ -2336,6 +2501,7 @@ FIG508 <- ggplot(df, aes(Year, value, fill = Sector)) +
     expand = EXPAND_BAR_TIGHT
   ) +
   labs_meta(meta) +
+  labs(y = "R&D spending (2020 USD, PPP conv, $B)") +
   theme_facet()
 
 save_chart_aligned(FIG508, "fig_5_08")
@@ -2525,45 +2691,10 @@ save_chart_aligned(FIG605, "fig_6_05")
 FIG605
 ```
 
-### Figure 6.06 - Outcomes of PERM Applications
-```{r figure 076}
-meta <- get_meta("FIG606")
-
-df_076 <- read_fig("FIG606") %>%
-  filter(!is.na(Year)) %>%
-  select(Year,
-         `Used`    = Certified,
-         `Expired` = `Certified-expired`,
-         `Denied`  = Denied) %>%
-  mutate(across(everything(), as.numeric)) %>%
-  pivot_longer(-Year, names_to = "Status", values_to = "Count") %>%
-  filter(!is.na(Count)) %>%
-  mutate(Status = factor(Status, levels = c("Denied", "Expired", "Used")))
-
-palette_076 <- c(
-  "Used"    = tpa_colors[3],   # gold — certifications actually used
-  "Expired" = tpa_colors[1],   # red  — certified but lapsed unused
-  "Denied"  = tpa_colors[6]
-)
-
-FIG606 <- ggplot(df_076, aes(Year, Count, fill = Status)) +
-  geom_area(alpha = ALPHA_AREA) +
-  scale_x_years(df_076$Year) +
-  scale_y_continuous(labels = fmt_num_k, expand = EXPAND_BAR) +
-  scale_fill_manual(values = palette_076,
-                    breaks = c("Used", "Expired", "Denied")) +
-  labs_meta(meta, y = "PERM certifications") +
-  theme_tpa()
-
-save_chart_aligned(FIG606, "fig_6_06")
-FIG606
-```
-
-
-### Figure 6.07 - Top Countries of Origin for J-1 Participants
+### Figure 6.06 - Top Countries of Origin for J-1 Participants
 ```{r figure 078}
-meta <- get_meta("FIG607")
-df_078 <- read_fig("FIG607") %>%
+meta <- get_meta("FIG606")
+df_078 <- read_fig("FIG606") %>%
   filter(!is.na(Year)) %>%
   mutate(across(everything(), as.numeric)) %>%
   pivot_longer(-Year, names_to = "Country", values_to = "Share") %>%
@@ -2576,7 +2707,8 @@ china_last <- china_078 %>%
   filter(Year == max(Year)) %>%
   mutate(.label = paste0("China: ", fmt_pct_1(Share))) %>%
   prepare_right_labels(df_078$Year)
-FIG607 <- ggplot() +
+
+FIG606 <- ggplot() +
   geom_line(data = other_078,
             aes(Year, Share, group = Country),
             color = "grey75", linewidth = LINE_WIDTH) +
@@ -2601,49 +2733,11 @@ FIG607 <- ggplot() +
   coord_cartesian(clip = "off") +
   theme_tpa() +
   theme_right_labels(china_last)
-save_chart_aligned(FIG607, "fig_6_07")
-FIG607
+save_chart_aligned(FIG606, "fig_6_06")
+FIG606
 ```
 
-### Figure 6.08 - Workforce Participation Rates of Immigrants versus Native Born Workers
-```{r figure 079}
-meta <- get_meta("FIG608")
-
-df_079 <- read_fig("FIG608") %>%
-  rename(Gap = `Gap with the native-born`) %>%
-  mutate(Gap = as.numeric(Gap),
-         Country = fct_reorder(Country, Gap))
-
-palette_079 <- highlight_colors(
-  all_values  = levels(df_079$Country),
-  highlighted = c("United States", "OECD average"),
-  palette     = c(tpa_colors[1], tpa_colors[3]),   # red, gold
-  default     = tpa_colors[2]                       # navy
-)
-
-FIG608 <- ggplot(df_079, aes(Gap, Country, fill = Country)) +
-  geom_vline(xintercept = 0, color = "grey50", linewidth = LINE_WIDTH_REF) +
-  geom_col(width = 0.75, alpha = ALPHA_COL) +
-  geom_text(aes(label = sprintf("%.1f", Gap),
-                hjust = if_else(Gap >= 0, -0.2, 1.2)),
-            family = FONT_FAMILY,
-            fontface = "bold",
-            size = SMALL_LABEL_SIZE / .pt,
-            color = "grey25") +
-  scale_x_continuous(limits = c(-15, 20),
-                     breaks = seq(-15, 20, 5),
-                     expand = EXPAND_NONE) +
-  scale_fill_manual(values = palette_079) +
-  guides(fill = "none") +
-  labs_meta(meta, x = "Percentage point gap with the native-born") +
-  theme_horizontal_bar() +
-  theme(axis.text.y = element_text(size = SMALL_LABEL_SIZE))
-
-save_chart_aligned(FIG608, "fig_6_08", size = "medium", left_pt = 70)
-FIG608
-```
-
-### Figure 6.09 - How Much STEM Talent Does the U.S. Train and then Lose? 
+### Figure 6.07 - How Much STEM Talent Does the U.S. Train and then Lose? 
 ```{r FIG609}
 # FIG609 (EVJ213) — chapter closer, by field.
 # One cohort (2012-14 doctorate recipients), one horizon (~10-year U.S. stay
@@ -2651,7 +2745,7 @@ FIG608
 # field's own time to degree x the NSF GRFP support rate. Benchmark, not a
 # per-person accounting (see note).
 
-cohort <- read_fig("FIG609") %>%
+cohort <- read_fig("FIG607") %>%
   mutate(across(c(recipients, stay_rate_10yr, ttd_years), as.numeric))
 
 COST_PER_YEAR <- 53000
@@ -2684,12 +2778,12 @@ leak_lab <- fld %>%
 outcome_fill <- c("Stayed" = tpa_colors[9],   # muted
                   "Left"   = tpa_colors[1])   # emphasis red
 
-meta <- get_meta("FIG609")
+meta <- get_meta("FIG607")
 meta$caption <- paste0(meta$caption)
 
 x_max <- max(fld$recipients)
 
-FIG609 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
+FIG607 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
   geom_col(width = 0.68, alpha = ALPHA_COL) +
   geom_text(
     data = leak_lab, inherit.aes = FALSE,
@@ -2706,13 +2800,13 @@ FIG609 <- ggplot(seg, aes(x = count, y = field, fill = outcome)) +
   ) +
   scale_x_continuous(labels = label_comma(), limits = c(0, x_max),
                      expand = expansion(mult = c(0, 0.05))) +
-  scale_y_discrete(expand = expansion(add = c(0.95, 0.6))) +
+  scale_y_discrete(expand = expansion(add = c(0, 0.6))) +
   scale_fill_manual(values = outcome_fill, breaks = c("Stayed", "Left")) +
   labs_meta(meta, x = NULL, y = NULL) +
   theme_horizontal_bar()
 
-save_chart_aligned(p_127, "fig_6_09", size = "standard", left_pt = 125)
-FIG609
+save_chart_aligned(FIG607, "fig_6_07", size = "standard", left_pt = 125)
+FIG607
 ```
 
 
