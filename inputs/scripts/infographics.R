@@ -546,70 +546,179 @@ stat_is_emphasized <- function(stat_id, emphasize_stats = NULL) {
     isTRUE(emphasize_stats[[stat_id]])
 }
 
-# Add a plus sign to positive values. Negative values retain their sign.
+
+# -----------------------------------------------------------------------------
+# Shared numeric formatting
+#
+# Publication rule:
+#   - ordinary numeric values: up to 3 significant figures
+#   - percentage-point changes: exactly 1 decimal place
+#   - years/ranks/IDs are handled separately and remain exact
+# -----------------------------------------------------------------------------
+
+INFOGRAPHIC_SIGFIGS <- 3L
+
+
+infographic_sig3 <- function(x) {
+  vapply(
+    x,
+    function(z) {
+      if (is.na(z)) {
+        return(NA_character_)
+      }
+      
+      if (!is.finite(z)) {
+        return(as.character(z))
+      }
+      
+      format(
+        signif(z, INFOGRAPHIC_SIGFIGS),
+        scientific = FALSE,
+        trim       = TRUE,
+        big.mark   = ",",
+        decimal.mark = "."
+      )
+    },
+    character(1)
+  )
+}
+
+
+# Proportion -> percentage.
+# 0.25534 -> "25.5%"
+infographic_sig3_share <- function(x) {
+  paste0(
+    infographic_sig3(x * 100),
+    "%"
+  )
+}
+
+
+# Value already expressed in percentage points.
+# 25.534 -> "25.5%"
+infographic_sig3_percent_value <- function(x) {
+  paste0(
+    infographic_sig3(x),
+    "%"
+  )
+}
+
+
+# Percentage-point changes always use exactly one decimal place.
+# 8.03 -> "8.0"
+# 27   -> "27.0"
+infographic_1dp <- function(x) {
+  vapply(
+    x,
+    function(z) {
+      if (is.na(z) || !is.finite(z)) {
+        return("—")
+      }
+      
+      formatC(
+        z,
+        format = "f",
+        digits = 1,
+        big.mark = ","
+      )
+    },
+    character(1)
+  )
+}
+
+
+# Add a plus sign to positive values.
+# Negative values retain the minus sign supplied by the formatter.
 sign_prefix <- function(value) {
   ifelse(value > 0, "+", "")
 }
 
-# Standard value types use Chapter 1 precision and notation.
-# Currency names state whether the incoming value is already in billions.
+
+# -----------------------------------------------------------------------------
+# Standard displayed values
+# -----------------------------------------------------------------------------
+
 format_value <- function(value, value_type) {
   switch(
     value_type,
     
-    count = scales::comma(value, accuracy = 1),
+    # Counts
+    count =
+      infographic_sig3(value),
     
-    signed_count = paste0(
-      sign_prefix(value),
-      scales::comma(value, accuracy = 1)
-    ),
+    signed_count =
+      paste0(
+        sign_prefix(value),
+        infographic_sig3(value)
+      ),
     
-    share = scales::percent(value, accuracy = 0.1),
+    # Shares stored as proportions: 0.255 -> 25.5%
+    share =
+      infographic_sig3_share(value),
     
-    signed_share = paste0(
-      sign_prefix(value),
-      scales::percent(value, accuracy = 0.1)
-    ),
+    signed_share =
+      paste0(
+        sign_prefix(value),
+        infographic_sig3_share(value)
+      ),
     
-    percent_value = paste0(
-      scales::number(value, accuracy = 0.1),
-      "%"
-    ),
+    # Percentages already stored as percentage points: 25.5 -> 25.5%
+    percent_value =
+      infographic_sig3_percent_value(value),
     
-    rate = scales::number(value, accuracy = 0.1),
+    # Plain numeric rate
+    rate =
+      infographic_sig3(value),
     
-    signed_score = paste0(
-      sign_prefix(value),
-      scales::number(value, accuracy = 0.1)
-    ),
+    # Signed score / index value
+    signed_score =
+      paste0(
+        sign_prefix(value),
+        infographic_sig3(value)
+      ),
     
-    ratio = paste0(
-      scales::number(value, accuracy = 0.1),
-      ":1"
-    ),
+    # Ratio displayed as x:1
+    ratio =
+      paste0(
+        infographic_sig3(value),
+        ":1"
+      ),
     
-    currency_billions = paste0(
-      "$",
-      scales::number(value, accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
+    # Value already stored in billions
+    currency_billions =
+      paste0(
+        "$",
+        infographic_sig3(value),
+        "B"
+      ),
     
-    signed_currency_billions = paste0(
-      sign_prefix(value),
-      "$",
-      scales::number(abs(value), accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
+    signed_currency_billions =
+      paste0(
+        ifelse(
+          value > 0,
+          "+",
+          ifelse(value < 0, "-", "")
+        ),
+        "$",
+        infographic_sig3(abs(value)),
+        "B"
+      ),
     
-    currency_billions_from_dollars = paste0(
-      "$",
-      scales::number(value / 1e9, accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
+    # Raw dollars converted to billions for display
+    currency_billions_from_dollars =
+      paste0(
+        "$",
+        infographic_sig3(value / 1e9),
+        "B"
+      ),
     
-    stop("Unknown value type: ", value_type)
+    stop(
+      "Unknown value type: ",
+      value_type
+    )
   )
 }
+
 
 format_cell <- function(
     value,
@@ -618,10 +727,23 @@ format_cell <- function(
     projected = FALSE
 ) {
   label <- calendar_year_label(year_label)
-  if (projected) label <- paste0(label, "P")
-  paste0(format_value(value, value_type), " (", label, ")")
+  
+  if (projected) {
+    label <- paste0(label, "P")
+  }
+  
+  paste0(
+    format_value(value, value_type),
+    " (",
+    label,
+    ")"
+  )
 }
 
+
+# -----------------------------------------------------------------------------
+# Country-gap cells
+# -----------------------------------------------------------------------------
 
 format_country_gap_cell <- function(
     value,
@@ -634,99 +756,198 @@ format_country_gap_cell <- function(
   
   core <- switch(
     value_type,
-    signed_count = scales::comma(abs(value), accuracy = 1),
-    signed_share = scales::percent(abs(value), accuracy = 0.1),
-    signed_score = scales::number(abs(value), accuracy = 0.1),
-    signed_currency_billions = paste0(
-      "$",
-      scales::number(abs(value), accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
-    stop("Unsupported country-gap value type: ", value_type)
+    
+    signed_count =
+      infographic_sig3(abs(value)),
+    
+    signed_share =
+      infographic_sig3_share(abs(value)),
+    
+    signed_score =
+      infographic_sig3(abs(value)),
+    
+    signed_currency_billions =
+      paste0(
+        "$",
+        infographic_sig3(abs(value)),
+        "B"
+      ),
+    
+    stop(
+      "Unsupported country-gap value type: ",
+      value_type
+    )
   )
   
   if (!is.finite(value) || value == 0) {
     display <- core
   } else {
-    leader <- if (value > 0) positive_label else negative_label
-    display <- paste0("+", core, " ", leader)
+    leader <- if (value > 0) {
+      positive_label
+    } else {
+      negative_label
+    }
+    
+    display <- paste0(
+      "+",
+      core,
+      " ",
+      leader
+    )
   }
   
-  paste0(display, " (", label, ")")
+  paste0(
+    display,
+    " (",
+    label,
+    ")"
+  )
 }
+
+
+# -----------------------------------------------------------------------------
+# Change formatting
+#
+# Percentage-point changes deliberately remain at exactly 1 decimal place,
+# matching the publication table convention.
+# -----------------------------------------------------------------------------
 
 format_change <- function(first, last, change_type) {
   difference <- last - first
-  relative_change <- if (isTRUE(all.equal(first, 0))) NA_real_ else (last / first) - 1
-  multiple_value <- if (isTRUE(all.equal(first, 0))) NA_real_ else last / first
   
-  unavailable <- function(value) {
-    if (!is.finite(value)) "—" else NULL
+  relative_change <-
+    if (isTRUE(all.equal(first, 0))) {
+      NA_real_
+    } else {
+      (last / first) - 1
+    }
+  
+  multiple_value <-
+    if (isTRUE(all.equal(first, 0))) {
+      NA_real_
+    } else {
+      last / first
+    }
+  
+  if (
+    change_type == "multiple" &&
+    !is.finite(multiple_value)
+  ) {
+    return("—")
   }
   
-  if (change_type == "multiple" && !is.null(unavailable(multiple_value))) return("—")
-  if (change_type == "percent" && !is.null(unavailable(relative_change))) return("—")
+  if (
+    change_type == "percent" &&
+    !is.finite(relative_change)
+  ) {
+    return("—")
+  }
+  
+  if (
+    change_type %in% c(
+      "pp_share",
+      "pp_percent",
+      "ratio_points",
+      "points",
+      "count_delta",
+      "currency_delta_billions",
+      "currency_delta_from_dollars"
+    ) &&
+    !is.finite(difference)
+  ) {
+    return("—")
+  }
   
   switch(
     change_type,
     
-    multiple = paste0(
-      scales::number(multiple_value, accuracy = 0.1),
-      "×"
-    ),
+    # Multiplicative change: 2.563 -> 2.56×
+    multiple =
+      paste0(
+        infographic_sig3(multiple_value),
+        "×"
+      ),
     
-    percent = paste0(
-      sign_prefix(relative_change),
-      scales::percent(relative_change, accuracy = 1)
-    ),
+    # Relative percentage change: 1.0837 -> +108%
+    percent =
+      paste0(
+        sign_prefix(relative_change),
+        infographic_sig3(relative_change * 100),
+        "%"
+      ),
     
-    pp_share = paste0(
-      sign_prefix(difference),
-      scales::number(difference * 100, accuracy = 0.1),
-      " pp"
-    ),
+    # Percentage-point change from proportions.
+    # ALWAYS exactly 1 decimal.
+    pp_share =
+      paste0(
+        sign_prefix(difference),
+        infographic_1dp(difference * 100),
+        " pp"
+      ),
     
-    pp_percent = paste0(
-      sign_prefix(difference),
-      scales::number(difference, accuracy = 0.1),
-      " pp"
-    ),
+    # Percentage-point change where values are already percentages.
+    # ALWAYS exactly 1 decimal.
+    pp_percent =
+      paste0(
+        sign_prefix(difference),
+        infographic_1dp(difference),
+        " pp"
+      ),
     
-    ratio_points = paste0(
-      sign_prefix(difference),
-      scales::number(difference, accuracy = 0.1),
-      " ratio points"
-    ),
+    # Other point-based changes use up to 3 significant figures.
+    ratio_points =
+      paste0(
+        sign_prefix(difference),
+        infographic_sig3(difference),
+        " ratio points"
+      ),
     
-    points = paste0(
-      sign_prefix(difference),
-      scales::number(difference, accuracy = 0.1),
-      " points"
-    ),
+    points =
+      paste0(
+        sign_prefix(difference),
+        infographic_sig3(difference),
+        " points"
+      ),
     
-    count_delta = paste0(
-      sign_prefix(difference),
-      scales::comma(difference, accuracy = 1)
-    ),
+    # Count difference
+    count_delta =
+      paste0(
+        sign_prefix(difference),
+        infographic_sig3(difference)
+      ),
     
-    currency_delta_billions = paste0(
-      sign_prefix(difference),
-      "$",
-      scales::number(abs(difference), accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
+    # Currency already expressed in billions
+    currency_delta_billions =
+      paste0(
+        ifelse(
+          difference > 0,
+          "+",
+          ifelse(difference < 0, "-", "")
+        ),
+        "$",
+        infographic_sig3(abs(difference)),
+        "B"
+      ),
     
-    currency_delta_from_dollars = paste0(
-      sign_prefix(difference),
-      "$",
-      scales::number(abs(difference) / 1e9, accuracy = 0.1, big.mark = ","),
-      "B"
-    ),
+    # Raw-dollar difference displayed in billions
+    currency_delta_from_dollars =
+      paste0(
+        ifelse(
+          difference > 0,
+          "+",
+          ifelse(difference < 0, "-", "")
+        ),
+        "$",
+        infographic_sig3(abs(difference) / 1e9),
+        "B"
+      ),
     
-    stop("Unknown change type: ", change_type)
+    stop(
+      "Unknown change type: ",
+      change_type
+    )
   )
 }
-
 
 # ============================================================================
 # Fixed print typography and pagination

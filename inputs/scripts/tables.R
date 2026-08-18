@@ -42,6 +42,110 @@ table_font_pt <- function(pt) {
   pt * TABLE_FONT_SCALE
 }
 
+# ---------------------------------------------------------------------------
+# Publication-wide numeric precision
+# ---------------------------------------------------------------------------
+# Match the chart system: display up to three significant figures without
+# padding values with unnecessary trailing zeros. Years, ranks, and other
+# identifiers that are deliberately exact continue to use their existing
+# integer/year formatters in the relevant builders below.
+TABLE_SIGFIGS <- 3L
+
+table_sig3_text <- function(x,
+                            pattern = "{x}",
+                            force_sign = FALSE,
+                            use_seps = TRUE) {
+  vapply(
+    x,
+    function(z) {
+      if (is.na(z)) return(NA_character_)
+      if (!is.finite(z)) return(as.character(z))
+      
+      rounded <- signif(z, TABLE_SIGFIGS)
+      
+      txt <- format(
+        rounded,
+        scientific = FALSE,
+        trim = TRUE,
+        big.mark = if (isTRUE(use_seps)) "," else "",
+        decimal.mark = "."
+      )
+      
+      if (isTRUE(force_sign) && rounded > 0) {
+        txt <- paste0("+", txt)
+      }
+      
+      gsub("{x}", txt, pattern, fixed = TRUE)
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
+}
+
+# gt::fmt() keeps the underlying numeric values intact, so data_color(),
+# sorting, and calculations still operate on the original numbers. Only the
+# rendered cell text is rounded.
+fmt_table_sig3 <- function(data,
+                           columns,
+                           pattern = "{x}",
+                           force_sign = FALSE,
+                           use_seps = TRUE) {
+  columns_quo <- rlang::enquo(columns)
+  
+  gt::fmt(
+    data = data,
+    columns = !!columns_quo,
+    fns = function(x) {
+      table_sig3_text(
+        x,
+        pattern = pattern,
+        force_sign = force_sign,
+        use_seps = use_seps
+      )
+    }
+  )
+}
+
+
+# Change columns follow one additional publication rule:
+#   - relative mode: up to three significant figures
+#   - ppt mode: exactly one decimal place
+#
+# `pattern_ppt` is "{x} pp" for percentage-point changes and "{x}" for
+# native-unit/absolute changes in count tables.
+fmt_table_change <- function(data,
+                             columns,
+                             change_type,
+                             pattern_relative = "{x}%",
+                             pattern_ppt = "{x} pp",
+                             force_sign = TRUE) {
+  change_type <- resolve_change_type(change_type)
+  columns_quo <- rlang::enquo(columns)
+  
+  if (identical(change_type, "ppt")) {
+    gt::fmt_number(
+      data = data,
+      columns = !!columns_quo,
+      decimals = 1,
+      force_sign = force_sign,
+      pattern = pattern_ppt
+    )
+  } else {
+    gt::fmt(
+      data = data,
+      columns = !!columns_quo,
+      fns = function(x) {
+        table_sig3_text(
+          x,
+          pattern = pattern_relative,
+          force_sign = force_sign,
+          use_seps = TRUE
+        )
+      }
+    )
+  }
+}
+
 WORD_TABLE_WIDTH_IN <- PUB$page$body_in
 
 # HTML/CSS rendering density. Individual profiles use different CSS widths
@@ -304,31 +408,64 @@ tpa_text_width_px <- function(text, pt, css_dpi, bold = FALSE) {
   data <- gt_tbl[["_data"]]
   vals <- if (is.data.frame(data) && var %in% names(data)) data[[var]] else character(0)
   
-  # The real formatted strings live in gt's render layer, but the columns here
-  # are short and predictable (shares, pp, signed integers, $B). Estimate the
-  # DISPLAYED width, not the raw value: a numeric gains a sign, thousands
-  # separators, a decimal, and a suffix. Measuring the bare number under-sizes
-  # change columns and re-introduces the "+27.0 pp" wrap; assuming " pp" for
-  # every column over-sizes plain share columns and starves everyone. So infer
-  # the suffix and sign from the column's own label and magnitude.
+  # The real formatted strings live in gt's render layer. Estimate the
+  # DISPLAYED width conservatively. Ordinary numeric cells use the shared
+  # up-to-three-significant-figure formatter. Change columns may instead be in
+  # ppt mode, where they are fixed to one decimal place, so for those columns
+  # we measure both possible renderings and keep the wider one.
   label_raw <- .tpa_col_label(gt_tbl, var)
   is_change <- grepl("change|net|\u0394", label_raw, ignore.case = TRUE)
   if (is.numeric(vals) && length(vals)) {
-    mx <- suppressWarnings(max(abs(vals), na.rm = TRUE))
-    if (!is.finite(mx)) mx <- 0
-    signed   <- is_change || any(vals < 0, na.rm = TRUE)
-    frac     <- any(abs(vals - round(vals)) > 1e-9, na.rm = TRUE)  # has decimals
-    digits   <- max(1, floor(log10(max(mx, 1))) + 1)
-    seps     <- (digits - 1) %/% 3
-    suffix   <- if (is_change && frac) " pp" else if (frac) "%" else ""
-    # a signed integer count column ($B, patents) keeps its sign but no suffix
-    token <- paste0(
-      if (signed) "+" else "",
-      strrep("0", digits), strrep(",", seps),
-      if (frac) ".0" else "",
-      suffix
+    signed <- is_change || any(vals < 0, na.rm = TRUE)
+    frac   <- any(abs(vals - round(vals)) > 1e-9, na.rm = TRUE)
+    
+    sig3_pattern <- if (is_change) {
+      "{x}%"
+    } else if (frac) {
+      "{x}%"
+    } else {
+      "{x}"
+    }
+    
+    vals_fmt <- table_sig3_text(
+      vals,
+      pattern = sig3_pattern,
+      force_sign = signed,
+      use_seps = TRUE
     )
-    body_w <- tpa_text_width_px(token, body_pt, css_dpi, body_bold)
+    
+    if (is_change) {
+      ppt_fmt <- vapply(
+        vals,
+        function(z) {
+          if (is.na(z)) return(NA_character_)
+          if (!is.finite(z)) return(as.character(z))
+          
+          txt <- format(
+            round(z, 1),
+            nsmall = 1,
+            scientific = FALSE,
+            trim = TRUE,
+            big.mark = ",",
+            decimal.mark = "."
+          )
+          
+          if (z > 0) txt <- paste0("+", txt)
+          paste0(txt, " pp")
+        },
+        character(1),
+        USE.NAMES = FALSE
+      )
+      
+      vals_fmt <- c(vals_fmt, ppt_fmt)
+    }
+    
+    vals_fmt <- vals_fmt[!is.na(vals_fmt)]
+    body_w <- if (length(vals_fmt)) {
+      max(tpa_text_width_px(vals_fmt, body_pt, css_dpi, body_bold))
+    } else {
+      0
+    }
   } else {
     vals_chr <- format(vals, trim = TRUE, justify = "none")
     body_w <- if (length(vals_chr)) max(tpa_text_width_px(vals_chr, body_pt, css_dpi, body_bold)) else 0
@@ -1029,24 +1166,22 @@ build_region_table <- function(name, meta) {
   tbl_df %>%
     gt(rowname_col = "Region", id = name) %>%
     
-    fmt_integer(
+    fmt_table_sig3(
       columns = c(FirstYearCount, LastYearCount)
     ) %>%
     
-    fmt_number(
+    fmt_table_sig3(
       columns = c(FirstYearShare, LastYearShare),
-      decimals = 1,
       pattern = "{x}%"
     ) %>%
     
-    fmt_number(
+    fmt_table_sig3(
       columns = PctChangeCount,
-      decimals = 1,
       force_sign = TRUE,
       pattern = "{x}%"
     ) %>%
     
-    fmt_number(
+    gt::fmt_number(
       columns = PctChangeShare,
       decimals = 1,
       force_sign = TRUE,
@@ -1146,7 +1281,7 @@ build_labor_citizenship_table <- function(df, name, meta) {
   # number -- so the S&E-core vs. periphery contrast reads as color
   df %>%
     gt(rowname_col = "Category", id = name) %>%
-    fmt_number(columns = c(Citizen, TVH), decimals = 1, pattern = "{x}%") %>%
+    fmt_table_sig3(columns = c(Citizen, TVH), pattern = "{x}%") %>%
     cols_label(Citizen = "U.S. citizen or\npermanent resident",
                TVH     = "Temporary\nvisa holder") %>%
     tab_spanner(label = "\u00A0", columns = c(Citizen, TVH), id = "sp_all") %>%
@@ -1185,9 +1320,13 @@ build_h1b_top10_table <- function(df, name, meta, first_year, last_year,
   
   df %>%
     gt(rowname_col = "Company", id = name) %>%
-    fmt_number(columns = c(Y1, Y2), decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = Change, decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
+    fmt_table_sig3(columns = c(Y1, Y2), pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = Change,
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     sub_missing(columns = Change, missing_text = "new") %>%
     cols_label(Y1 = as.character(first_year),
                Y2 = as.character(last_year),
@@ -1255,23 +1394,23 @@ build_occupation_share_table <- function(df, name, meta, level_cols,
   tbl <- df %>%
     gt(rowname_col = "Occupation", id = name)
   
-  # Levels are shares (percent, one decimal) or raw counts (integer).
+  # Levels are shares or raw counts, displayed to up to three significant figures.
   if (value_type == "count") {
-    tbl <- tbl %>% fmt_integer(columns = all_of(level_cols))
+    tbl <- tbl %>% fmt_table_sig3(columns = all_of(level_cols))
   } else {
-    tbl <- tbl %>% fmt_number(columns = all_of(level_cols), decimals = 1, pattern = "{x}%")
+    tbl <- tbl %>% fmt_table_sig3(columns = all_of(level_cols), pattern = "{x}%")
   }
   
-  # Change formatting follows the value type: an absolute count change is a
-  # signed integer; a share change is pp (or % when relative).
-  if (value_type == "count" && change_type != "relative") {
-    tbl <- tbl %>% fmt_integer(columns = "Change", force_sign = TRUE)
-  } else {
-    tbl <- tbl %>%
-      fmt_number(columns = "Change", decimals = 1,
-                 force_sign = TRUE,
-                 pattern = if (change_type == "relative") "{x}%" else "{x} pp")
-  }
+  # Relative changes use up to three significant figures. In ppt mode, every
+  # Change cell is fixed to one decimal place; count tables use native units,
+  # while share tables use percentage points.
+  tbl <- tbl %>%
+    fmt_table_change(
+      columns = "Change",
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = if (value_type == "count") "{x}" else "{x} pp"
+    )
   
   tbl <- tbl %>%
     tab_spanner(label = spanner_label,
@@ -1356,7 +1495,7 @@ build_eb_combined_table <- function(meta,
     tab_spanner(label = names(sources)[1], columns = all_of(paste0(keys[1], "_EB", 1:3))) %>%
     tab_spanner(label = names(sources)[2], columns = all_of(paste0(keys[2], "_EB", 1:3))) %>%
     tab_spanner(label = names(sources)[3], columns = all_of(paste0(keys[3], "_EB", 1:3))) %>%
-    fmt_number(columns = all_of(num_cols), decimals = 0) %>%
+    fmt_table_sig3(columns = all_of(num_cols)) %>%
     gt_color_rows(columns  = all_of(num_cols),
                   palette = TABLE_INTENSITY_PALETTE,
                   pal_type = "continuous",
@@ -1414,9 +1553,13 @@ build_peak_table <- function(name, meta, first, last,
   
   rows %>%
     gt(rowname_col = "country") %>%
-    fmt_number(columns = c(first_val, peak_val, last_val), decimals = 0) %>%
-    fmt_number(columns = from_peak, decimals = 0, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x}") %>%
+    fmt_table_sig3(columns = c(first_val, peak_val, last_val)) %>%
+    fmt_table_change(
+      columns = from_peak,
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x}"
+    ) %>%
     cols_label(first_val = as.character(first),
                peak_val  = "Peak",
                peak_year = "(year)",
@@ -1431,7 +1574,7 @@ build_peak_table <- function(name, meta, first, last,
                fn = scales::col_numeric(
                  palette = TABLE_CHANGE_PALETTE,
                  domain  = c(-max(abs(rows$from_peak), na.rm = TRUE),
-                              max(abs(rows$from_peak), na.rm = TRUE)))) %>%
+                             max(abs(rows$from_peak), na.rm = TRUE)))) %>%
     cols_align(align = "right", columns = -country) %>%
     tab_style(cell_text(align = "left"), cells_stub(rows = TRUE)) %>%
     tab_footnote(
@@ -1491,10 +1634,14 @@ build_perm_expiry_table <- function(meta, path = NULL,
   wide %>%
     gt(rowname_col = "Country", id = "TAB604") %>%
     fmt_markdown(columns = "Country") %>%
-    fmt_number(columns = starts_with(c("use_", "exp_")), decimals = 0) %>%
-    fmt_number(columns = c(share_first, share_last), decimals = 0, pattern = "{x}%") %>%
-    fmt_number(columns = share_net, decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
+    fmt_table_sig3(columns = starts_with(c("use_", "exp_"))) %>%
+    fmt_table_sig3(columns = c(share_first, share_last), pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = share_net,
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     cols_label(use_first = "Used", exp_first = "Expired", share_first = "Share Expired",
                use_last  = "Used", exp_last  = "Expired", share_last  = "Share Expired",
                share_net = change_col_label(FALSE)) %>%
@@ -1568,9 +1715,13 @@ build_sector_bookend_table <- function(meta,
   
   tbl <- df %>%
     gt(rowname_col = "sector", id = "tab_069") %>%
-    fmt_number(columns = ends_with(c("_first", "_last")), decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = all_of(net_cols), decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp")
+    fmt_table_sig3(columns = ends_with(c("_first", "_last")), pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = all_of(net_cols),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    )
   
   for (i in seq_along(sources)) {
     k <- keys[i]
@@ -1664,12 +1815,15 @@ build_bookend_table <- function(name, meta,
   }
   
   lim         <- max(abs(df$Change), na.rm = TRUE)
-  chg_pattern <- if (change_type == "relative") "{x}%" else "{x} pp"
-  
   tbl <- df %>%
     gt(rowname_col = "category", id = name) %>%
-    fmt_number(columns = c(pct_first, pct_last), decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = Change, decimals = 1, force_sign = TRUE, pattern = chg_pattern) %>%
+    fmt_table_sig3(columns = c(pct_first, pct_last), pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = Change,
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     cols_label(pct_first = first_label, pct_last = last_label,
                Change = change_col_label(FALSE)) %>%
     tab_spanner(label = spanner_label, columns = c(pct_first, pct_last)) %>%
@@ -1979,29 +2133,21 @@ build_change_table_wide <- function(
       id = name
     ) %>%
     
-    fmt_number(
+    fmt_table_sig3(
       columns = all_of(earlier_cols),
-      decimals = 1,
       pattern = "{x}%"
     ) %>%
     
-    fmt_number(
+    fmt_table_sig3(
       columns = all_of(latest_cols),
-      decimals = 1,
       pattern = "{x}%"
     ) %>%
     
-    fmt_number(
+    fmt_table_change(
       columns = all_of(change_cols),
-      decimals = 1,
-      force_sign = TRUE,
-      pattern = if (
-        change_type == "relative"
-      ) {
-        "{x}%"
-      } else {
-        "{x} pp"
-      }
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
     )
   
   # Degree spanners.
@@ -2436,10 +2582,13 @@ build_change_table <- function(name, meta,
   
   df %>%
     gt(rowname_col = "Field") %>%
-    fmt_number(columns = c(FirstYear, LastYear), decimals = 1) %>%
-    fmt_number(columns = PctChangeInShare, decimals = 1,
-               force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
+    fmt_table_sig3(columns = c(FirstYear, LastYear)) %>%
+    fmt_table_change(
+      columns = PctChangeInShare,
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     cols_label(
       FirstYear        = "1995",
       LastYear         = "2024",
@@ -2454,7 +2603,7 @@ build_change_table <- function(name, meta,
         palette = TABLE_CHANGE_PALETTE,
         domain = c(
           -max(abs(df$PctChangeInShare), na.rm = TRUE),
-           max(abs(df$PctChangeInShare), na.rm = TRUE)
+          max(abs(df$PctChangeInShare), na.rm = TRUE)
         )
       )
     ) %>%
@@ -2469,7 +2618,7 @@ build_change_table <- function(name, meta,
 # ---- University ranking tables ------------------------------
 # Used by tabs 001, 002.
 # integer_cols = TRUE uses fmt_integer on the four field columns (tab 001);
-# FALSE uses fmt_number(decimals = 2) instead (tab 002).
+# FALSE uses the shared three-significant-figure formatter instead (tab 002).
 
 build_ranking_table <- function(name, meta, integer_cols = TRUE) {
   df <- read_fig(name) %>%
@@ -2484,11 +2633,11 @@ build_ranking_table <- function(name, meta, integer_cols = TRUE) {
   if (integer_cols) {
     tbl <- fmt_integer(tbl, columns = all_of(field_cols))
   } else {
-    tbl <- fmt_number(tbl, columns = all_of(field_cols), decimals = 2)
+    tbl <- fmt_table_sig3(tbl, columns = all_of(field_cols))
   }
   
   tbl %>%
-    fmt_number(columns = Average, decimals = 2) %>%
+    fmt_table_sig3(columns = Average) %>%
     sub_missing(missing_text = "—") %>%
     tab_spanner(label = "\u00A0", columns = all_of(c(field_cols, "Average")), id = "sp_all") %>%
     gt_color_rows(columns  = all_of(field_cols),
@@ -2540,14 +2689,15 @@ build_ranking_delta_table <- function(df, name, meta, level_cols, chg_cols,
   # Column widths are deliberately not set here; save_table() owns geometry.
   tbl <- df %>%
     gt(rowname_col = "Field", id = name) %>%
-    fmt_integer(columns = all_of(level_cols))
+    fmt_table_sig3(columns = all_of(level_cols))
   
-  if (change_type == "relative") {
-    tbl <- tbl %>% fmt_number(columns = all_of(all_chg_cols), decimals = 1,
-                              force_sign = TRUE, pattern = "{x}%")
-  } else {
-    tbl <- tbl %>% fmt_integer(columns = all_of(all_chg_cols), force_sign = TRUE)
-  }
+  tbl <- tbl %>%
+    fmt_table_change(
+      columns = all_of(all_chg_cols),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x}"
+    )
   
   tbl <- tbl %>%
     sub_missing(missing_text = "\u2014") %>%
@@ -2670,11 +2820,14 @@ build_field_share_table <- function(df, name, meta, field_labels,
   tbl <- df %>%
     gt(rowname_col = "Country", id = name) %>%
     fmt_markdown(columns = "Country") %>%     # renders the embedded <img> in the stub
-    fmt_number(columns = ends_with("_First"),  decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = ends_with("_Last"),   decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = ends_with("_Change"),
-               decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "ppt") "{x} pp" else "{x}%") %>%
+    fmt_table_sig3(columns = ends_with("_First"), pattern = "{x}%") %>%
+    fmt_table_sig3(columns = ends_with("_Last"), pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = ends_with("_Change"),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     sub_missing(missing_text = "—")
   
   for (lab in field_labels) {
@@ -2755,27 +2908,31 @@ build_citizenship_table <- function(df, name, meta,
     gt(rowname_col = "Field", id = name)
   
   if (value_is_share) {
-    tbl <- tbl %>% fmt_number(columns = all_of(value_cols), decimals = 1, pattern = "{x}%")
+    tbl <- tbl %>% fmt_table_sig3(columns = all_of(value_cols), pattern = "{x}%")
   } else {
-    tbl <- tbl %>% fmt_integer(columns = all_of(value_cols))
+    tbl <- tbl %>% fmt_table_sig3(columns = all_of(value_cols))
   }
   if (share_group) {
-    tbl <- tbl %>% fmt_number(columns = all_of(share_vals), decimals = 1, pattern = "{x}%")
+    tbl <- tbl %>% fmt_table_sig3(columns = all_of(share_vals), pattern = "{x}%")
   }
   
   base_change_cols <- c("USC_Change", "TVH_Change")
-  if (change_type == "relative" || value_is_share) {
-    tbl <- tbl %>%
-      fmt_number(columns = all_of(base_change_cols),
-                 decimals = 1, force_sign = TRUE,
-                 pattern = if (change_type == "relative") "{x}%" else "{x} pp")
-  } else {
-    tbl <- tbl %>% fmt_integer(columns = all_of(base_change_cols), force_sign = TRUE)
-  }
+  tbl <- tbl %>%
+    fmt_table_change(
+      columns = all_of(base_change_cols),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = if (value_is_share) "{x} pp" else "{x}"
+    )
+  
   if (share_group) {
     tbl <- tbl %>%
-      fmt_number(columns = SHR_Change, decimals = 1, force_sign = TRUE,
-                 pattern = if (change_type == "relative") "{x}%" else "{x} pp")
+      fmt_table_change(
+        columns = SHR_Change,
+        change_type = change_type,
+        pattern_relative = "{x}%",
+        pattern_ppt = "{x} pp"
+      )
   }
   
   tbl <- tbl %>%
@@ -2909,11 +3066,14 @@ build_conference_summary_table <- function(name, meta, conf_names,
   
   summ %>%
     gt(rowname_col = "Conference", id = name) %>%
-    fmt_number(columns = c(US_First, US_Last, CN_First, CN_Last),
-               decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = c(US_Change, CN_Change),
-               decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
+    fmt_table_sig3(columns = c(US_First, US_Last, CN_First, CN_Last),
+                   pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = c(US_Change, CN_Change),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     sub_missing(columns = c(US_First, US_Last, CN_First, CN_Last,
                             US_Change, CN_Change), missing_text = "\u2014") %>%
     sub_missing(columns = cross_yr, missing_text = "Not yet") %>%
@@ -2987,9 +3147,9 @@ build_rd_type_level_table <- function(df, name, meta, level_cols,
   
   df %>%
     gt(rowname_col = "Type", groupname_col = "Country", id = name) %>%
-    fmt_number(columns = all_of(level_cols), decimals = 1, pattern = "${x}B") %>%
-    fmt_number(columns = "Change", decimals = 1, force_sign = TRUE,
-               pattern = "{x}%") %>%
+    fmt_table_sig3(columns = all_of(level_cols), pattern = "${x}B") %>%
+    fmt_table_sig3(columns = "Change", force_sign = TRUE,
+                   pattern = "{x}%") %>%
     tab_spanner(label = spanner_label, id = "gerd_span",
                 columns = all_of(level_cols)) %>%
     tab_spanner(label = "\u00A0", columns = Change, id = "sp_change") %>%
@@ -3064,14 +3224,15 @@ build_patents_table <- function(name, meta, sources,
   tbl <- merged %>%
     gt(rowname_col = "Country", id = name) %>%
     fmt_markdown(columns = "Country") %>%
-    fmt_integer(columns = all_of(value_cols))
+    fmt_table_sig3(columns = all_of(value_cols))
   
-  if (change_type == "relative") {
-    tbl <- tbl %>% fmt_number(columns = all_of(change_cols),
-                              decimals = 1, force_sign = TRUE, pattern = "{x}%")
-  } else {
-    tbl <- tbl %>% fmt_integer(columns = all_of(change_cols), force_sign = TRUE)
-  }
+  tbl <- tbl %>%
+    fmt_table_change(
+      columns = all_of(change_cols),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x}"
+    )
   
   tbl <- tbl %>% sub_missing(missing_text = "\u2014")
   
@@ -3184,18 +3345,29 @@ build_count_share_bookend_table <- function(name, meta,
   tbl <- df %>%
     gt(rowname_col = "Entity", id = name) %>%
     fmt_markdown(columns = "Entity") %>%
-    fmt_integer(columns = c(cnt_first, cnt_last)) %>%
-    fmt_number(columns = c(sh_first, sh_last), decimals = 1, pattern = "{x}%")
+    fmt_table_sig3(columns = c(cnt_first, cnt_last)) %>%
+    fmt_table_sig3(columns = c(sh_first, sh_last), pattern = "{x}%")
   
   if (change_type == "relative") {
     tbl <- tbl %>%
-      fmt_number(columns = c(cnt_chg, sh_chg), decimals = 1,
-                 force_sign = TRUE, pattern = "{x}%")
+      fmt_table_sig3(
+        columns = c(cnt_chg, sh_chg),
+        force_sign = TRUE,
+        pattern = "{x}%"
+      )
   } else {
     tbl <- tbl %>%
-      fmt_integer(columns = cnt_chg, force_sign = TRUE) %>%
-      fmt_number(columns = sh_chg, decimals = 1,
-                 force_sign = TRUE, pattern = "{x} pp")
+      gt::fmt_number(
+        columns = cnt_chg,
+        decimals = 1,
+        force_sign = TRUE
+      ) %>%
+      gt::fmt_number(
+        columns = sh_chg,
+        decimals = 1,
+        force_sign = TRUE,
+        pattern = "{x} pp"
+      )
   }
   
   tbl <- tbl %>%
@@ -3273,7 +3445,7 @@ build_stem_outcomes_table <- function(name, meta) {
   
   tbl <- df %>%
     gt(rowname_col = "cohort", id = name) %>%
-    fmt_number(columns = all_of(outcome_cols), decimals = 1, pattern = "{x}%") %>%
+    fmt_table_sig3(columns = all_of(outcome_cols), pattern = "{x}%") %>%
     cols_label(!!!outcome_levels) %>%
     tab_spanner(label = "Share of STEM entrants", columns = all_of(outcome_cols))
   
@@ -3348,14 +3520,15 @@ build_patent_company_delta_table <- function(df, name, meta,
   tbl <- df %>%
     gt(rowname_col = "Company", id = name) %>%
     fmt_markdown(columns = "Company") %>%
-    fmt_integer(columns = all_of(level_cols))
+    fmt_table_sig3(columns = all_of(level_cols))
   
-  if (change_type == "relative") {
-    tbl <- tbl %>% fmt_number(columns = all_of(all_chg_cols), decimals = 1,
-                              force_sign = TRUE, pattern = "{x}%")
-  } else {
-    tbl <- tbl %>% fmt_integer(columns = all_of(all_chg_cols), force_sign = TRUE)
-  }
+  tbl <- tbl %>%
+    fmt_table_change(
+      columns = all_of(all_chg_cols),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x}"
+    )
   
   # flag icon merged into the Company stub, ahead of the name
   if (show_flag) {
@@ -3469,11 +3642,14 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
   
   summ %>%
     gt(rowname_col = "Conference", id = name) %>%
-    fmt_number(columns = c(US_First, US_Last, CN_First, CN_Last),
-               decimals = 1, pattern = "{x}%") %>%
-    fmt_number(columns = c(US_Change, CN_Change),
-               decimals = 1, force_sign = TRUE,
-               pattern = if (change_type == "relative") "{x}%" else "{x} pp") %>%
+    fmt_table_sig3(columns = c(US_First, US_Last, CN_First, CN_Last),
+                   pattern = "{x}%") %>%
+    fmt_table_change(
+      columns = c(US_Change, CN_Change),
+      change_type = change_type,
+      pattern_relative = "{x}%",
+      pattern_ppt = "{x} pp"
+    ) %>%
     sub_missing(columns = c(US_First, US_Last, CN_First, CN_Last,
                             US_Change, CN_Change), missing_text = "\u2014") %>%
     sub_missing(columns = cross_yr, missing_text = "Not yet") %>%
@@ -3547,7 +3723,7 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
   ends <- cumsum(rr$lengths)
   starts <- ends - rr$lengths + 1L
   keep <- which(rr$values)
-
+  
   if (length(keep) == 0L) {
     return(tibble::tibble(
       x_start = integer(),
@@ -3555,7 +3731,7 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
       length  = integer()
     ))
   }
-
+  
   tibble::tibble(
     x_start = as.integer(starts[keep]),
     x_end   = as.integer(ends[keep]),
@@ -3580,27 +3756,27 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
   info <- magick::image_info(img)
   w <- as.integer(info$width[1])
   h <- as.integer(info$height[1])
-
+  
   dat <- magick::image_data(img, channels = "rgb")
   target <- .tpa_hex_rgb(rule_color)
-
+  
   # magick::image_data() is channel x width x height. Convert each channel to
   # a conventional height x width matrix so [y, x] addresses a raster pixel.
   r <- t(matrix(as.integer(dat[1, , ]), nrow = w, ncol = h))
   g <- t(matrix(as.integer(dat[2, , ]), nrow = w, ncol = h))
   b <- t(matrix(as.integer(dat[3, , ]), nrow = w, ncol = h))
-
+  
   dist <- sqrt(
     (r - target[["R"]])^2 +
-    (g - target[["G"]])^2 +
-    (b - target[["B"]])^2
+      (g - target[["G"]])^2 +
+      (b - target[["B"]])^2
   )
   red_mask <- dist <= tolerance
-
+  
   y_min <- max(1L, as.integer(floor(h * header_y_min_fraction)))
   y_max <- min(h, as.integer(ceiling(h * header_y_max_fraction)))
   min_bar_px <- max(20L, as.integer(round(w * min_bar_fraction)))
-
+  
   longest_run <- vapply(
     seq_len(h),
     function(y) {
@@ -3609,27 +3785,27 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
     },
     integer(1)
   )
-
+  
   candidate_y <- which(
     seq_len(h) >= y_min &
-    seq_len(h) <= y_max &
-    longest_run >= min_bar_px
+      seq_len(h) <= y_max &
+      longest_run >= min_bar_px
   )
-
+  
   if (length(candidate_y) == 0L) {
     return(tibble::tibble(
       y_start = integer(), y_end = integer(), thickness_px = integer(),
       x_start = integer(), x_end = integer(), bar_length_px = integer()
     ))
   }
-
+  
   group_id <- cumsum(c(TRUE, diff(candidate_y) > 1L))
   y_groups <- split(candidate_y, group_id)
-
+  
   out <- purrr::map_dfr(y_groups, function(ys) {
     thickness <- length(ys)
     if (thickness > max_rule_thickness) return(NULL)
-
+    
     # Pick the row inside this thin band with the most qualifying red pixels.
     # That avoids using a partially antialiased edge row as the x geometry.
     scores <- vapply(ys, function(y) {
@@ -3637,11 +3813,11 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
       sum(runs$length[runs$length >= min_bar_px])
     }, integer(1))
     y_rep <- ys[which.max(scores)]
-
+    
     runs <- .tpa_true_runs(red_mask[y_rep, ])
     runs <- runs[runs$length >= min_bar_px, , drop = FALSE]
     if (nrow(runs) == 0L) return(NULL)
-
+    
     runs %>%
       dplyr::transmute(
         y_start = as.integer(min(ys)),
@@ -3652,7 +3828,7 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
         bar_length_px = as.integer(.data$length)
       )
   })
-
+  
   out
 }
 
@@ -3664,7 +3840,7 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
     height = as.integer(height),
     color = color
   )
-
+  
   magick::image_composite(
     img,
     patch,
@@ -3684,18 +3860,18 @@ normalize_header_rules_png <- function(
 ) {
   target_px <- as.integer(target_px)
   if (target_px < 1L) stop("target_px must be >= 1.", call. = FALSE)
-
+  
   info <- magick::image_info(img)
   w <- as.integer(info$width[1])
   h <- as.integer(info$height[1])
-
+  
   before <- .tpa_detect_header_rule_segments(
     img,
     rule_color = rule_color,
     tolerance = tolerance,
     min_bar_fraction = min_bar_fraction
   )
-
+  
   if (nrow(before) == 0L) {
     warning("No header rule detected in rendered table PNG; raster normalization skipped.",
             call. = FALSE)
@@ -3706,23 +3882,23 @@ normalize_header_rules_png <- function(
       bar_count = 0L
     ))
   }
-
+  
   # All segments in the same spanner band share y_start/y_end. Repainting each
   # segment independently preserves the exact horizontal lengths and gaps that
   # the table layout established; only vertical thickness is normalized.
   for (i in seq_len(nrow(before))) {
     seg <- before[i, ]
-
+    
     # Keep the existing BOTTOM edge fixed. A 1-px rule becoming 2 px therefore
     # grows upward, preserving its relationship to the year/column-label row.
     new_y_end   <- as.integer(seg$y_end)
     new_y_start <- max(1L, new_y_end - target_px + 1L)
-
+    
     erase_x_start <- max(1L, as.integer(seg$x_start) - erase_pad_x)
     erase_x_end   <- min(w,  as.integer(seg$x_end)   + erase_pad_x)
     erase_y_start <- max(1L, min(as.integer(seg$y_start), new_y_start) - erase_pad_y)
     erase_y_end   <- min(h,  max(as.integer(seg$y_end),   new_y_end)   + erase_pad_y)
-
+    
     # Header backgrounds are publication white, so remove the browser-rendered
     # line (including antialiased edge pixels) before drawing the exact one.
     img <- .tpa_composite_rect(
@@ -3733,7 +3909,7 @@ normalize_header_rules_png <- function(
       height = erase_y_end - erase_y_start + 1L,
       color = "white"
     )
-
+    
     img <- .tpa_composite_rect(
       img,
       x_start = as.integer(seg$x_start),
@@ -3743,18 +3919,18 @@ normalize_header_rules_png <- function(
       color = rule_color
     )
   }
-
+  
   after <- .tpa_detect_header_rule_segments(
     img,
     rule_color = rule_color,
     tolerance = tolerance,
     min_bar_fraction = min_bar_fraction
   )
-
+  
   before_px <- paste(sort(unique(before$thickness_px)), collapse = ",")
   after_px  <- if (nrow(after) == 0L) NA_character_ else
     paste(sort(unique(after$thickness_px)), collapse = ",")
-
+  
   # Fail loudly rather than silently export a table whose rule was not fixed.
   if (nrow(after) == 0L || any(after$thickness_px != target_px)) {
     stop(
@@ -3763,7 +3939,7 @@ normalize_header_rules_png <- function(
       call. = FALSE
     )
   }
-
+  
   list(
     image = img,
     before_px = before_px,
@@ -3783,12 +3959,12 @@ normalize_existing_table_pngs <- function(
     stop("Package 'magick' is required for raster header-rule normalization.",
          call. = FALSE)
   }
-
+  
   files <- list.files(png_dir, pattern = pattern, full.names = TRUE)
   if (length(files) == 0L) {
     stop("No table PNGs found in: ", png_dir, call. = FALSE)
   }
-
+  
   purrr::map_dfr(files, function(path) {
     img <- magick::image_read(path)
     norm <- normalize_header_rules_png(img, target_px = target_px)
@@ -3797,7 +3973,7 @@ normalize_existing_table_pngs <- function(
       path = path,
       density = paste0(TABLE_EXPORT_DPI, "x", TABLE_EXPORT_DPI)
     )
-
+    
     tibble::tibble(
       table = basename(path),
       before_px = norm$before_px,
@@ -3818,17 +3994,17 @@ audit_existing_table_header_rules <- function(
   if (!requireNamespace("magick", quietly = TRUE)) {
     stop("Package 'magick' is required for header-rule auditing.", call. = FALSE)
   }
-
+  
   files <- list.files(png_dir, pattern = pattern, full.names = TRUE)
   if (length(files) == 0L) {
     stop("No table PNGs found in: ", png_dir, call. = FALSE)
   }
-
+  
   purrr::map_dfr(files, function(path) {
     img <- magick::image_read(path)
     seg <- .tpa_detect_header_rule_segments(img)
     info <- magick::image_info(img)
-
+    
     tibble::tibble(
       table = basename(path),
       image_width_px = as.integer(info$width[1]),
@@ -3950,7 +4126,7 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
     header_rule_before_px <- rule_norm$before_px
     header_rule_after_px  <- rule_norm$after_px
     header_rule_bar_count <- rule_norm$bar_count
-
+    
     magick::image_write(
       img,
       path    = png_path,

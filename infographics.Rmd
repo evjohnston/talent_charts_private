@@ -3850,20 +3850,9 @@ ch2_projection_metric <- function(
 
   # Use FIG206's reported change directly.
   out$Change <- paste0(
-    if (
-      reported_change > 0
-    ) {
-      "+"
-    } else {
-      ""
-    },
-
-    scales::number(
-      reported_change,
-      accuracy = 1
-    ),
-
-    "%"
+  if (reported_change > 0) "+" else "",
+  infographic_sig3(reported_change),
+  "%"
   )
 
 
@@ -4078,24 +4067,22 @@ ch2_top_recruitment_target <- metric_text(
     "Top recruitment target",
 
   earlier = paste0(
-    ch2_top_target_2015$Priority[[1]],
-    ": ",
-    scales::number(
-      ch2_top_target_2015$Percent[[1]],
-      accuracy = 0.1
-    ),
-    "%",
-    ch2_superscript_year(2015)
+  ch2_top_target_2015$Priority[[1]],
+  ": ",
+  format_value(
+    ch2_top_target_2015$Percent[[1]],
+    "percent_value"
+  ),
+  ch2_superscript_year(2015)
   ),
 
-  latest = paste0(
-    ch2_top_target_2025$Priority[[1]],
-    ": ",
-    scales::number(
-      ch2_top_target_2025$Value2025[[1]],
-      accuracy = 0.1
-    ),
-    "%"
+latest = paste0(
+  ch2_top_target_2025$Priority[[1]],
+  ": ",
+  format_value(
+    ch2_top_target_2025$Value2025[[1]],
+    "percent_value"
+  )
   ),
 
   change = paste0(
@@ -18799,33 +18786,21 @@ build_ch6_snapshot_table <- function() {
       ),
 
       EstimatedDeparting =
-        formatC(
-          .data$EstimatedDeparting,
-          format = "f",
-          digits = 0,
-          big.mark = ","
-        ),
+  infographic_sig3(
+    .data$EstimatedDeparting
+  ),
 
-      ShareDeparting =
-        paste0(
-          round(
-            100 *
-            .data$ShareDeparting
-          ),
-          "%"
-        ),
+ShareDeparting =
+  format_value(
+    .data$ShareDeparting,
+    "share"
+  ),
 
-      EstimatedMoneyLost =
-        paste0(
-          "$",
-          formatC(
-            .data$EstimatedMoneyLostRaw /
-              1e9,
-            format = "f",
-            digits = 1
-          ),
-          "B"
-        )
+EstimatedMoneyLost =
+  format_value(
+    .data$EstimatedMoneyLostRaw,
+    "currency_billions_from_dollars"
+  )
     )
 
 

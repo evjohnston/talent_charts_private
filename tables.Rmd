@@ -166,8 +166,11 @@ tab_202 <- mat %>%
   # bare signed number: repeating " pp" 232 times would cost roughly a column
   # of width in an already dense table. Swap in change_pattern(change_type) if
   # per-cell units are wanted instead.
-  fmt_number(columns = all_of(field_order), decimals = 1,
-             force_sign = TRUE) %>%
+  fmt_number(
+  columns = all_of(field_order),
+  n_sigfig = TABLE_SIGFIGS,
+  force_sign = TRUE
+  ) %>%
   sub_missing(missing_text = "\u2014") %>%
   data_color(
     columns = all_of(field_order),
@@ -601,10 +604,11 @@ TAB502 <- build_occupation_share_table(
   )
 ) %>%
   gt::fmt_number(
-    columns  = c(Y2014, Y2018, Y2022, Y2026),
-    rows     = Occupation == "Average",
-    decimals = 1
-  )
+  columns = c(Y2014, Y2018, Y2022, Y2026),
+  rows = Occupation == "Average",
+  n_sigfig = TABLE_SIGFIGS
+)
+
 save_table(TAB502, "tab_5_02", profile = "standard")
 ```
 

@@ -1,7 +1,7 @@
 Chapter,Name,Page,TotalPages,BodyRows,SectionHeaders,RenderedRows,IsFinalPage,WidthIn,HeightIn,ExpectedWidthPx,ExpectedHeightPx,ActualWidthPx,ActualHeightPx,DimensionVerification,PNG,LayoutFlag
-Chapter 1,infographic_ch1_by_the_numbers,NA,NA,NA,NA,NA,NA,6.5,9,1950,2700,NA,NA,CHECK: export not registered,NA,CHECK: chapter export not registered
-Chapter 2,infographic_ch2_by_the_numbers,NA,NA,NA,NA,NA,NA,6.5,9,1950,2700,NA,NA,CHECK: export not registered,NA,CHECK: chapter export not registered
-Chapter 3,infographic_ch3_by_the_numbers,NA,NA,NA,NA,NA,NA,6.5,9,1950,2700,NA,NA,CHECK: export not registered,NA,CHECK: chapter export not registered
-Chapter 4,infographic_ch4_by_the_numbers,NA,NA,NA,NA,NA,NA,6.5,9,1950,2700,NA,NA,CHECK: export not registered,NA,CHECK: chapter export not registered
-Chapter 5,infographic_ch5_by_the_numbers,NA,NA,NA,NA,NA,NA,6.5,9,1950,2700,NA,NA,CHECK: export not registered,NA,CHECK: chapter export not registered
+Chapter 1,infographic_ch1_by_the_numbers,1,1,32,4,36,TRUE,6.5,9,1950,2700,1950,2700,magick,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch1_by_the_numbers.png,
+Chapter 2,infographic_ch2_by_the_numbers,1,1,30,6,36,TRUE,6.5,9,1950,2700,1950,2700,magick,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch2_by_the_numbers.png,
+Chapter 3,infographic_ch3_by_the_numbers,1,1,31,5,36,TRUE,6.5,9,1950,2700,1950,2700,magick,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch3_by_the_numbers.png,
+Chapter 4,infographic_ch4_by_the_numbers,1,1,31,3,34,TRUE,6.5,9,1950,2700,1950,2700,magick,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch4_by_the_numbers.png,
+Chapter 5,infographic_ch5_by_the_numbers,1,1,31,5,36,TRUE,6.5,9,1950,2700,1950,2700,magick,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch5_by_the_numbers.png,
 Chapter 6,infographic_ch6_by_the_numbers,1,1,24,5,29,TRUE,6.5,9,1950,2700,1950,2700,PASS,/Users/emersonjohnston/Downloads/Talent/talent_charts/outputs/final_infographics/pngs/infographic_ch6_by_the_numbers.png,
