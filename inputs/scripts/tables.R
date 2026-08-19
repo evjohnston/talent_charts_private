@@ -1032,7 +1032,14 @@ theme_gt_tpa <- function(gt_tbl, meta = NULL) {
       source_notes.padding   = px(table_pt_to_px(PUB$spacing$table_source_pad_pt)),
       
       footnotes.font.size = px(TABLE_FOOTNOTE_FONT_PX),
-      footnotes.padding   = px(table_pt_to_px(PUB$spacing$table_source_pad_pt))
+      footnotes.padding   = px(table_pt_to_px(PUB$spacing$table_source_pad_pt)),
+      
+      table_body.hlines.style = "none",
+      table_body.vlines.style = "none",
+      table_body.border.top.style = "none",
+      table_body.border.bottom.style = "none",
+      row.striping.include_table_body = FALSE
+      
     ) %>%
     opt_align_table_header(align = "left") %>%
     # One footnote-mark system for the whole set. build_ranking_delta_table()
