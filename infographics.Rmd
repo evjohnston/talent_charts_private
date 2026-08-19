@@ -19293,268 +19293,180 @@ ch6_render_table_image <- function(
 # ============================================================================
 
 export_chapter6_composite <- function(
-    name =
-      "infographic_ch6_by_the_numbers"
+    name = "infographic_ch6_by_the_numbers"
 ) {
 
-  if (
-    !requireNamespace(
-      "magick",
-      quietly = TRUE
-    )
-  ) {
-
+  if (!requireNamespace("magick", quietly = TRUE)) {
     stop(
       "The magick package is required for the Chapter 6 composite infographic.",
       call. = FALSE
     )
   }
 
+  if (!exists("raster_to_pdf_exact", mode = "function", inherits = TRUE)) {
+    stop(
+      "Chapter 6 PDF export requires raster_to_pdf_exact() from helpers.R. ",
+      "Source helpers.R before rendering the infographic.",
+      call. = FALSE
+    )
+  }
 
-  output_dir <-
-    PATHS$final_infographics
+  output_dir <- PATHS$final_infographics
 
+  html_dir <- file.path(output_dir, "html")
+  png_dir  <- file.path(output_dir, "pngs")
+  pdf_dir  <- file.path(output_dir, "pdfs")
 
-  html_dir <- file.path(
-    output_dir,
-    "html"
-  )
-
-
-  png_dir <- file.path(
-    output_dir,
-    "pngs"
-  )
-
-
-  dir.create(
-    html_dir,
-    recursive = TRUE,
-    showWarnings = FALSE
-  )
-
-
-  dir.create(
-    png_dir,
-    recursive = TRUE,
-    showWarnings = FALSE
-  )
-
+  for (path in c(html_dir, png_dir, pdf_dir)) {
+    dir.create(
+      path,
+      recursive = TRUE,
+      showWarnings = FALSE
+    )
+  }
 
   main_html_path <- file.path(
-
     html_dir,
-
-    paste0(
-      name,
-      "_longitudinal.html"
-    )
+    paste0(name, "_longitudinal.html")
   )
-
 
   snapshot_html_path <- file.path(
-
     html_dir,
-
-    paste0(
-      name,
-      "_snapshot.html"
-    )
+    paste0(name, "_snapshot.html")
   )
-
 
   main_raw_path <- file.path(
-
     png_dir,
-
-    paste0(
-      name,
-      "_longitudinal_raw.png"
-    )
+    paste0(name, "_longitudinal_raw.png")
   )
-
 
   snapshot_raw_path <- file.path(
-
     png_dir,
-
-    paste0(
-      name,
-      "_snapshot_raw.png"
-    )
+    paste0(name, "_snapshot_raw.png")
   )
-
 
   png_path <- file.path(
-
     png_dir,
-
-    paste0(
-      name,
-      ".png"
-    )
+    paste0(name, ".png")
   )
 
+  pdf_path <- file.path(
+    pdf_dir,
+    paste0(name, ".pdf")
+  )
 
   # --------------------------------------------------------------------------
   # Main longitudinal table
   # --------------------------------------------------------------------------
 
-  main_table <-
-    build_ch6_main_table()
-
+  main_table <- build_ch6_main_table()
 
   gt::gtsave(
     main_table,
     main_html_path
   )
 
-
-  main_image <-
-    ch6_render_table_image(
-      table =
-        main_table,
-      png_path =
-        main_raw_path
-    )
-
+  main_image <- ch6_render_table_image(
+    table = main_table,
+    png_path = main_raw_path
+  )
 
   # --------------------------------------------------------------------------
   # Exactly one standard infographic row between the two tables
   # --------------------------------------------------------------------------
 
-  CH6_DETACHED_GAP_PX <-
-    CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX
-
+  CH6_DETACHED_GAP_PX <- CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX
 
   spacer <- magick::image_blank(
-
-    width =
-      INFOGRAPHIC_SPEC$output_width_px,
-
-    height =
-      CH6_DETACHED_GAP_PX,
-
-    color =
-      "white"
+    width  = INFOGRAPHIC_SPEC$output_width_px,
+    height = CH6_DETACHED_GAP_PX,
+    color  = "white"
   )
-
 
   # --------------------------------------------------------------------------
-# Snapshot
-#
-# The snapshot now uses the same fixed typography and row height as the
-# rest of the infographic. No adaptive font scaling is used.
-# --------------------------------------------------------------------------
+  # Snapshot
+  #
+  # The snapshot uses the same fixed typography and row height as the rest of
+  # the infographic. No adaptive font scaling is used.
+  # --------------------------------------------------------------------------
 
-final_snapshot_table <-
-  build_ch6_snapshot_table()
+  final_snapshot_table <- build_ch6_snapshot_table()
 
-
-final_snapshot_image <-
-  ch6_render_table_image(
-    table =
-      final_snapshot_table,
-    png_path =
-      snapshot_raw_path
+  final_snapshot_image <- ch6_render_table_image(
+    table = final_snapshot_table,
+    png_path = snapshot_raw_path
   )
 
-
-final_image <- magick::image_append(
-
-  c(
-    main_image,
-    spacer,
-    final_snapshot_image
-  ),
-
-  stack =
-    TRUE
-)
-
-
-candidate_info <- magick::image_info(
-  final_image
-)
-
-
-if (
-  candidate_info$height[[1]] >
-    INFOGRAPHIC_SPEC$output_height_px
-) {
-
-  stop(
-    paste0(
-      "Chapter 6 main table plus detached Figure 6.09 snapshot is ",
-      candidate_info$height[[1]],
-      " px tall; the standard infographic canvas is ",
-      INFOGRAPHIC_SPEC$output_height_px,
-      " px tall. ",
-      "The snapshot is using the fixed publication typography and was not shrunk."
+  final_image <- magick::image_append(
+    c(
+      main_image,
+      spacer,
+      final_snapshot_image
     ),
-    call. = FALSE
+    stack = TRUE
   )
-}
+
+  candidate_info <- magick::image_info(
+    final_image
+  )
+
+  if (
+    candidate_info$height[[1]] >
+      INFOGRAPHIC_SPEC$output_height_px
+  ) {
+    stop(
+      paste0(
+        "Chapter 6 main table plus detached Figure 6.09 snapshot is ",
+        candidate_info$height[[1]],
+        " px tall; the standard infographic canvas is ",
+        INFOGRAPHIC_SPEC$output_height_px,
+        " px tall. ",
+        "The snapshot is using the fixed publication typography and was not shrunk."
+      ),
+      call. = FALSE
+    )
+  }
 
   gt::gtsave(
     final_snapshot_table,
     snapshot_html_path
   )
 
-
   # --------------------------------------------------------------------------
   # Extend to exact publication canvas
   # --------------------------------------------------------------------------
 
   final_image <- magick::image_extent(
-
     final_image,
-
-    geometry =
-      paste0(
-        INFOGRAPHIC_SPEC$output_width_px,
-        "x",
-        INFOGRAPHIC_SPEC$output_height_px
-      ),
-
-    gravity =
-      "north",
-
-    color =
-      "white"
+    geometry = paste0(
+      INFOGRAPHIC_SPEC$output_width_px,
+      "x",
+      INFOGRAPHIC_SPEC$output_height_px
+    ),
+    gravity = "north",
+    color = "white"
   )
-
 
   magick::image_write(
-
     final_image,
-
-    path =
-      png_path,
-
-    format =
-      "png",
-
-    density =
-      paste0(
-        INFOGRAPHIC_SPEC$dpi,
-        "x",
-        INFOGRAPHIC_SPEC$dpi
-      )
+    path = png_path,
+    format = "png",
+    density = paste0(
+      INFOGRAPHIC_SPEC$dpi,
+      "x",
+      INFOGRAPHIC_SPEC$dpi
+    )
   )
-
 
   # --------------------------------------------------------------------------
   # Final dimensions
   # --------------------------------------------------------------------------
 
   final_info <- magick::image_info(
-
     magick::image_read(
       png_path
     )
   )
-
 
   if (
     final_info$width[[1]] !=
@@ -19562,7 +19474,6 @@ if (
     final_info$height[[1]] !=
       INFOGRAPHIC_SPEC$output_height_px
   ) {
-
     stop(
       paste0(
         "Final Chapter 6 PNG is ",
@@ -19579,6 +19490,21 @@ if (
     )
   }
 
+  # --------------------------------------------------------------------------
+  # Exact-size PDF
+  #
+  # IMPORTANT: build this only AFTER the final composite PNG has been extended
+  # and verified at the publication canvas. This keeps the PDF visually
+  # identical to the PNG and uses the same physical dimensions as Chapters 1–5.
+  # --------------------------------------------------------------------------
+
+  raster_to_pdf_exact(
+    image_path = png_path,
+    pdf_path   = pdf_path,
+    width_in   = INFOGRAPHIC_SPEC$width_in,
+    height_in  = INFOGRAPHIC_SPEC$height_in,
+    bg         = "white"
+  )
 
   # --------------------------------------------------------------------------
   # Audit registry
@@ -19586,118 +19512,55 @@ if (
 
   INFOGRAPHIC_EXPORT_REGISTRY[[name]] <-
     tibble::tibble(
-
-      Name =
-        name,
-
-      Page =
-        1L,
-
-      TotalPages =
-        1L,
-
-      BodyRows =
-        nrow(
-          ch6_display_data
-        ),
-
-      SectionHeaders =
-        ch6_section_header_count,
-
+      Name = name,
+      Page = 1L,
+      TotalPages = 1L,
+      BodyRows = nrow(ch6_display_data),
+      SectionHeaders = ch6_section_header_count,
       RenderedRows =
-        nrow(
-          ch6_display_data
-        ) +
+        nrow(ch6_display_data) +
         ch6_section_header_count,
-
-      IsFinalPage =
-        TRUE,
-
-      WidthIn =
-        INFOGRAPHIC_SPEC$width_in,
-
-      HeightIn =
-        INFOGRAPHIC_SPEC$height_in,
-
-      ExpectedWidthPx =
-        INFOGRAPHIC_SPEC$output_width_px,
-
-      ExpectedHeightPx =
-        INFOGRAPHIC_SPEC$output_height_px,
-
-      ActualWidthPx =
-        final_info$width[[1]],
-
-      ActualHeightPx =
-        final_info$height[[1]],
-
-      DimensionVerification =
-        "PASS",
-
-      PNG =
-        png_path
+      IsFinalPage = TRUE,
+      WidthIn = INFOGRAPHIC_SPEC$width_in,
+      HeightIn = INFOGRAPHIC_SPEC$height_in,
+      ExpectedWidthPx = INFOGRAPHIC_SPEC$output_width_px,
+      ExpectedHeightPx = INFOGRAPHIC_SPEC$output_height_px,
+      ActualWidthPx = final_info$width[[1]],
+      ActualHeightPx = final_info$height[[1]],
+      DimensionVerification = "PASS",
+      PNG = png_path,
+      PDF = pdf_path
     )
-
 
   # --------------------------------------------------------------------------
   # Remove temporary raw PNGs
   # --------------------------------------------------------------------------
 
-  if (
-    file.exists(
-      main_raw_path
-    )
-  ) {
-
-    unlink(
-      main_raw_path
-    )
+  if (file.exists(main_raw_path)) {
+    unlink(main_raw_path)
   }
 
-
-  if (
-    file.exists(
-      snapshot_raw_path
-    )
-  ) {
-
-    unlink(
-      snapshot_raw_path
-    )
+  if (file.exists(snapshot_raw_path)) {
+    unlink(snapshot_raw_path)
   }
-
 
   message(
-  "Saved Chapter 6 composite infographic. Main table: ",
-  nrow(ch6_display_data),
-  " body rows + ",
-  ch6_section_header_count,
-  " section headers. Snapshot uses fixed publication typography."
+    "Saved Chapter 6 composite infographic as PNG and PDF. Main table: ",
+    nrow(ch6_display_data),
+    " body rows + ",
+    ch6_section_header_count,
+    " section headers. Snapshot uses fixed publication typography."
   )
 
-
   list(
-
-    main_table =
-      main_table,
-
-    snapshot_table =
-      final_snapshot_table,
-
-    main_html_path =
-      main_html_path,
-
-    snapshot_html_path =
-      snapshot_html_path,
-
-    png_path =
-      png_path,
-
-    width_px =
-      final_info$width[[1]],
-
-    height_px =
-      final_info$height[[1]]
+    main_table = main_table,
+    snapshot_table = final_snapshot_table,
+    main_html_path = main_html_path,
+    snapshot_html_path = snapshot_html_path,
+    png_path = png_path,
+    pdf_path = pdf_path,
+    width_px = final_info$width[[1]],
+    height_px = final_info$height[[1]]
   )
 }
 
@@ -19721,7 +19584,6 @@ knitr::include_graphics(
 ```
 
 # Infographic audit — Chapters 1–6
-
 ```{r infographic_source_year_audit, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
 
 # ============================================================================
