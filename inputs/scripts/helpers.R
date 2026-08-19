@@ -775,6 +775,96 @@ set_png_density <- function(path, dpi = CHART_EXPORT_DPI) {
   invisible(path)
 }
 
+# Convert the finished publication PNG into a PDF page with the exact same
+# physical width and height. This preserves the canonical raster render rather
+# than asking a second graphics device to redraw the chart or table.
+raster_to_pdf_exact <- function(image_path,
+                                pdf_path,
+                                width_in,
+                                height_in,
+                                bg = "white") {
+  if (!requireNamespace("magick", quietly = TRUE)) {
+    stop("Package 'magick' is required for PDF export.", call. = FALSE)
+  }
+  
+  dir.create(dirname(pdf_path), showWarnings = FALSE, recursive = TRUE)
+  
+  img <- magick::image_read(image_path)
+  img <- magick::image_background(img, color = bg, flatten = TRUE)
+  
+  grDevices::pdf(
+    file        = pdf_path,
+    width       = width_in,
+    height      = height_in,
+    onefile     = TRUE,
+    paper       = "special",
+    bg          = bg,
+    useDingbats = FALSE
+  )
+  
+  device_open <- TRUE
+  on.exit({
+    if (device_open) grDevices::dev.off()
+  }, add = TRUE)
+  
+  grid::grid.newpage()
+  grid::grid.raster(
+    as.raster(img),
+    x           = 0.5,
+    y           = 0.5,
+    width       = grid::unit(1, "npc"),
+    height      = grid::unit(1, "npc"),
+    interpolate = FALSE
+  )
+  
+  grDevices::dev.off()
+  device_open <- FALSE
+  
+  invisible(pdf_path)
+}
+
+# Save a self-contained HTML copy of a finished chart. The PNG is embedded as a
+# data URI, so the HTML stays portable and matches the publication image exactly.
+raster_to_html_exact <- function(image_path,
+                                 html_path,
+                                 width_in,
+                                 height_in,
+                                 bg = "white") {
+  if (!requireNamespace("base64enc", quietly = TRUE)) {
+    stop("Package 'base64enc' is required for HTML chart export.", call. = FALSE)
+  }
+  
+  dir.create(dirname(html_path), showWarnings = FALSE, recursive = TRUE)
+  
+  image_uri <- base64enc::dataURI(
+    file = image_path,
+    mime = "image/png"
+  )
+  
+  html <- paste0(
+    "<!DOCTYPE html>\n",
+    "<html>\n",
+    "<head>\n",
+    "  <meta charset=\"utf-8\">\n",
+    "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n",
+    "  <style>\n",
+    "    html, body { margin:0; padding:0; background:", bg, "; }\n",
+    "    .chart-container { width:", width_in, "in; height:", height_in, "in; margin:0; padding:0; }\n",
+    "    .chart-container img { display:block; width:100%; height:100%; }\n",
+    "  </style>\n",
+    "</head>\n",
+    "<body>\n",
+    "  <div class=\"chart-container\">\n",
+    "    <img src=\"", image_uri, "\" alt=\"\">\n",
+    "  </div>\n",
+    "</body>\n",
+    "</html>\n"
+  )
+  
+  writeLines(html, con = html_path, useBytes = TRUE)
+  invisible(html_path)
+}
+
 save_chart <- function(plot,
                        name,
                        size = "standard",
@@ -782,13 +872,24 @@ save_chart <- function(plot,
                        dpi = CHART_EXPORT_DPI,
                        bg = "white") {
   dims <- chart_size(size)
-  dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
   
-  out_path <- file.path(out_dir, paste0(name, ".png"))
+  html_dir <- file.path(out_dir, "html")
+  png_dir  <- file.path(out_dir, "pngs")
+  pdf_dir  <- file.path(out_dir, "pdfs")
+  
+  for (path in c(html_dir, png_dir, pdf_dir)) {
+    dir.create(path, showWarnings = FALSE, recursive = TRUE)
+  }
+  
+  html_path <- file.path(html_dir, paste0(name, ".html"))
+  png_path  <- file.path(png_dir,  paste0(name, ".png"))
+  pdf_path  <- file.path(pdf_dir,  paste0(name, ".pdf"))
+  
   device_fun <- if (requireNamespace("ragg", quietly = TRUE)) ragg::agg_png else "png"
   
+  # 1. Canonical publication PNG.
   ggsave(
-    filename = out_path,
+    filename = png_path,
     plot     = plot,
     width    = dims$w,
     height   = dims$h,
@@ -800,7 +901,25 @@ save_chart <- function(plot,
   
   # Preserve the intended physical size in Word. CHART_WIDTH_IN is derived from
   # PUB$page$body_in, while CHART_EXPORT_DPI controls raster resolution.
-  set_png_density(out_path, dpi = dpi)
+  set_png_density(png_path, dpi = dpi)
   
-  plot
+  # 2. PDF page at the same physical dimensions.
+  raster_to_pdf_exact(
+    image_path = png_path,
+    pdf_path   = pdf_path,
+    width_in   = dims$w,
+    height_in  = dims$h,
+    bg         = bg
+  )
+  
+  # 3. Self-contained HTML carrying the exact same finished chart image.
+  raster_to_html_exact(
+    image_path = png_path,
+    html_path  = html_path,
+    width_in   = dims$w,
+    height_in  = dims$h,
+    bg         = bg
+  )
+  
+  invisible(plot)
 }

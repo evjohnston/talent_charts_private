@@ -2976,7 +2976,7 @@ FIG505 <- plot_country_lines(df, meta, "GERD (billions of constant 2020 PPP doll
                           color_scale  = scale_color_china_us(),
                           gutter_label = RD_GUTTER_LABEL,
                           y_args       = list(
-                            label_fmt = fmt_sig3_dollar_b,
+                            labels = fmt_sig3_dollar_b,
                             limits = c(0, 875),
                             breaks = seq(0, 875, 125),
                             expand = EXPAND_BAR_TIGHT

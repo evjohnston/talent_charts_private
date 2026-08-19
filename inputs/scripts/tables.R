@@ -4047,11 +4047,15 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
   
   html_dir <- file.path(PATHS$final_tables, "html")
   png_dir  <- file.path(PATHS$final_tables, "pngs")
-  dir.create(html_dir, showWarnings = FALSE, recursive = TRUE)
-  dir.create(png_dir,  showWarnings = FALSE, recursive = TRUE)
+  pdf_dir  <- file.path(PATHS$final_tables, "pdfs")
   
-  png_path  <- file.path(png_dir,  paste0(name, ".png"))
+  for (path in c(html_dir, png_dir, pdf_dir)) {
+    dir.create(path, showWarnings = FALSE, recursive = TRUE)
+  }
+  
   html_path <- file.path(html_dir, paste0(name, ".html"))
+  png_path  <- file.path(png_dir,  paste0(name, ".png"))
+  pdf_path  <- file.path(pdf_dir,  paste0(name, ".pdf"))
   
   # Builders own content; save_table() owns final geometry.
   gt_tbl <- apply_table_profile(
@@ -4138,6 +4142,25 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
       img,
       path    = png_path,
       density = paste0(TABLE_EXPORT_DPI, "x", TABLE_EXPORT_DPI)
+    )
+  }
+  
+  # Build the PDF from the fully normalized final PNG so the PDF and PNG remain
+  # visually identical. Width stays at the publication body width; height follows
+  # the final rendered table height.
+  if (!is.na(actual_height_px)) {
+    raster_to_pdf_exact(
+      image_path = png_path,
+      pdf_path   = pdf_path,
+      width_in   = WORD_TABLE_WIDTH_IN,
+      height_in  = actual_height_px / TABLE_EXPORT_DPI,
+      bg         = "white"
+    )
+  } else {
+    stop(
+      "Could not determine the final table height for PDF export. ",
+      "Package 'magick' is required.",
+      call. = FALSE
     )
   }
   

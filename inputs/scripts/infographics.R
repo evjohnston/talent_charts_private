@@ -1644,13 +1644,17 @@ export_infographic_page <- function(
     output_dir = PATHS$final_infographics
 ) {
   html_dir <- file.path(output_dir, "html")
-  png_dir <- file.path(output_dir, "pngs")
-  dir.create(html_dir, recursive = TRUE, showWarnings = FALSE)
-  dir.create(png_dir, recursive = TRUE, showWarnings = FALSE)
+  png_dir  <- file.path(output_dir, "pngs")
+  pdf_dir  <- file.path(output_dir, "pdfs")
+
+  for (path in c(html_dir, png_dir, pdf_dir)) {
+    dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  }
   
   html_path <- file.path(html_dir, paste0(name, ".html"))
-  raw_path <- file.path(png_dir, paste0(name, "_raw.png"))
-  png_path <- file.path(png_dir, paste0(name, ".png"))
+  raw_path  <- file.path(png_dir,  paste0(name, "_raw.png"))
+  png_path  <- file.path(png_dir,  paste0(name, ".png"))
+  pdf_path  <- file.path(pdf_dir,  paste0(name, ".pdf"))
   
   info <- render_infographic_trial(table, raw_path, html_path)
   
@@ -1697,11 +1701,31 @@ export_infographic_page <- function(
   ) {
     stop("The final infographic page does not have the required dimensions.")
   }
+
+  # Create the PDF only after the final PNG has been padded/normalized to the
+  # exact publication canvas. This keeps PNG and PDF output visually identical
+  # and preserves INFOGRAPHIC_SPEC$width_in x INFOGRAPHIC_SPEC$height_in.
+  if (!exists("raster_to_pdf_exact", mode = "function", inherits = TRUE)) {
+    stop(
+      "Infographic PDF export requires raster_to_pdf_exact() from helpers.R. ",
+      "Source helpers.R before infographics.R.",
+      call. = FALSE
+    )
+  }
+
+  raster_to_pdf_exact(
+    image_path = png_path,
+    pdf_path   = pdf_path,
+    width_in   = INFOGRAPHIC_SPEC$width_in,
+    height_in  = INFOGRAPHIC_SPEC$height_in,
+    bg         = "white"
+  )
   
   list(
     table = table,
     html_path = html_path,
     png_path = png_path,
+    pdf_path = pdf_path,
     width_px = final_info$width[[1]],
     height_px = final_info$height[[1]]
   )
