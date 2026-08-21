@@ -61,8 +61,8 @@ INFOGRAPHIC_AUDIT_SHOW <- FALSE
 # with an error rather than silently shrinking the page.
 # ============================================================================
 
-INFOGRAPHIC_ROWS_PER_PAGE <- 36L
-INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 6L
+INFOGRAPHIC_ROWS_PER_PAGE <- 38L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 8L
 INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
   INFOGRAPHIC_ROWS_PER_PAGE +
   INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
@@ -4107,30 +4107,27 @@ latest = paste0(
 
 ch2_barrier_changes <- ch2_fig208 %>%
   transmute(
-    Reason =
-      as.character(.data$Reason),
-
-    Value2015 =
-      .data[["Fall 2015"]],
-
-    Value2025 =
-      .data[["Fall 2025"]]
+    Reason    = as.character(.data$Reason),
+    Value2015 = .data[["Fall 2015"]],
+    Value2019 = .data[["Fall 2019"]],
+    Value2025 = .data[["Fall 2025"]]
   ) %>%
   filter(
-    is.finite(.data$Value2015),
     is.finite(.data$Value2025)
   ) %>%
   mutate(
-    Change =
-      .data$Value2025 -
+    BaselineValue = dplyr::if_else(
+      is.finite(.data$Value2015),
       .data$Value2015,
-
-    StatID = paste0(
-      "barrier_",
-      ch2_slug(
-        .data$Reason
-      )
-    )
+      .data$Value2019
+    ),
+    BaselineYear = dplyr::if_else(
+      is.finite(.data$Value2015),
+      2015L,
+      2019L
+    ),
+    Change = .data$Value2025 - .data$BaselineValue,
+    StatID = paste0("barrier_", ch2_slug(.data$Reason))
   )
 
 
@@ -4193,8 +4190,10 @@ ch2_barrier_display_label <- function(reason) {
     TRUE ~
       paste0(
         "Institutions citing ",
-        stringr::str_to_lower(
-          reason
+        stringr::str_replace_all(
+          stringr::str_to_lower(reason),
+          "\\bus\\b",
+          "US"
         )
       )
   )
@@ -4207,62 +4206,38 @@ ch2_barrier_top3_stats <- purrr::pmap_dfr(
   function(
       Reason,
       Value2015,
+      Value2019,
       Value2025,
+      BaselineValue,
+      BaselineYear,
       Change,
       StatID,
       ...
   ) {
 
     out <- metric_values(
-      stat_id =
-        StatID,
+      stat_id     = StatID,
+      section_id  = "recruitment",
+      section     = "Recruitment and barriers (2015–2025)",
+      measure     = ch2_barrier_display_label(Reason),
 
-      section_id =
-        "recruitment",
+      first_value = BaselineValue,
+      first_label = BaselineYear,
 
-      section =
-        "Recruitment and barriers (2015–2025)",
+      last_value  = Value2025,
+      last_label  = 2025,
 
-      measure =
-        ch2_barrier_display_label(
-          Reason
-        ),
-
-      first_value =
-        Value2015,
-
-      first_label =
-        2015,
-
-      last_value =
-        Value2025,
-
-      last_label =
-        2025,
-
-      value_type =
-        "percent_value",
-
-      change_type =
-        "pp_percent"
+      value_type  = "percent_value",
+      change_type = "pp_percent"
     )
 
-
-    # Superscript 2015 = left-column value is 2015, not 2001.
+    # Superscript the actual baseline year (2015 or 2019).
     out$Earlier <- paste0(
-      format_value(
-        Value2015,
-        "percent_value"
-      ),
-      ch2_superscript_year(2015)
+      format_value(BaselineValue, "percent_value"),
+      ch2_superscript_year(BaselineYear)
     )
 
-
-    out$Latest <- format_value(
-      Value2025,
-      "percent_value"
-    )
-
+    out$Latest <- format_value(Value2025, "percent_value")
 
     out
   }
@@ -7982,7 +7957,7 @@ ch3_all_stats <- bind_rows(
     "postdoc_science",
     "postdoc",
     "International Talent in Research",
-    "International share of science postdocs",
+    "Temporary visa holder share of  science postdocs",
     fig302,
     "Science",
     "percent_value",
@@ -7995,7 +7970,7 @@ ch3_all_stats <- bind_rows(
     "postdoc_engineering",
     "postdoc",
     "International Talent in Research",
-    "International share of engineering postdocs",
+    "Temporary visa holder share of engineering postdocs",
     fig302,
     "Engineering",
     "percent_value",
@@ -8007,7 +7982,7 @@ ch3_all_stats <- bind_rows(
     "postdoc_health",
     "postdoc",
     "International Talent in Research",
-    "International share of health postdocs",
+    "Temporary visa holder share of health postdocs",
     fig302,
     "Health",
     "percent_value",
@@ -8020,7 +7995,7 @@ ch3_all_stats <- bind_rows(
     "ffrdc_international_share",
     "postdoc",
     "International Talent in Research",
-    "International share of postdocs at FFRDCs*",
+    "Temporary visa holder share of postdocs at FFRDCs*",
     fig303_share,
     "InternationalShare",
     "share",
@@ -10429,13 +10404,13 @@ ch4_study_total_stat <- metric_text(
     "US students studying abroad",
 
   earlier =
-    "7.7",
+    "7.7%",
 
   latest =
-    "6.1",
+    "6.1%",
 
   change =
-    "-1.6",
+    "-1.6 pp",
 
   emphasis = TRUE
 ) %>%
@@ -15656,7 +15631,7 @@ build_ch5_page <- function(
 
       paste0(
         "**Source:** Derived from the current report Figures and Tables: ",
-        "Figures 5.01–5.06, Tables 5.01-5.06."
+        "Figures 5.01–5.08, Tables 5.01-5.06."
       )
     )
 
@@ -19038,8 +19013,8 @@ EstimatedMoneyLost =
         gt::md(
 
           paste0(
-            "**Source:** Derived from Figures 6.01-6.09; ",
-            "Tables 6.01–6.05."
+            "**Source:** Derived from Figures 6.01-6.07; ",
+            "Tables 6.01–6.04."
           )
         )
     ) %>%

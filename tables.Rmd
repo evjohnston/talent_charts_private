@@ -232,15 +232,15 @@ df_029t <- read_fig("TAB301") %>%
   mutate(
     Share = Share * 100,
     Level = case_when(
-      str_detect(Level, regex("bach", ignore_case = TRUE)) ~ "Bachelors",
-      str_detect(Level, regex("mast", ignore_case = TRUE)) ~ "Masters",
-      str_detect(Level, regex("doct", ignore_case = TRUE)) ~ "Doctorate"
+      str_detect(Level, regex("Bach", ignore_case = TRUE)) ~ "Bachelor's",
+      str_detect(Level, regex("Mast", ignore_case = TRUE)) ~ "Master's",
+      str_detect(Level, regex("Doct", ignore_case = TRUE)) ~ "Doctorate"
     )
   ) %>%
   pivot_wider(names_from = Year, values_from = Share, names_prefix = "Y") %>%
   mutate(
     Change     = table_change(Y1993, Y2023, change_type),
-    Occupation = factor(Level, levels = c("Bachelors", "Masters", "Doctorate"))
+    Occupation = factor(Level, levels = c("Bachelor's", "Master's", "Doctorate"))
   ) %>%
   arrange(Occupation) %>%
   select(Occupation, Y1993, Y2003, Y2013, Y2023, Change)
@@ -405,7 +405,10 @@ tab_038a <- build_bookend_table(
   ),
   footnote = end_sentence(
     "Values are the share of each entering STEM cohort ending in each outcome;",
-    "each year column sums to 100%.", change_col_label(FALSE), "is the",
+    "each year column sums to 100%. Sub-bac. denotes students who left the STEM",
+    "track before completing a bachelor's degree (e.g., switched to a non-STEM",
+    "or sub-baccalaureate program, or did not complete a four-year credential).",
+    change_col_label(FALSE), "is the",
     change_phrase(change_type),
     "from the 2003/04 cohort to the 2011/12 cohort"
   )

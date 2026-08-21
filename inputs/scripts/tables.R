@@ -1686,7 +1686,7 @@ build_perm_expiry_table <- function(meta, path = NULL,
 
 # ---- Build Employment Section Intentions Bookend Table ----
 build_sector_bookend_table <- function(meta,
-                                       sources = c(`U.S. citizens`          = "TAB603a",
+                                       sources = c(`US citizens`          = "TAB603a",
                                                    `Temporary visa holders` = "TAB603b"),
                                        first = 1994, last = 2024,
                                        keys  = c("us", "tvh"),

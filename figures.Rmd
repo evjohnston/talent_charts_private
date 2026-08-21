@@ -187,9 +187,9 @@ RED_FILL  <- tpa_colors[1]   # "#8C1515"
 
 blocks <- tibble::tribble(
   ~label,                    ~count,   ~xmin, ~xmax, ~ymin, ~ymax, ~fill,     ~tcol,
-  "Foreign-born",            "47.8M",   0.00,  2.00,  0.75,  1.00,  RED_FILL,  "white",
-  "Noncitizens",             "~22.8M",  0.00,  1.20,  0.50,  0.75,  RED_FILL,  "white",
-  "Naturalized\ncitizens",   "~25.1M",    1.20,  2.00,  0.00,  0.75,  GREY_FILL, "grey20",
+  "Foreign-born",            "47.8M",   0.00,  2.00,  0.75,  1.00,  RED_FILL,  "white", #could be 50.2
+  "Noncitizens",             "~22.8M",  0.00,  1.20,  0.50,  0.75,  RED_FILL,  "white", #could be 24.4
+  "Naturalized\ncitizens",   "~25.1M",    1.20,  2.00,  0.00,  0.75,  GREY_FILL, "grey20", #could be 25.8
   "Temporary\nvisa holders", "~3.5M",   0.00,  0.60,  0.25,  0.50,  RED_FILL,  "white",
   "Green card\nholders",     "12.8M",   0.60,  0.90,  0.00,  0.50,  GREY_FILL, "grey20",
   "Unauthorized\n& other",   "~11M",    0.90,  1.20,  0.00,  0.50,  GREY_FILL, "grey20",
@@ -1146,12 +1146,12 @@ prep_conversion <- function() {
   ) %>%
     mutate(
       Degree = recode(Degree,
-        "bachelors"    = "Bachelors",
-        "masters"      = "Masters",
+        "bachelors"    = "Bachelor's",
+        "masters"      = "Master's",
         "doctorates"   = "Doctorates",
         "doctors"      = "Doctorates",
         "professional" = "Professional"),
-      Degree = factor(Degree, levels = c("Doctorates", "Professional", "Masters", "Bachelors"))
+      Degree = factor(Degree, levels = c("Doctorates", "Professional", "Master's", "Bachelor's"))
     )
 }
 
@@ -1358,17 +1358,17 @@ df_031 <- read_fig("FIG307") %>%
   mutate(
     Share       = Share * 100,
     Composition = case_when(
-      Composition == "all us"       ~ "All U.S. Born",
-      Composition == "all foreign"  ~ "All Foreign Born",
-      Composition == "some foreign" ~ "Some Foreign Born"
+      Composition == "all us"       ~ "All US-Born",
+      Composition == "all foreign"  ~ "All Foreign-Born",
+      Composition == "some foreign" ~ "Some Foreign-Born"
     )
   ) %>%
   order_by_latest(Composition, Share)
 
 palette_031 <- c(
-  "All U.S. Born"     = tpa_colors[1],
-  "All Foreign Born"  = tpa_colors[2],
-  "Some Foreign Born" = tpa_colors[4]
+  "All US-Born"     = tpa_colors[1],
+  "All Foreign-Born"  = tpa_colors[2],
+  "Some Foreign-Born" = tpa_colors[4]
 )
 
 labels_031 <- last_by_group(df_031, Year, Composition) %>%
