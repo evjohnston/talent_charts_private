@@ -494,6 +494,71 @@ save_chart_aligned(FIG106, "fig_1_06")
 FIG106
 ```
 
+### Figure 1.06 - alt
+```{r}
+meta <- get_meta("FIG106")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+pct <- fmt_sig3_prop
+df_005 <- read_levels(
+  "FIG106",
+  value_col    = "Share",
+  levels_order = c("Bachelors", "Masters",
+                   "Doctorates")
+) %>%
+  filter(!is.na(Share)) %>%
+  mutate(Level = fct_recode(Level,
+                            "Bachelor's" = "Bachelors",
+                            "Master's"   = "Masters"))
+last_005 <- last_by_group(df_005, Year, Level) %>%
+  mutate(
+    .label = paste0(pct(Share), " - ", Level)
+  ) %>%
+  prepare_right_labels(df_005$Year)
+first_005 <- df_005 %>% group_by(Level) %>% slice_min(Year, n = 1) %>% ungroup()
+FIG106 <- ggplot(df_005, aes(Year, Share, color = Level, group = Level)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_label_repel_tpa(
+    data    = last_005,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  geom_label_repel_tpa(
+    data         = first_005,
+    mapping      = aes(label = pct(Share)),
+    nudge_x      = -0.5,
+    hjust        = 1,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_005$Year, pad_left = 0.05, right_labels = last_005) +
+  scale_y_continuous(labels = pct, expand = EXPAND_LINE_WIDE) +
+  scale_color_levels() +
+  guides(color = "none") +
+  labs_meta(meta, y = "Share of completions") +
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(last_005) +
+  theme(plot.margin = margin(2, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG106, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_1_06_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG106
+```
+
 ### Figure 1.07 - Projected STEM PhD Production by Country### Figure 1.07 - Projected STEM PhD Production by Country
 ```{r figure 008}
 meta <- get_meta("FIG107")
@@ -605,7 +670,7 @@ FIG108
 
 # Chapter 2
 
-### Figure 2.01 - Which Countries Acccount for the Largest Share of International Undergraduates? 
+### Figure 2.01 - Which Countries Account for the Largest Share of International Undergraduates? 
 ```{r FIG203}
 meta <- get_meta("FIG201")
 
@@ -697,6 +762,64 @@ FIG202 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
   theme_right_labels(labels_111)
 
 save_chart_aligned(FIG202, "fig_2_02")
+FIG202
+```
+
+
+### Figure 2.02 - Alt
+```{r}
+meta <- get_meta("FIG202")
+meta$title <- "Which Countries Account for the Largest Share of International Graduate Students?"
+
+df_111 <- read_fig("FIG202") %>%
+  mutate(across(-Year, as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Country", values_to = "Count") %>%
+  filter(!is.na(Count))
+top_countries <- df_111 %>%
+  filter(Year == max(Year)) %>%
+  slice_max(Count, n = 8) %>%
+  pull(Country)
+df_111 <- df_111 %>%
+  filter(Country %in% top_countries) %>%
+  order_by_latest(Country, Count)
+labels_111 <- last_by_group(df_111, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, " - ", fmt_sig3_prop(Count))
+  ) %>%
+  prepare_right_labels(df_111$Year)
+FIG202 <- ggplot(df_111, aes(Year, Count, color = Country, group = Country)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_label_repel_tpa(
+    data    = labels_111,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_111$Year, right_labels = labels_111) +
+  scale_y_continuous(labels = fmt_sig3_prop,
+                expand = EXPAND_LINE) +
+  scale_color_tpa() +
+  guides(color = "none") +
+  labs_meta(meta, y = "Share of Enrolled International Students") +
+  coord_cartesian(ylim = c(0, 0.4), clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_111) +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG202, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_2_02_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
 FIG202
 ```
 
@@ -1078,6 +1201,65 @@ save_chart_aligned(FIG302, "fig_3_02")
 FIG302
 ```
 
+### Figure 3.02 - Alt
+```{r}
+meta <- get_meta("FIG302")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+df_020 <- read_fig("FIG302") %>%
+  rename(Year = 1,
+         Science     = 2,
+         Engineering = 3,
+         Health      = 4) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Field", values_to = "Share") %>%
+  filter(!is.na(Share)) %>%
+  order_by_latest(Field, Share)
+labels_020 <- last_by_group(df_020, Year, Field) %>%
+  mutate(
+    .label = paste0(Field, " - ", fmt_sig3_pct(Share))
+  ) %>%
+  prepare_right_labels(df_020$Year)
+FIG302 <- ggplot(df_020, aes(Year, Share, color = Field, group = Field)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_label_repel_tpa(
+    data    = labels_020,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_020$Year, right_labels = labels_020) +
+  scale_y_continuous(
+  labels = fmt_sig3_pct,
+  limits = c(0, 80),
+  breaks = seq(0, 80, 10),
+  expand = EXPAND_BAR_TIGHT
+  ) +
+  scale_color_tpa() +
+  guides(color = "none") +
+  labs_meta(meta, y = "International share of postdocs") +
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_020) +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG302, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_3_02_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG302
+```
+
 ### Figure 3.03 - Who Holds Postdoctoral Positions at Federally Funded Research Centers
 ```{r figure 021}
 meta <- get_meta("FIG303")
@@ -1205,6 +1387,96 @@ FIG304 <- ggplot(df_db, aes(y = Degree)) +
   )
 
 save_chart_aligned(FIG304, "fig_3_04", left_pt = 60)
+FIG304
+```
+
+### Figure 3.04 - Alt
+```{r}
+# shared prep -- combine US-born (FIG301a) and foreign-born (FIG301b)
+# into one long frame with a Population column
+prep_conversion <- function() {
+  read_one <- function(name, pop) {
+    read_fig(name) %>%
+      mutate(across(-Year, as.numeric)) %>%
+      pivot_longer(-Year, names_to = "Degree", values_to = "Rate") %>%
+      mutate(Rate = Rate * 100, Population = pop)
+  }
+  bind_rows(
+    read_one("FIG304a", "U.S.-born"),
+    read_one("FIG304b", "Foreign-born")
+  ) %>%
+    mutate(
+      Degree = recode(Degree,
+        "bachelors"    = "Bachelor's",
+        "masters"      = "Master's",
+        "doctorates"   = "Doctorates",
+        "doctors"      = "Doctorates",
+        "professional" = "Professional"),
+      Degree = factor(Degree, levels = c("Doctorates", "Professional", "Master's", "Bachelor's"))
+    )
+}
+meta <- get_meta("FIG304")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+first_yr <- 2003
+last_yr  <- 2023
+# long form: one row per Degree × Population × Year, with Year as a factor
+# so it can drive the open/filled shape legend
+df_db <- prep_conversion() %>%
+  filter(Year %in% c(first_yr, last_yr)) %>%
+  mutate(Year = factor(Year, levels = c(first_yr, last_yr)))
+# wide, just for the connecting segments
+df_seg <- df_db %>%
+  select(Degree, Population, Year, Rate) %>%
+  pivot_wider(names_from = Year, values_from = Rate, names_prefix = "Y")
+FIG304 <- ggplot(df_db, aes(y = Degree)) +
+  geom_segment(data = df_seg,
+               aes(x = Y2003, xend = Y2023, yend = Degree, color = Population),
+               linewidth = 1.1, alpha = 0.55) +
+  # both years drawn as shape 21; Year drives fill via the shape legend
+  geom_point(aes(x = Rate, color = Population, shape = Year),
+             fill = "white", stroke = 1.2, size = 3.8) +
+  geom_point(data = filter(df_db, Year == last_yr),
+             aes(x = Rate, color = Population, fill = Population),
+             shape = 21, stroke = 0, size = 4) +
+  scale_x_continuous(labels = fmt_sig3_pct,
+                     limits = c(20, 85), breaks = seq(20, 80, 10),
+                     expand = expansion(mult = c(0.05, 0.10))) +
+  scale_color_manual(values = c("U.S.-born"    = tpa_colors[2],
+                                "Foreign-born" = tpa_colors[1])) +
+  scale_fill_manual(values = c("U.S.-born"    = tpa_colors[2],
+                               "Foreign-born" = tpa_colors[1]),
+                    guide = "none") +
+  scale_shape_manual(values = c("2003" = 21, "2023" = 19),
+                     labels = c("2003" = "2003 (open)", "2023" = "2023 (filled)")) +
+  guides(
+    color = guide_legend(order = 1, override.aes = list(shape = 19, size = 4)),
+    shape = guide_legend(order = 2,
+                         override.aes = list(color = "grey40", fill = "white", size = 4))
+  ) +
+  labs_meta(meta, y = NULL) +
+  theme_horizontal_bar() +
+  theme(
+    legend.box        = "horizontal",
+    legend.box.just   = "center",
+    legend.key.height = unit(16, "pt"),
+    legend.text       = element_text(vjust = 0.5),
+    plot.margin       = margin(6, 6, 0, 0)
+  )
+
+local({
+  gt <- fix_left_gutter(FIG304, left_pt = 60)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_3_04_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
 FIG304
 ```
 
@@ -1902,11 +2174,279 @@ FIG401 <- ggplot(
 
 save_chart_aligned(
   FIG401,
-  "fig_4_01"
+  "fig_4_01_alt"
 )
 
 FIG401
 ```
+
+### Figure 4.01 - Alt
+```{r}
+meta <- get_meta("FIG401")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+# -------------------------------------------------------------------------
+# Local display formatters
+# Keeps this figure independent of formatter load order in helper scripts.
+# -------------------------------------------------------------------------
+
+fmt401_sig3 <- function(x) {
+  vapply(
+    x,
+    function(z) {
+      if (is.na(z)) return(NA_character_)
+      if (!is.finite(z)) return(as.character(z))
+
+      format(
+        signif(z, 3),
+        scientific = FALSE,
+        trim       = TRUE,
+        big.mark   = ","
+      )
+    },
+    character(1)
+  )
+}
+
+fmt401_signed <- function(x) {
+  paste0(
+    ifelse(x > 0, "+", ""),
+    fmt401_sig3(x)
+  )
+}
+
+
+# -------------------------------------------------------------------------
+# Data
+# -------------------------------------------------------------------------
+
+df_400 <- read_fig("FIG401") %>%
+  mutate(across(everything(), as.numeric)) %>%
+  pivot_longer(
+    -Year,
+    names_to  = "Assessment",
+    values_to = "Score"
+  ) %>%
+  filter(!is.na(Score)) %>%
+  arrange(Assessment, Year) %>%
+  group_by(Assessment) %>%
+  mutate(
+    Change   = Score - first(Score),
+    baseline = first(Score),
+    peak_val = max(Score)
+  ) %>%
+  ungroup()
+
+
+# -------------------------------------------------------------------------
+# Series order
+# -------------------------------------------------------------------------
+
+level_order <- df_400 %>%
+  group_by(Assessment) %>%
+  slice_max(
+    Year,
+    n = 1,
+    with_ties = FALSE
+  ) %>%
+  ungroup() %>%
+  arrange(desc(Change)) %>%
+  pull(Assessment)
+
+df_400 <- df_400 %>%
+  mutate(
+    Assessment = factor(
+      Assessment,
+      levels = level_order
+    )
+  ) %>%
+  arrange(Assessment, Year)
+
+
+# -------------------------------------------------------------------------
+# Peak markers
+# Skip PISA Math and any series whose peak is its final observation.
+# -------------------------------------------------------------------------
+
+peaks_400 <- df_400 %>%
+  group_by(Assessment) %>%
+  slice_max(
+    Change,
+    n = 1,
+    with_ties = FALSE
+  ) %>%
+  ungroup() %>%
+  filter(
+    Year != max(df_400$Year),
+    Assessment != "PISA Math"
+  )
+
+
+# -------------------------------------------------------------------------
+# Right-edge labels
+# Show change from each assessment's first observation.
+# -------------------------------------------------------------------------
+
+labels_400 <- last_by_group(
+  df_400,
+  Year,
+  Assessment
+) %>%
+  mutate(
+    d_base = Score - baseline,
+    d_peak = Score - peak_val,
+    .label = paste0(
+      as.character(Assessment),
+      " - ",
+      fmt401_signed(d_base)
+    )
+  ) %>%
+  prepare_right_labels(
+    df_400$Year,
+    allow_multiline = TRUE
+  )
+
+
+# -------------------------------------------------------------------------
+# Chart
+# -------------------------------------------------------------------------
+
+FIG401 <- ggplot(
+  df_400,
+  aes(
+    Year,
+    Change,
+    color = Assessment,
+    group = Assessment
+  )
+) +
+  geom_hline(
+    yintercept = 0,
+    color = "grey50",
+    linewidth = LINE_WIDTH_REF
+  ) +
+  geom_line(
+    linewidth = LINE_WIDTH
+  ) +
+  geom_point(
+    data = peaks_400,
+    size = POINT_SIZE
+  ) +
+
+  # Standard peak labels
+  geom_text_tpa(
+    data = filter(
+      peaks_400,
+      !Assessment %in% c("NAEP 13", "PISA")
+    ),
+    mapping = aes(
+      label = paste0(
+        "Peak: ",
+        fmt401_sig3(Score)
+      )
+    )
+  ) +
+
+  # NAEP 13 peak label placed below its line
+  geom_text(
+    data = filter(
+      peaks_400,
+      Assessment %in% c("NAEP 13")
+    ),
+    mapping = aes(
+      label = paste0(
+        "Peak: ",
+        fmt401_sig3(Score)
+      )
+    ),
+    vjust = 2.2,
+    color = tpa_colors[3],
+    fontface = "bold",
+    family = FONT_FAMILY,
+    size = DATA_LABEL_SIZE / .pt,
+    show.legend = FALSE
+  ) +
+
+  # PISA-specific placement, retained from existing design
+  geom_text(
+    data = filter(
+      peaks_400,
+      Assessment %in% c("PISA")
+    ),
+    mapping = aes(
+      label = paste0(
+        "Peak: ",
+        fmt401_sig3(Score)
+      )
+    ),
+    vjust = 2.2,
+    hjust = 1,
+    nudge_x = -0.4,
+    color = tpa_colors[5],
+    fontface = "bold",
+    family = FONT_FAMILY,
+    size = DATA_LABEL_SIZE / .pt,
+    show.legend = FALSE
+  ) +
+
+  geom_label_repel_tpa(
+    data = labels_400,
+    mapping = aes(
+      x = .label_x,
+      label = .label
+    ),
+    hjust = 0,
+    direction = "y",
+    with_segment = TRUE
+  ) +
+
+  scale_x_years(
+    df_400$Year,
+    right_labels = labels_400
+  ) +
+
+  scale_y_continuous(
+    labels = fmt401_sig3,
+    expand = EXPAND_LINE
+  ) +
+
+  scale_color_tpa() +
+  guides(color = "none") +
+
+  labs_meta(
+    meta,
+    y = "Change in score since first assessment"
+  ) +
+
+  coord_cartesian(
+    clip = "off"
+  ) +
+
+  theme_tpa() +
+  theme_right_labels(labels_400) +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+
+# -------------------------------------------------------------------------
+# Save
+# -------------------------------------------------------------------------
+
+local({
+  gt <- fix_left_gutter(FIG401, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_4_01.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG401
+```
+
 
 ### Figure 4.02 - How Do American Students Score on International Tests?
 ```{r figure 035}
@@ -2301,6 +2841,70 @@ save_chart_aligned(FIG404, "fig_4_04", size = "medium", left_pt = 71)
 FIG404
 ```
 
+### Figure 4.04 - Alt
+```{r}
+meta <- get_meta("FIG404")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+num  <- function(x) parse_number(as.character(x))
+keep_rows <- c(
+  "Australia","Austria","Belgium","Canada",
+  "Czech Republic","Denmark","Estonia","Finland","France","Germany",
+  "Hungary","Ireland","Israel","Italy","Japan","Korea","Latvia",
+  "Lithuania","Netherlands","New Zealand","Norway","Poland","Portugal",
+  "Slovak Republic","Slovenia","Spain","Sweden","Switzerland",
+  "United Kingdom","United States","OECD average"
+)
+df_122 <- read_fig("FIG404") %>%
+  rename(Country = 1) %>%
+  mutate(Country = str_remove(Country, "\\*+$"),      # drop sampling asterisks
+         `Level 5` = num(`Level 5`),
+         `Level 6` = num(`Level 6`),
+         Top = `Level 5` + `Level 6`) %>%
+  filter(Country %in% keep_rows) %>%
+  mutate(Country = fct_reorder(Country, Top))
+palette_122 <- highlight_colors(
+  all_values  = levels(df_122$Country),
+  highlighted = c("United States", "OECD average"),
+  palette     = c(tpa_colors[1], tpa_colors[3]),   # red, gold
+  default     = tpa_colors[2]                       # navy
+)
+FIG404 <- ggplot(df_122, aes(Top, Country, fill = Country)) +
+  geom_col(width = 0.75, alpha = ALPHA_COL) +
+  geom_text(aes(label = fmt_sig3(Top), hjust = -0.2),
+            family = FONT_FAMILY,
+            fontface = "bold",
+            size = SMALL_LABEL_SIZE / .pt,
+            color = "grey25") +
+  scale_x_continuous(limits = c(0, 25),
+                     breaks = seq(0, 25, 5),
+                     expand = EXPAND_NONE) +
+  scale_fill_manual(values = palette_122) +
+  guides(fill = "none") +
+  labs_meta(meta, x = "Share of students scoring at Level 5 or 6 (%)") +
+  theme_horizontal_bar() +
+  theme(axis.text.y  = element_text(size = SMALL_LABEL_SIZE),
+        axis.title.x = element_text(family = FONT_FAMILY,
+                                    size = SMALL_LABEL_SIZE,
+                                    color = "grey25",
+                                    margin = margin(t = PUB$spacing$axis_title_compact_pt)),
+        plot.margin  = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG404, left_pt = 71)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_4_04_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG404
+```
 
 ### Figure 4.05 - Does Spending More on Schools Buy Better Results?
 ```{r fig_119}
@@ -2460,6 +3064,135 @@ hi$cook <- cooks.distance(base_fit)
 hi %>% arrange(desc(cook)) %>% select(Country, K12, PISA, cook) %>% head(5)
 ```
 
+### Figure 4.05 - Alt
+```{r}
+meta <- get_meta("FIG405")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+num <- function(x) parse_number(as.character(x))
+df_119 <- read_fig("FIG405") %>%
+  mutate(
+    K12  = num(`K-12 (in USD)`),
+    PISA = as.numeric(`OECD Math Average`)
+  ) %>%
+  filter(!is.na(K12), !is.na(PISA),
+         !Country %in% c("EU25 average", "G20 average", "China")) %>%
+  mutate(pt_group = case_when(
+    Group == "United States" ~ "United States",
+    Group == "OECD average"  ~ "OECD average",
+    TRUE                     ~ "Other"
+  ))
+oecd_x <- df_119$K12[df_119$Country == "OECD average"]
+oecd_y <- df_119$PISA[df_119$Country == "OECD average"]
+
+reg_df    <- filter(df_119, pt_group != "OECD average")
+reg_hi    <- filter(reg_df, K12 >= 10000)
+
+# fit labels (factor order controls legend order)
+fit_lvls  <- c("All countries", "Above ~$10K per pupil")
+fit_cols  <- c("All countries" = "grey55", "Above ~$10K per pupil" = tpa_colors[1])
+fit_ltys  <- c("All countries" = "dashed", "Above ~$10K per pupil" = "longdash")
+
+key_countries  <- c("United States", "OECD average")
+label_grey <- df_119 %>%
+  filter(Country %in% c("Korea", "Japan", "Peru", "Luxembourg",
+                        "Türkiye", "Estonia", "Poland", "Latvia"))
+label_key  <- df_119 %>%
+  filter(Country %in% key_countries) %>%
+  mutate(
+    nx = if_else(Country == "United States",  1200, -1600),
+    ny = if_else(Country == "United States",    -6,     9)
+  )
+pal_c <- c("United States" = tpa_colors[1],
+           "OECD average"  = tpa_colors[3],
+           "Other"         = "grey80")
+
+FIG405 <- ggplot(df_119, aes(K12, PISA)) +
+  geom_hline(yintercept = oecd_y, color = "grey70",
+             linetype = "dashed", linewidth = LINE_WIDTH_REF) +
+  geom_vline(xintercept = oecd_x, color = "grey70",
+             linetype = "dashed", linewidth = LINE_WIDTH_REF) +
+  geom_point(aes(color = pt_group, size = pt_group), alpha = ALPHA_BUBBLE) +
+  scale_color_manual(values = pal_c) +
+  scale_size_manual(values = c("United States" = 4, "OECD average" = 3.5, "Other" = 2.4)) +
+  guides(color = "none", size = "none") +
+  # country labels
+  geom_label_repel_tpa(
+    data = label_grey,
+    mapping = aes(label = Country, color = pt_group),
+    seed = 42, force = 3, with_segment = TRUE, direction = "both"
+  ) +
+  geom_label_repel_tpa(
+    data = label_key,
+    mapping = aes(label = Country, color = pt_group),
+    nudge_x = label_key$nx, nudge_y = label_key$ny,
+    seed = 42, force = 0, with_segment = TRUE, direction = "both"
+  ) +
+  # ---- new colour scale so fit lines get their own legend ----
+  new_scale_color() +
+  geom_smooth(
+    data = reg_df,
+    aes(color = fit_lvls[1], linetype = fit_lvls[1]),
+    method = "lm", se = FALSE,
+    linewidth = LINE_WIDTH_REF * 1.6, alpha = 0.7
+  ) +
+  geom_smooth(
+    data = reg_hi,
+    aes(color = fit_lvls[2], linetype = fit_lvls[2]),
+    method = "lm", se = FALSE, fullrange = FALSE,
+    linewidth = LINE_WIDTH_REF * 1.6, alpha = 0.7
+  ) +
+  scale_color_manual(name = NULL, values = fit_cols, breaks = fit_lvls) +
+  scale_linetype_manual(name = NULL, values = fit_ltys, breaks = fit_lvls) +
+  # reference annotations
+  annotate("text", x = max(df_119$K12) * 0.98, y = oecd_y - 6,
+           label = "OECD average score", hjust = .5, vjust = 0,
+           color = "grey55", size = MICRO_LABEL_SIZE / .pt, family = FONT_FAMILY) +
+  annotate("text", x = oecd_x - 350, y = min(df_119$PISA) + 4,
+           label = "OECD average spending", angle = 90,
+           hjust = .10, vjust = 2.5, color = "grey55",
+           size = MICRO_LABEL_SIZE / .pt, family = FONT_FAMILY) +
+  scale_x_continuous(labels = fmt_sig3,
+                     expand = expansion(mult = c(0.04, 0.08))) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.08))) +
+  coord_cartesian(clip = "off") +
+  labs_meta(meta,
+            x = "K-12 spending per student (USD, PPP)",
+            y = "PISA math score, 2022") +
+  theme_tpa() +
+  theme(
+    axis.text.y  = element_text(size = SMALL_LABEL_SIZE),
+    axis.title.x = element_text(family = FONT_FAMILY, color = "grey25",
+                                size = AXIS_SIZE,
+                                margin = margin(t = PUB$spacing$axis_title_gap_pt)),
+    legend.position = "bottom",
+    legend.box = "horizontal",
+    legend.key.width = unit(28, "pt"),
+    legend.text = element_text(family = FONT_FAMILY, size = MICRO_LABEL_SIZE,
+                               color = "grey25"),
+    plot.margin = margin(6, 6, 0, 0)
+  ) +
+  guides(
+    color    = guide_legend(override.aes = list(alpha = 1, linewidth = LINE_WIDTH_REF * 1.6)),
+    linetype = guide_legend()
+  )
+
+local({
+  gt <- fix_left_gutter(FIG405, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 5)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_4_05_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG405
+```
+
 ### Figure 4.06 - How Lopsided Is U.S. Education Spending?
 ```{r fig_118}
 meta <- get_meta("FIG406")
@@ -2599,6 +3332,68 @@ FIG408 <- ggplot(df_038c, aes(x = field, y = pct, fill = cohort)) +
 
 save_chart_aligned(FIG408, "fig_4_08")
 FIG408
+```
+
+
+### Figure 4.07 - Alt
+```{r figure 038b}
+meta <- get_meta("FIG407")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+short_fields <- c(
+  "Computer & information sciences"   = "Computer science",
+  "Engineering"                       = "Engineering",
+  "Bio/physical sciences, math & ag"  = "Sciences & math",
+  "Non-STEM field"                    = "Non-STEM"
+)
+field_order <- c("Computer science", "Engineering", "Sciences & math")
+col_order   <- c(field_order, "Non-STEM")
+df_038b <- read_fig("FIG407") %>%
+  mutate(pct = as.numeric(pct),
+         is_diag      = as.character(entry_field) == as.character(degree_field),
+         entry_field  = recode(entry_field, !!!short_fields),
+         degree_field = recode(degree_field, !!!short_fields),
+         entry_field  = factor(entry_field, levels = rev(field_order)),
+         degree_field = factor(degree_field, levels = col_order),
+         cohort       = factor(cohort, levels = c("2003/04", "2011/12")),
+         lab = case_when(
+           is.na(pct)                        ~ "n/a",
+           TRUE                              ~ fmt_sig3_pct(pct)))
+FIG407 <- ggplot(df_038b, aes(degree_field, entry_field, fill = pct)) +
+  geom_tile(color = "white", linewidth = 1.5) +
+  geom_tile(data = ~filter(.x, is_diag),
+            color = "grey15", linewidth = 1, fill = NA) +
+  geom_text(aes(label = lab, color = pct > 40),
+            family = FONT_FAMILY, size = COMPACT_LABEL_SIZE / .pt) +
+  scale_fill_gradient(low = "#FCEBEB", high = tpa_colors[1],  # or "#791F1F"
+                      na.value = "grey92", guide = "none") +
+  scale_color_manual(values = c(`TRUE` = "#FCEBEB", `FALSE` = "#501313"),
+                     na.value = "grey45", guide = "none") +
+  facet_wrap(~cohort) +
+  labs_meta(meta, x = "Graduated in", y = "Entered") +
+  theme_tpa() +
+  theme(axis.title.x = element_text(family = FONT_FAMILY, color = "grey25",
+                                    size = AXIS_SIZE, margin = margin(t = PUB$spacing$axis_title_gap_pt)),
+        axis.title.y = element_text(family = FONT_FAMILY, color = "grey25",
+                                    size = AXIS_SIZE, margin = margin(r = PUB$spacing$axis_label_right_gap_pt)),
+        axis.text.x  = element_text(angle = 30, hjust = 1),
+        panel.grid   = element_blank(),
+        plot.margin  = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG407, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_4_07_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG407
 ```
 
 ### Figure 4.09 - When Do Non-Completers Leave College
@@ -2870,6 +3665,63 @@ FIG502 <- ggplot(df_044, aes(Year, Share, color = Country, group = Country)) +
 save_chart_aligned(FIG502, "fig_5_02")
 FIG502
 ```
+
+### Figure 5.02 - Alt
+```{r figure 044}
+meta <- get_meta("FIG502")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+df_044 <- read_fig("FIG502") %>%
+  filter(!is.na(Year)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Country", values_to = "Share") %>%
+  filter(!is.na(Share)) %>%
+  mutate(Share   = Share * 100,
+         Country = case_when(Country == "china" ~ "China",
+                             Country == "us"    ~ "United States"))
+labels_044 <- last_by_group(df_044, Year, Country) %>%
+  mutate(
+    .label = paste0(Country, " - ", fmt_sig3_pct(Share))
+  ) %>%
+  prepare_right_labels(df_044$Year)
+FIG502 <- ggplot(df_044, aes(Year, Share, color = Country, group = Country)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_point(size = 2) +
+  geom_label_repel_tpa(
+    data    = labels_044,
+    mapping = aes(x = .label_x, label = .label),
+    hjust        = 0,
+    direction    = "y",
+    with_segment = TRUE
+  ) +
+  scale_x_years(df_044$Year, right_labels = labels_044) +
+  scale_y_continuous(labels = fmt_sig3_pct,
+                     limits = c(0, 25), breaks = seq(0, 25, 5),
+                     expand = EXPAND_BAR_TIGHT) +
+  scale_color_china_us() +
+  guides(color = "none") +
+  labs_meta(meta, y = "Fractional share of top-cited publications") +
+  coord_cartesian(clip = "off") +
+  theme_tpa() +
+  theme_right_labels(labels_044) +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG502, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_5_02_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG502
+```
+
 
 ### Figure 5.03 - Whose Authors Appear on the World's Top Papers?
 ```{r figure 045}
@@ -3163,6 +4015,73 @@ save_chart_aligned(FIG601, "fig_6_01")
 FIG601
 ```
 
+### Figure 6.01 - Alt
+```{r figure 065}
+meta <- get_meta("FIG601")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+df_065 <- read_fig("FIG601") %>%
+  rename(Year = 1, Share = 2) %>%
+  filter(!is.na(Year)) %>%
+  mutate(
+    across(everything(), as.numeric),
+    Share = Share * 100
+  )
+# First and last observations only
+labels_065 <- df_065 %>%
+  filter(Year %in% range(Year))
+FIG601 <- ggplot(df_065, aes(Year, Share)) +
+  geom_col(
+    fill = tpa_colors[2],
+    width = 0.4,
+    alpha = ALPHA_COL
+  ) +
+  geom_text(
+    data = labels_065,
+    aes(label = fmt_sig3_pct(Share)),
+    hjust = 0.5,
+    vjust = -0.5,
+    color = tpa_colors[2],
+    size = 8 / .pt,
+    fontface = "bold",
+    family = FONT_FAMILY
+  ) +
+  scale_x_years(
+    df_065$Year,
+    pad_left = 0.025,
+    pad_right = 0.025
+  ) +
+  scale_y_continuous(
+    labels = fmt_sig3_pct,
+    breaks = seq(60, 80, 2),
+    expand = EXPAND_TIGHT_TOP
+  ) +
+  coord_cartesian(
+    ylim = c(60, 80)
+  ) +
+  labs_meta(
+    meta,
+    y = "Intention to stay in the United States"
+  ) +
+  theme_tpa() +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG601, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_6_01_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
+FIG601
+```
+
 ### Figure 6.02 - Stay Rates of International STEM PhD Recipients
 ```{r figure 067}
 meta <- get_meta("FIG602")
@@ -3205,6 +4124,63 @@ FIG602 <- ggplot(df_067, aes(Year, Share, color = Rate, group = Rate)) +
   theme_tpa() 
 
 save_chart_aligned(FIG602, "fig_6_02")
+FIG602
+```
+
+### Figure 6.02 - Alt
+```{r figure 067}
+meta <- get_meta("FIG602")
+meta$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta$title)
+
+df_067 <- read_fig("FIG602") %>%
+  filter(!is.na(Year)) %>%
+  mutate(across(everything(), as.numeric)) %>%
+  pivot_longer(-Year, names_to = "Rate", values_to = "Share") %>%
+  filter(!is.na(Share)) %>%
+  mutate(
+    Share = Share * 100,
+    Rate  = factor(Rate, levels = c("5-year stay rate", "10-year stay rate"))
+  )
+# first point, last point, and peak of each line; first-point labels
+# left-align so they extend right off the marker instead of over the axis
+labels_067 <- flp_by_group(df_067, Year, Share, Rate) %>%
+  mutate(hjust = if_else(Year == min(Year), 1, 0.5))
+palette_067 <- c(
+  "5-year stay rate"  = tpa_colors[2],   # navy
+  "10-year stay rate" = tpa_colors[1]    # red
+)
+FIG602 <- ggplot(df_067, aes(Year, Share, color = Rate, group = Rate)) +
+  geom_line(linewidth = LINE_WIDTH) +
+  geom_point(size = 2) +
+  geom_text_tpa(
+    data        = labels_067,
+    mapping     = aes(label = fmt_sig3_pct(Share), hjust = hjust),
+    show.legend = FALSE
+  ) +
+  scale_x_years(df_067$Year, pad_right = .09, pad_left = 0.09) +
+  scale_y_continuous(labels = fmt_sig3_pct,
+                     limits = c(50, 75),
+                     breaks = seq(50, 75, 5),
+                     expand = expansion(mult = c(0, 0.05))) +
+  scale_color_manual(values = palette_067) +
+  coord_cartesian(clip = "off") +
+  labs_meta(meta, y = "Stay rate") +
+  theme_tpa() +
+  theme(plot.margin = margin(6, 6, 0, 0))
+
+local({
+  gt <- fix_left_gutter(FIG602, left_pt = AXIS_LEFT_PT)
+  dims <- list(w = 7.5, h = 4.25)
+
+  png_path <- file.path(PATHS$final_charts, "pngs", "fig_6_02_alt.png")
+  dir.create(dirname(png_path), showWarnings = FALSE, recursive = TRUE)
+
+  ragg::agg_png(png_path, width = dims$w, height = dims$h,
+                units = "in", res = CHART_EXPORT_DPI, background = "white")
+  grid::grid.newpage(); grid::grid.draw(gt); grDevices::dev.off()
+  set_png_density(png_path, dpi = CHART_EXPORT_DPI)
+})
+
 FIG602
 ```
 
