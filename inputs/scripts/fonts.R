@@ -35,6 +35,17 @@ GOTHAM_FILES <- c(
   bolditalic = "Gotham-BoldItalic.otf"
 )
 
+grDevices::quartzFonts(
+  Gotham = grDevices::quartzFont(
+    c(
+      "Gotham-Book",
+      "Gotham-Bold",
+      "Gotham-BookItalic",
+      "Gotham-BoldItalic"
+    )
+  )
+)
+
 # Kept as a list because the gt CSS helper needs weight/style metadata.
 GOTHAM_FACES <- list(
   list(file = GOTHAM_FILES[["regular"]],    weight = "normal", style = "normal"),

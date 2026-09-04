@@ -64,45 +64,6 @@ save_table(
   )
 ```
 
-### Table 1.01 alt
-```{r}
-meta_d <- get_meta("TAB101")
-meta_d$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta_d$title)
-
-change_type <- "ppt"  # choose "relative" or "ppt"
-TAB101 <- build_change_table_wide(
-  "TAB101",
-  meta_d,
-  change_type = change_type) %>%
-  opt_css(css = "#TAB101 .gt_col_heading { white-space: nowrap !important; }")
-
-local({
-  old_body <- WORD_TABLE_WIDTH_IN
-  old_expx <- TABLE_EXPORT_PX
-  old_prof <- TABLE_WIDTH_PROFILES
-
-  assign("WORD_TABLE_WIDTH_IN", 7.5, envir = globalenv())
-  assign("TABLE_EXPORT_PX", round(7.5 * TABLE_EXPORT_DPI), envir = globalenv())
-  assign("TABLE_WIDTH_PROFILES",
-         modifyList(TABLE_WIDTH_PROFILES,
-                    list(ultrawide = make_table_profile(1080, 285))),
-         envir = globalenv())
-
-  on.exit({
-    assign("WORD_TABLE_WIDTH_IN", old_body, envir = globalenv())
-    assign("TABLE_EXPORT_PX",     old_expx, envir = globalenv())
-    assign("TABLE_WIDTH_PROFILES", old_prof, envir = globalenv())
-  }, add = TRUE)
-
-  save_table(
-    TAB101,
-    "tab_1_01_alt",
-    profile = "ultrawide",
-    stub_width_px = 310
-  )
-})
-```
-
 # Chapter 2 
 
 ### Table 2.01 - Where International Students in the United States Come From
@@ -113,38 +74,6 @@ TAB201 <- build_region_table(
   meta = meta_007
 )
 save_table(TAB201, "tab_2_01", profile = "ultrawide", stub_width_px = 300)
-```
-
-### Table 2.01 - Alt
-```{r}
-meta_007 <- get_meta("TAB201")
-meta_007$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta_007$title)
-
-TAB201 <- build_region_table(
-  name = "TAB201",
-  meta = meta_007
-)
-
-local({
-  old_body <- WORD_TABLE_WIDTH_IN
-  old_expx <- TABLE_EXPORT_PX
-  old_prof <- TABLE_WIDTH_PROFILES
-
-  assign("WORD_TABLE_WIDTH_IN", 7.5, envir = globalenv())
-  assign("TABLE_EXPORT_PX", round(7.5 * TABLE_EXPORT_DPI), envir = globalenv())
-  assign("TABLE_WIDTH_PROFILES",
-         modifyList(TABLE_WIDTH_PROFILES,
-                    list(ultrawide = make_table_profile(1080, 285))),
-         envir = globalenv())
-
-  on.exit({
-    assign("WORD_TABLE_WIDTH_IN", old_body, envir = globalenv())
-    assign("TABLE_EXPORT_PX",     old_expx, envir = globalenv())
-    assign("TABLE_WIDTH_PROFILES", old_prof, envir = globalenv())
-  }, add = TRUE)
-
-  save_table(TAB201, "tab_2_01_alt", profile = "ultrawide", stub_width_px = 300)
-})
 ```
 
 ### Table 2.02 - Which Fields Are Each Countries' Students Leaving? 
@@ -267,11 +196,11 @@ tab_202 <- mat %>%
       "country's U.S.-bound international students enrolled in the field, from",
       "the first to the most recent year available (2010\u20132025 for most",
       "countries; 2012 for Iran, 2018 for Bangladesh). Column headings are",
-      "abbreviated: Math/Comp. is mathematics and computer science, Phys./Life",
-      "is physical and life sciences, Business is business and management, Fine",
-      "Arts is fine and applied arts, Health is health professions, and Social",
-      "Sci. is social sciences. Red marks fields gaining share, blue marks",
-      "fields losing it. Columns are ordered from the field gaining most across",
+      "abbreviated: Computing is mathematics and computer science, Sciences is",
+      "physical and life sciences, Social Sci. is social sciences, Arts is fine",
+      "and applied arts, Engg is engineering, Health is health professions, and",
+      "Edu is education. Red marks fields gaining share, blue marks fields",
+      "losing it. Columns are ordered from the field gaining most across",
       "countries to the field losing most. Countries are ordered by total",
       "international enrollment, largest first"
     ),
@@ -634,91 +563,6 @@ save_table(
 )
 ```
 
-### Table 5.01 - Alt
-```{r table 019}
-change_type <- "ppt"  # choose "relative" or "ppt"
-meta_501 <- get_meta("TAB501")
-meta_501$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta_501$title)
-conf_names <- c(
-  acml         = "ACML (ML)",
-  nips         = "NeurIPS (ML / AI)",
-  icml         = "ICML (ML)",
-  cvpr         = "CVPR (Vision)",
-  iccv         = "ICCV (Vision)",
-  iclr         = "ICLR (ML)",
-  emnlp        = "EMNLP (NLP)",
-  ijcai        = "IJCAI (AI)",
-  corl         = "CoRL (Robotics)",
-  rss          = "RSS (Robotics)",
-  iros         = "IROS (Robotics)",
-  coling       = "COLING (NLP)",
-  icra         = "ICRA (Robotics)",
-  uai          = "UAI (Prob. ML)",
-  naacl        = "NAACL (NLP)",
-  acl          = "ACL (NLP)",
-  aistats      = "AISTATS (Stats)",
-  colt         = "COLT (Theory)",
-  siggraphasia = "SIGGRAPH Asia (Graphics)",
-  wacv         = "WACV (Vision)"
-)
-tab_501a <- build_conference_summary_table_split(
-  name        = "tab_019a",
-  meta        = meta_501,
-  conf_names  = conf_names,
-  data_name   = "TAB501",
-  row_slice   = 1:20,
-  change_type = change_type
-) %>%
-  # Narrow ONLY these four columns.
-  # Every pixel removed from them is transferred to the stub.
-  with_compact_columns(
-    columns = c(
-      "US_First",
-      "US_Last",
-      "CN_First",
-      "CN_Last"
-    ),
-    width_px = 80
-  ) %>%
-  tab_options(
-    data_row.padding = px(5)   # raise until the table reaches ~7.5" tall
-  ) %>%
-  opt_css(css = "
-    #tab_019a .gt_col_heading {
-      white-space: nowrap !important;
-    }
-  ")
-local({
-  old_body <- WORD_TABLE_WIDTH_IN
-  old_expx <- TABLE_EXPORT_PX
-  old_prof <- TABLE_WIDTH_PROFILES
-  old_pad  <- PUB$spacing$table_row_pad_pt
-
-  assign("WORD_TABLE_WIDTH_IN", 7.5, envir = globalenv())
-  assign("TABLE_EXPORT_PX", round(7.5 * TABLE_EXPORT_DPI), envir = globalenv())
-  assign("TABLE_WIDTH_PROFILES",
-         modifyList(TABLE_WIDTH_PROFILES,
-                    list(ultrawide = make_table_profile(1080, 285))),
-         envir = globalenv())
-  PUB$spacing$table_row_pad_pt <<- 7.5   # raise until the table reaches ~7.5"
-
-  on.exit({
-    assign("WORD_TABLE_WIDTH_IN", old_body, envir = globalenv())
-    assign("TABLE_EXPORT_PX",     old_expx, envir = globalenv())
-    assign("TABLE_WIDTH_PROFILES", old_prof, envir = globalenv())
-    PUB$spacing$table_row_pad_pt <<- old_pad
-  }, add = TRUE)
-
-  save_table(
-    tab_501a,
-    "tab_5_01_alt",
-    profile = "ultrawide",
-    stub_width_px = 160
-  )
-})
-```
-
-
 ### Table 5.02 - How Many U.S. Universities Rank in the Global Top 100? 
 ```{r TAB502}
 meta <- get_meta("TAB502")
@@ -897,46 +741,6 @@ build_patents_table(
   change_type = change_type
 ) %>%
   save_table("tab_5_05", profile = "ultrawide")
-```
-
-### Table 5.05 - Alt
-```{r table 020}
-change_type <- "relative"  # choose "relative" or "ppt"
-
-meta_505 <- get_meta("TAB505")
-meta_505$title <- sub("^<span style='color:[^']*'>[^<]*</span>\\s*", "", meta_505$title)
-
-tab_505 <- build_patents_table(
-  name    = "tab_020",     # output id; adjust to next free table number
-  meta    = meta_505,
-  sources = c(
-    "Biotechnology"       = "TAB505a",
-    "Semiconductors"      = "TAB505b",
-    "Computer technology" = "TAB505c"
-  ),
-  change_type = change_type
-)
-
-local({
-  old_body <- WORD_TABLE_WIDTH_IN
-  old_expx <- TABLE_EXPORT_PX
-  old_prof <- TABLE_WIDTH_PROFILES
-
-  assign("WORD_TABLE_WIDTH_IN", 7.5, envir = globalenv())
-  assign("TABLE_EXPORT_PX", round(7.5 * TABLE_EXPORT_DPI), envir = globalenv())
-  assign("TABLE_WIDTH_PROFILES",
-         modifyList(TABLE_WIDTH_PROFILES,
-                    list(ultrawide = make_table_profile(1080, 285))),
-         envir = globalenv())
-
-  on.exit({
-    assign("WORD_TABLE_WIDTH_IN", old_body, envir = globalenv())
-    assign("TABLE_EXPORT_PX",     old_expx, envir = globalenv())
-    assign("TABLE_WIDTH_PROFILES", old_prof, envir = globalenv())
-  }, add = TRUE)
-
-  save_table(tab_505, "tab_5_05_alt", profile = "ultrawide")
-})
 ```
 
 ### Table 5.06 - Patent Leadership Shifted From U.S. and Japanese Incumbents to Asian Challengers

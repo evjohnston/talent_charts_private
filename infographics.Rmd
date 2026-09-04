@@ -221,18 +221,19 @@ paginate_infographic_data <- function(
   }
 
   if (
-    length(section_headers_per_page) != 1L ||
-    !is.finite(section_headers_per_page) ||
-    section_headers_per_page !=
-      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
-  ) {
-    stop(
-      "`section_headers_per_page` must equal the publication standard of ",
-      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE,
-      ".",
-      call. = FALSE
-    )
-  }
+  length(section_headers_per_page) != 1L ||
+  !is.finite(section_headers_per_page) ||
+  section_headers_per_page < 0L ||
+  section_headers_per_page >
+    INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
+) {
+  stop(
+    "`section_headers_per_page` must be between 0 and ",
+    INFOGRAPHIC_SECTION_HEADERS_PER_PAGE,
+    ".",
+    call. = FALSE
+  )
+}
 
   page_id <- ceiling(
     seq_len(
@@ -5657,16 +5658,21 @@ fig305 <- read_current_figure("FIG305")
 
 
 tab301 <- read_current_table("TAB301") %>%
+  rename_with(
+    ~ dplyr::recode(
+      .x,
+      "Bachelor's" = "bachelors",
+      "Master's"   = "masters",
+      "doctors"    = "doctorates"
+    )
+  ) %>%
   mutate(
-    Year =
-      year_number(.data$Year),
-
+    Year = year_number(.data$Year),
     across(
       -Year,
       numeric_clean
     )
   )
-
 
 tab302 <- read_current_table("TAB302") %>%
   mutate(
@@ -7090,7 +7096,7 @@ ch3_series_endpoints <- function(
         n = 1
       ) %>%
       select(
-        -.data$Distance
+      -Distance
       )
   }
 
@@ -8064,7 +8070,7 @@ ch3_all_stats <- bind_rows(
       "Doctorate STEM degree holders in STEM jobs"
     ),
     tab301,
-    "doctors",
+    "doctorates",
     "share",
     "pp_share",
     emphasis = TRUE
@@ -11751,10 +11757,8 @@ build_ch4_infographic_table <- function(
 
       source_notes.padding =
         gt::px(
-          infographic_pt_to_px(
-            PUB$spacing$infographic_source_pad_pt
-          )
-        ),
+          INFOGRAPHIC_FIXED_LAYOUT$source_padding_px
+      ),
 
       table.background.color =
         "white",
@@ -11880,15 +11884,11 @@ build_ch4_infographic_table <- function(
             "px !important;",
 
             "padding-top:",
-            infographic_pt_to_px(
-              PUB$spacing$infographic_group_pad_pt
-            ),
+            INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
             "px !important;",
 
             "padding-bottom:",
-            infographic_pt_to_px(
-              PUB$spacing$infographic_group_pad_pt
-            ),
+            INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
             "px !important;",
 
             "}"
@@ -11933,15 +11933,11 @@ build_ch4_infographic_table <- function(
             "font-weight:700 !important;",
 
             "padding-top:",
-            infographic_pt_to_px(
-              PUB$spacing$infographic_group_pad_pt
-            ),
+            INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
             "px !important;",
 
             "padding-bottom:",
-            infographic_pt_to_px(
-              PUB$spacing$infographic_group_pad_pt
-            ),
+            INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
             "px !important;",
 
             "}",
@@ -19278,14 +19274,6 @@ export_chapter6_composite <- function(
     )
   }
 
-  if (!exists("raster_to_pdf_exact", mode = "function", inherits = TRUE)) {
-    stop(
-      "Chapter 6 PDF export requires raster_to_pdf_exact() from helpers.R. ",
-      "Source helpers.R before rendering the infographic.",
-      call. = FALSE
-    )
-  }
-
   output_dir <- PATHS$final_infographics
 
   html_dir <- file.path(output_dir, "html")
@@ -19350,36 +19338,74 @@ export_chapter6_composite <- function(
   # Exactly one standard infographic row between the two tables
   # --------------------------------------------------------------------------
 
-  CH6_DETACHED_GAP_PX <- CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX
-
-  spacer <- magick::image_blank(
-    width  = INFOGRAPHIC_SPEC$output_width_px,
-    height = CH6_DETACHED_GAP_PX,
-    color  = "white"
-  )
-
   # --------------------------------------------------------------------------
   # Snapshot
-  #
-  # The snapshot uses the same fixed typography and row height as the rest of
-  # the infographic. No adaptive font scaling is used.
   # --------------------------------------------------------------------------
-
+  
   final_snapshot_table <- build_ch6_snapshot_table()
-
+  
   final_snapshot_image <- ch6_render_table_image(
     table = final_snapshot_table,
     png_path = snapshot_raw_path
   )
-
-  final_image <- magick::image_append(
-    c(
-      main_image,
-      spacer,
-      final_snapshot_image
-    ),
-    stack = TRUE
+  
+  # --------------------------------------------------------------------------
+  # Fit the largest possible gap between the two tables.
+  # Never shrink either table.
+  # --------------------------------------------------------------------------
+  
+  main_info <- magick::image_info(main_image)
+  snapshot_info <- magick::image_info(final_snapshot_image)
+  
+  available_gap_px <-
+    INFOGRAPHIC_SPEC$output_height_px -
+    main_info$height[[1]] -
+    snapshot_info$height[[1]]
+  
+  if (available_gap_px < 0) {
+    stop(
+      paste0(
+        "Chapter 6 tables alone are ",
+        abs(available_gap_px),
+        " px taller than the ",
+        INFOGRAPHIC_SPEC$output_height_px,
+        " px canvas. Row padding or content must be reduced."
+      ),
+      call. = FALSE
+    )
+  }
+  
+  CH6_DETACHED_GAP_PX <- as.integer(
+  min(
+    CH6_STANDARD_ROW_HEIGHT_OUTPUT_PX,
+    available_gap_px
   )
+  )
+
+  if (CH6_DETACHED_GAP_PX > 0L) {
+    spacer <- magick::image_blank(
+      width  = INFOGRAPHIC_SPEC$output_width_px,
+      height = CH6_DETACHED_GAP_PX,
+      color  = "white"
+    )
+  
+    final_image <- magick::image_append(
+      c(
+        main_image,
+        spacer,
+        final_snapshot_image
+      ),
+      stack = TRUE
+    )
+  } else {
+    final_image <- magick::image_append(
+      c(
+        main_image,
+        final_snapshot_image
+      ),
+      stack = TRUE
+    )
+  }
 
   candidate_info <- magick::image_info(
     final_image
@@ -19406,6 +19432,64 @@ export_chapter6_composite <- function(
     final_snapshot_table,
     snapshot_html_path
   )
+  
+  composite_html_path <- file.path(
+  html_dir,
+  paste0(name, ".html")
+)
+
+main_html <- gt::as_raw_html(
+  main_table,
+  inline_css = TRUE
+)
+
+snapshot_html <- gt::as_raw_html(
+  final_snapshot_table,
+  inline_css = TRUE
+)
+
+gap_css_px <-
+  CH6_DETACHED_GAP_PX / INFOGRAPHIC_SPEC$zoom
+
+composite_html <- paste0(
+  "<!DOCTYPE html>",
+  "<html>",
+  "<head>",
+  "<meta charset='utf-8'>",
+  "<style>",
+  "html, body {",
+  "  width: 100%;",
+  "  margin: 0;",
+  "  padding: 0;",
+  "  background: white;",
+  "  print-color-adjust: exact;",
+  "  -webkit-print-color-adjust: exact;",
+  "}",
+  ".infographic-page {",
+  "  width: ", INFOGRAPHIC_SPEC$css_width_px, "px;",
+  "  margin: 0 auto;",
+  "  padding: 0;",
+  "}",
+  ".infographic-gap {",
+  "  height: ", gap_css_px, "px;",
+  "}",
+  "</style>",
+  "</head>",
+  "<body>",
+  "<div class='infographic-page'>",
+  main_html,
+  "<div class='infographic-gap'></div>",
+  snapshot_html,
+  "</div>",
+  "</body>",
+  "</html>"
+)
+
+writeLines(
+  composite_html,
+  con = composite_html_path,
+  useBytes = TRUE
+)
 
   # --------------------------------------------------------------------------
   # Extend to exact publication canvas
@@ -19473,14 +19557,53 @@ export_chapter6_composite <- function(
   # identical to the PNG and uses the same physical dimensions as Chapters 1–5.
   # --------------------------------------------------------------------------
 
-  raster_to_pdf_exact(
-    image_path = png_path,
-    pdf_path   = pdf_path,
-    width_in   = INFOGRAPHIC_SPEC$width_in,
-    height_in  = INFOGRAPHIC_SPEC$height_in,
-    bg         = "white"
+  if (!requireNamespace("pagedown", quietly = TRUE)) {
+  stop(
+    "Package 'pagedown' is required for the Chapter 6 vector PDF.",
+    call. = FALSE
   )
+}
 
+browser_css_dpi <- 96
+
+CH6_PDF_FIT_SCALE <- .9475
+
+
+pdf_scale <-
+  (
+    (INFOGRAPHIC_SPEC$width_in * browser_css_dpi) /
+      INFOGRAPHIC_SPEC$css_width_px
+  ) * CH6_PDF_FIT_SCALE
+
+pdf_scale <- max(0.1, min(2, pdf_scale))
+
+if (file.exists(pdf_path)) {
+  unlink(pdf_path)
+}
+
+pagedown::chrome_print(
+  input  = composite_html_path,
+  output = pdf_path,
+  wait   = 2,
+  options = list(
+    paperWidth        = INFOGRAPHIC_SPEC$width_in,
+    paperHeight       = INFOGRAPHIC_SPEC$height_in,
+    marginTop         = 0,
+    marginBottom      = 0,
+    marginLeft        = 0,
+    marginRight       = 0,
+    printBackground   = TRUE,
+    preferCSSPageSize = FALSE,
+    scale              = pdf_scale
+  )
+)
+
+if (!file.exists(pdf_path)) {
+  stop(
+    "Chapter 6 text/vector PDF was not created.",
+    call. = FALSE
+  )
+}
   # --------------------------------------------------------------------------
   # Audit registry
   # --------------------------------------------------------------------------

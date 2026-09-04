@@ -32,6 +32,8 @@ INFOGRAPHIC_SPEC$output_height_px <- round(
 )
 INFOGRAPHIC_SPEC$zoom <- INFOGRAPHIC_SPEC$dpi / INFOGRAPHIC_SPEC$css_dpi
 
+INFOGRAPHIC_VERTICAL_SCALE <- 0.55
+
 # All infographic pages use the same five physical column proportions.
 # The stub gets half the width so descriptive measures can remain on one line.
 # These proportions automatically follow INFOGRAPHIC_SPEC$width_in.
@@ -985,7 +987,25 @@ INFOGRAPHIC_FIXED_LAYOUT <- list(
   # Match the source/caption size used by figures and revised tables.
   source_font_px = infographic_pt_to_px(PUB$type$caption_pt),
   
-  row_padding_px = infographic_pt_to_px(PUB$spacing$infographic_row_pad_pt)
+  row_padding_px =
+    infographic_pt_to_px(
+      PUB$spacing$infographic_row_pad_pt
+    ) * INFOGRAPHIC_VERTICAL_SCALE,
+  
+  group_padding_px =
+    infographic_pt_to_px(
+      PUB$spacing$infographic_group_pad_pt
+    ) * INFOGRAPHIC_VERTICAL_SCALE,
+  
+  heading_padding_px =
+    infographic_pt_to_px(
+      PUB$spacing$infographic_heading_pad_pt
+    ) * INFOGRAPHIC_VERTICAL_SCALE,
+  
+  source_padding_px =
+    infographic_pt_to_px(
+      PUB$spacing$infographic_source_pad_pt
+    ) * INFOGRAPHIC_VERTICAL_SCALE
 )
 
 # One uniform data-row height for every chapter/page.
@@ -1011,8 +1031,8 @@ INFOGRAPHIC_FIXED_LAYOUT$row_height_px <- ceiling(
 # A page with more than five section headers is broken earlier so the combined
 # body-row + section-header count never exceeds 35. Pages are never resized and
 # typography is never reduced to force additional content onto the canvas.
-INFOGRAPHIC_ROWS_PER_PAGE <- 30L
-INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 5L
+INFOGRAPHIC_ROWS_PER_PAGE <- 38L
+INFOGRAPHIC_SECTION_HEADERS_PER_PAGE <- 8L
 INFOGRAPHIC_RENDERED_ROWS_PER_PAGE <-
   INFOGRAPHIC_ROWS_PER_PAGE +
   INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
@@ -1333,13 +1353,13 @@ build_infographic_table <- function(
       table.font.color = INFOGRAPHIC_PALETTE$text,
       column_labels.font.size = gt::px(sizes$header),
       column_labels.padding = gt::px(infographic_pt_to_px(PUB$spacing$infographic_col_pad_pt)),
-      data_row.padding = gt::px(row_padding_px),
+      data_row.padding =   gt::px(INFOGRAPHIC_FIXED_LAYOUT$row_padding_px),
       heading.title.font.size = gt::px(sizes$title),
       heading.subtitle.font.size = gt::px(sizes$subtitle),
-      heading.padding = gt::px(infographic_pt_to_px(PUB$spacing$infographic_heading_pad_pt)),
+      heading.padding = gt::px(INFOGRAPHIC_FIXED_LAYOUT$heading_padding_px),
       heading.align = "left",
       source_notes.font.size = gt::px(sizes$source),
-      source_notes.padding = gt::px(infographic_pt_to_px(PUB$spacing$infographic_source_pad_pt)),
+      source_notes.padding = gt::px(INFOGRAPHIC_FIXED_LAYOUT$source_padding_px),
       table.background.color = "white",
       row.striping.background_color = "white",
       table_body.hlines.color = INFOGRAPHIC_PALETTE$rule,
@@ -1404,8 +1424,13 @@ build_infographic_table <- function(
     
     "#", id, " .gt_group_heading {font-size:", sizes$group,
     "px !important;line-height:", PUB$type_metrics$infographic_group_lineheight, " !important;",
-    "padding-top:", infographic_pt_to_px(PUB$spacing$infographic_group_pad_pt), "px !important;",
-    "padding-bottom:", infographic_pt_to_px(PUB$spacing$infographic_group_pad_pt), "px !important;",
+    "padding-top:",
+    INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
+    "px !important;",
+    
+    "padding-bottom:",
+    INFOGRAPHIC_FIXED_LAYOUT$group_padding_px,
+    "px !important;",
     "white-space:normal !important;}",
     
     "#", id, " .gt_row {line-height:", PUB$type_metrics$infographic_row_lineheight, " !important;}",
@@ -1502,9 +1527,16 @@ paginate_infographic_data <- function(
   if (
     length(section_headers_per_page) != 1L ||
     !is.finite(section_headers_per_page) ||
-    section_headers_per_page < 0L
+    section_headers_per_page < 0L ||
+    section_headers_per_page >
+    INFOGRAPHIC_SECTION_HEADERS_PER_PAGE
   ) {
-    stop("`section_headers_per_page` must be one nonnegative integer.")
+    stop(
+      "`section_headers_per_page` must be between 0 and ",
+      INFOGRAPHIC_SECTION_HEADERS_PER_PAGE,
+      ".",
+      call. = FALSE
+    )
   }
   
   if (!"Section" %in% names(data)) {
@@ -1702,24 +1734,58 @@ export_infographic_page <- function(
     stop("The final infographic page does not have the required dimensions.")
   }
 
-  # Create the PDF only after the final PNG has been padded/normalized to the
-  # exact publication canvas. This keeps PNG and PDF output visually identical
-  # and preserves INFOGRAPHIC_SPEC$width_in x INFOGRAPHIC_SPEC$height_in.
-  if (!exists("raster_to_pdf_exact", mode = "function", inherits = TRUE)) {
+  # Create a fixed-size text/vector PDF directly from the infographic HTML.
+  if (!requireNamespace("pagedown", quietly = TRUE)) {
     stop(
-      "Infographic PDF export requires raster_to_pdf_exact() from helpers.R. ",
-      "Source helpers.R before infographics.R.",
+      "Package 'pagedown' is required for text/vector infographic PDFs.",
       call. = FALSE
     )
   }
-
-  raster_to_pdf_exact(
-    image_path = png_path,
-    pdf_path   = pdf_path,
-    width_in   = INFOGRAPHIC_SPEC$width_in,
-    height_in  = INFOGRAPHIC_SPEC$height_in,
-    bg         = "white"
+  
+  browser_css_dpi <- 96
+  
+  INFOGRAPHIC_PDF_FIT <- 0.95
+  
+  pdf_scale <-
+    (
+      (INFOGRAPHIC_SPEC$width_in * browser_css_dpi) /
+        INFOGRAPHIC_SPEC$css_width_px
+    ) * INFOGRAPHIC_PDF_FIT
+  
+  pdf_scale <- max(0.1, min(2, pdf_scale))
+  
+  if (file.exists(pdf_path)) {
+    unlink(pdf_path)
+  }
+  
+  pdf_side_margin <-
+    INFOGRAPHIC_SPEC$width_in *
+    (1 - INFOGRAPHIC_PDF_FIT) / 2
+  
+  pagedown::chrome_print(
+    input  = html_path,
+    output = pdf_path,
+    wait   = 2,
+    options = list(
+      paperWidth        = INFOGRAPHIC_SPEC$width_in,
+      paperHeight       = INFOGRAPHIC_SPEC$height_in,
+      marginTop         = 0,
+      marginBottom      = 0,
+      marginLeft        = pdf_side_margin,
+      marginRight       = pdf_side_margin,
+      printBackground   = TRUE,
+      preferCSSPageSize = FALSE,
+      scale              = pdf_scale
+    )
   )
+  
+  if (!file.exists(pdf_path)) {
+    stop(
+      "Text/vector infographic PDF was not created: ",
+      pdf_path,
+      call. = FALSE
+    )
+  }
   
   list(
     table = table,
@@ -1746,6 +1812,10 @@ export_paginated_infographic <- function(
     output_dir = output_dir,
     rows_per_page = rows_per_page,
     section_headers_per_page = section_headers_per_page
+  )
+  
+  section_headers_per_page <- as.integer(
+    section_headers_per_page
   )
   
   total_pages <- length(pages)

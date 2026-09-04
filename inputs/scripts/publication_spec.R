@@ -254,7 +254,7 @@ PUB <- list(
   
   infographic = list(
     width_in  = 6.5,
-    height_in = 9,
+    height_in = 7.5,
     css_dpi   = 144
   )
 )

@@ -4028,6 +4028,91 @@ audit_existing_table_header_rules <- function(
 
 # ---- Export -------------------------------------------------
 
+measure_html_height_px <- function(html_path, width_px) {
+  if (!requireNamespace("chromote", quietly = TRUE)) {
+    stop(
+      "Package 'chromote' is required to measure table HTML.",
+      call. = FALSE
+    )
+  }
+  
+  browser <- chromote::ChromoteSession$new()
+  
+  on.exit(
+    try(browser$close(), silent = TRUE),
+    add = TRUE
+  )
+  
+  browser$Emulation$setDeviceMetricsOverride(
+    width             = as.integer(width_px),
+    height            = 100L,
+    deviceScaleFactor = 1,
+    mobile            = FALSE
+  )
+  
+  browser$Emulation$setEmulatedMedia(
+    media = "print"
+  )
+  
+  absolute_path <- normalizePath(
+    html_path,
+    winslash = "/",
+    mustWork = TRUE
+  )
+  
+  # Continue with the remainder of your existing helper.
+  
+  file_url <- paste0(
+    "file://",
+    utils::URLencode(
+      absolute_path,
+      reserved = FALSE
+    )
+  )
+  
+  browser$Page$navigate(file_url)
+  
+  measurement <- browser$Runtime$evaluate(
+    expression = paste0(
+      "(async () => {",
+      "  while (document.readyState !== 'complete') {",
+      "    await new Promise(resolve => setTimeout(resolve, 50));",
+      "  }",
+      "  await document.fonts.ready;",
+      "  await new Promise(resolve => ",
+      "    requestAnimationFrame(() => requestAnimationFrame(resolve))",
+      "  );",
+      "  const table = document.querySelector('.gt_table');",
+      "  if (!table) {",
+      "    throw new Error('Could not find the gt table element.');",
+      "  }",
+      "  const rect = table.getBoundingClientRect();",
+      "  return Math.ceil(rect.bottom);",
+      "})()"
+    ),
+    awaitPromise   = TRUE,
+    returnByValue = TRUE
+  )
+  
+  height_px <- measurement$result$value
+  
+  if (
+    is.null(height_px) ||
+    !is.numeric(height_px) ||
+    !is.finite(height_px) ||
+    height_px <= 0
+  ) {
+    stop(
+      "Could not measure the full HTML height for ",
+      basename(html_path),
+      ".",
+      call. = FALSE
+    )
+  }
+  
+  as.numeric(height_px)
+}
+
 save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px = NULL) {
   if (is.null(size)) {
     size <- attr(gt_tbl, "tpa_size")
@@ -4148,18 +4233,69 @@ save_table <- function(gt_tbl, name, size = NULL, profile = NULL, stub_width_px 
   # Build the PDF from the fully normalized final PNG so the PDF and PNG remain
   # visually identical. Width stays at the publication body width; height follows
   # the final rendered table height.
+  # Build a text/vector PDF directly from the table HTML.
+  # Build a text/vector PDF directly from the table HTML.
+  # Build a one-page text/vector PDF directly from the table HTML.
   if (!is.na(actual_height_px)) {
-    raster_to_pdf_exact(
-      image_path = png_path,
-      pdf_path   = pdf_path,
-      width_in   = WORD_TABLE_WIDTH_IN,
-      height_in  = actual_height_px / TABLE_EXPORT_DPI,
-      bg         = "white"
+    
+    if (!requireNamespace("pagedown", quietly = TRUE)) {
+      stop(
+        "Package 'pagedown' is required for text/vector table PDF export.",
+        call. = FALSE
+      )
+    }
+    
+    browser_css_dpi <- 96
+    
+    # Fit the HTML table's full profile width onto the publication width.
+    pdf_scale <-
+      (WORD_TABLE_WIDTH_IN * browser_css_dpi) / p$width_px
+    
+    pdf_scale <- max(0.1, min(2, pdf_scale))
+    
+    # Measure the complete HTML after fonts and layout have loaded.
+    html_height_px <- measure_html_height_px(
+      html_path,
+      width_px = p$width_px
     )
+    
+    # Convert the scaled browser height to inches.
+    # The buffer prevents fractional-pixel pagination.
+    page_height_in <-
+      (html_height_px * pdf_scale) / browser_css_dpi + 0.15
+    
+    if (file.exists(pdf_path)) {
+      unlink(pdf_path)
+    }
+    
+    pagedown::chrome_print(
+      input  = html_path,
+      output = pdf_path,
+      wait   = 2,
+      options = list(
+        paperWidth        = WORD_TABLE_WIDTH_IN,
+        paperHeight       = page_height_in,
+        marginTop         = 0,
+        marginBottom      = 0,
+        marginLeft        = 0,
+        marginRight       = 0,
+        printBackground   = TRUE,
+        preferCSSPageSize = FALSE,
+        scale              = pdf_scale
+      )
+    )
+    
+    if (!file.exists(pdf_path)) {
+      stop(
+        "Text/vector table PDF was not created: ",
+        pdf_path,
+        call. = FALSE
+      )
+    }
+    
   } else {
     stop(
-      "Could not determine the final table height for PDF export. ",
-      "Package 'magick' is required.",
+      "Could not determine the final table dimensions.",
       call. = FALSE
     )
   }

@@ -693,6 +693,17 @@ fmt_kbm <- function(x) {
     TRUE      ~ scales::number(x, accuracy = 1)
   )
 }
+fmt_sig3_k0 <- function(gt_tbl, columns) {
+  fmt(gt_tbl, columns = {{ columns }}, fns = function(x) {
+    formatC(signif(x, 3), format = "fg", big.mark = ",", digits = 3)
+  })
+}
+fmt_sig3    <- function(x) formatC(signif(x, 3), format = "fg", big.mark = ",")
+fmt_sig3_k  <- function(x) {
+  ifelse(is.na(x), NA_character_,
+         ifelse(x == 0, "0",
+                paste0(formatC(signif(x / 1e3, 3), format = "fg"), "K")))
+}
 
 # ---- Stacked-chart palettes ---------------------------------
 
