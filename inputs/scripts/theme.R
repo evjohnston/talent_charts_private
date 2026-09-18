@@ -143,11 +143,13 @@ level_colors <- c(
 acad_level_colors <- c(
   "Bachelors"              = tpa_colors[3],
   "Masters"                = tpa_colors[2],
+  "Bachelor's"              = tpa_colors[3],
+  "Master's"                = tpa_colors[2],
   "Doctorate"              = tpa_colors[1],
   "OPT"                    = tpa_colors[4],
   "Associates"             = tpa_colors[5],
   "Non-degree"             = tpa_colors[6],
-  "Graduate (unspecified)" = tpa_colors[7],
+  "Graduate Other" = tpa_colors[7],
   "Professional"           = tpa_colors[8]
 )
 

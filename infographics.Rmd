@@ -8456,7 +8456,7 @@ build_ch3_page <- function(
       paste0(
         "**Note:** Historical comparisons use 2000 and 2025",
         " observations. Superscript years mark rows with an earlier latest ",
-        "endpoint than 2025. Average rows are population-wegithed across",
+        "endpoint than 2025. Average rows are population-weighted across",
         " degree levels. Arrow colors indicate direction of change only."
       ),
 
@@ -11761,10 +11761,10 @@ build_ch4_infographic_table <- function(
       ),
 
       table.background.color =
-        "white",
+        INFOGRAPHIC_PALETTE$background,
 
       row.striping.background_color =
-        "white",
+        INFOGRAPHIC_PALETTE$background,
 
       table_body.hlines.color =
         INFOGRAPHIC_PALETTE$rule,
@@ -12215,7 +12215,7 @@ build_ch4_page <- function(
 
       paste0(
         "**Source:** Derived from the current report Figures and Tables: ",
-        "Figures 4.02, 4.07–4.09 and Tables 4.02–4.04."
+        "Figures 4.02, 4.07–4.09 and Tables 4.01–4.04."
       )
     )
 
@@ -15615,14 +15615,14 @@ build_ch5_page <- function(
     c(
 
       paste0(
-        "\\* Data are available further back than 2014 for marked series"
+        "\\* Data are available further back than 2014 for marked series."
       ),
 
       paste0(
         "**Note:** Historical comparisons use 2014 and 2025",
         " observations. Superscript years mark rows with an earlier latest ",
         "endpoint than 2025. NeurIPS = Conference on Neural Information ",
-        "Processing Systems.Arrow colors indicate direction of change only."
+        "Processing Systems. Arrow colors indicate direction of change only."
       ),
 
       paste0(
@@ -16225,6 +16225,40 @@ ch6_superscript_year <- function(year) {
   )
 }
 
+ch6_currency_billions_sig3 <- function(x) {
+
+  billions <- x / 1e9
+
+  digits <- ifelse(
+    !is.finite(billions) | billions == 0,
+    1L,
+    pmax(
+      0L,
+      3L - (floor(log10(abs(billions))) + 1L)
+    )
+  )
+
+  out <- unname(
+    mapply(
+      function(value, d) {
+        formatC(
+          value,
+          format   = "f",
+          digits   = d,
+          big.mark = ","
+        )
+      },
+      billions,
+      digits
+    )
+  )
+
+  ifelse(
+    is.finite(billions),
+    paste0("$", out, "B"),
+    "\u2014"
+  )
+}
 
 ch6_endpoint_pair <- function(
     df,
@@ -18758,7 +18792,7 @@ build_ch6_snapshot_table <- function() {
 
       EstimatedDeparting =
   infographic_sig3(
-    .data$EstimatedDeparting
+    .data$EstimatedDepartingRaw
   ),
 
 ShareDeparting =
@@ -18768,9 +18802,8 @@ ShareDeparting =
   ),
 
 EstimatedMoneyLost =
-  format_value(
-    .data$EstimatedMoneyLostRaw,
-    "currency_billions_from_dollars"
+  ch6_currency_billions_sig3(
+    .data$EstimatedMoneyLostRaw
   )
     )
 
@@ -19461,7 +19494,7 @@ composite_html <- paste0(
   "  width: 100%;",
   "  margin: 0;",
   "  padding: 0;",
-  "  background: white;",
+  "  background: ", INFOGRAPHIC_PALETTE$background, ";",
   "  print-color-adjust: exact;",
   "  -webkit-print-color-adjust: exact;",
   "}",
@@ -19503,7 +19536,7 @@ writeLines(
       INFOGRAPHIC_SPEC$output_height_px
     ),
     gravity = "north",
-    color = "white"
+    color = INFOGRAPHIC_PALETTE$background
   )
 
   magick::image_write(

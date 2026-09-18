@@ -113,9 +113,7 @@ field_header_short <- c(
 )
 
 # Rows shown, in order. Sorted by total enrollment, largest first.
-country_order <- c("China", "India", "South Korea", "Iran",
-                   "Nigeria", "Nepal", "Pakistan", "Bangladesh","Saudi Arabia","Turkey/Türkiye","Taiwan","Spain","Mexico","Colombia","France","Indonesia","Ghana","Italy","Brazil","Vietnam","Hong Kong","Canada","Germany","Japan","United Kingdom","Kuwait","Russia","Thailand","Venezuela")
-
+country_order <- c("India", "China", "South Korea", "Canada", "Vietnam", "Nepal", "Taiwan", "Nigeria", "Bangladesh", "Brazil", "Mexico", "Japan", "Pakistan", "Ghana", "Saudi Arabia", "Iran", "United Kingdom", "Colombia", "Turkey/Türkiye", "Spain", "Germany", "France", "Indonesia", "Italy", "Peru","Hong Kong","Kuwait","Russia","Thailand","Venezuela")
 long_all <- imap_dfr(field_files, function(file, field) {
   read_fig(file) %>%
     mutate(across(-Year, ~ suppressWarnings(as.numeric(na_if(as.character(.x), "-"))))) %>%
@@ -190,18 +188,17 @@ tab_202 <- mat %>%
     columns = all_of(field_order)
   ) %>%
   tab_footnote(
-    footnote = end_sentence(
-      "Each cell is the", change_phrase(change_type),
-      "in percentage points, in the share of that",
+            footnote = end_sentence(
+      "Cells show the change, in percentage points, in the share of each",
       "country's U.S.-bound international students enrolled in the field, from",
-      "the first to the most recent year available (2010\u20132025 for most",
-      "countries; 2012 for Iran, 2018 for Bangladesh). Column headings are",
-      "abbreviated: Computing is mathematics and computer science, Sciences is",
-      "physical and life sciences, Social Sci. is social sciences, Arts is fine",
-      "and applied arts, Engg is engineering, Health is health professions, and",
-      "Edu is education. Red marks fields gaining share, blue marks fields",
-      "losing it. Columns are ordered from the field gaining most across",
-      "countries to the field losing most. Countries are ordered by total",
+      "the earliest to the latest year available: 2010 to 2025 for most",
+      "countries, 2012 to 2025 for Iran, and 2018 to 2025 for Bangladesh. Red",
+      "means the field gained share, blue that it lost. Column headings are",
+      "abbreviated: Computing is mathematics and computer science; Sciences is",
+      "physical and life sciences; Social Sci. is social sciences; Arts is fine",
+      "and applied arts; Engg is engineering; Health is health professions; Edu",
+      "is education. Columns run from the field gaining the most share across",
+      "countries to the field losing the most; countries are ordered by total",
       "international enrollment, largest first"
     ),
     locations = cells_column_spanners(
@@ -390,7 +387,7 @@ tab_038a <- build_bookend_table(
   recode_cats = c(
     stem_bachelors    = "Completed Bachelor's Degree in STEM Field",
     nonstem_bachelors = "Completed Bachelor's Degree in Non-STEM Field",
-    subbac_credential = "Completed A Subbac Credential",
+    subbac_credential = "Completed a Sub-bac. Credential",
     still_enrolled    = "Still Enrolled",
     left_no_degree    = "Left with No Degree"
   ),
@@ -403,9 +400,13 @@ tab_038a <- build_bookend_table(
   ),
   footnote = end_sentence(
     "Values are the share of each entering STEM cohort ending in each outcome;",
-    "each year column sums to 100%. Sub-bac. denotes students who left the STEM",
-    "track before completing a bachelor's degree (e.g., switched to a non-STEM",
-    "or sub-baccalaureate program, or did not complete a four-year credential).",
+    "each year column sums to 100%. Outcomes are mutually exclusive and reflect",
+    "the highest credential attained at any institution, including after",
+    "transfer, by the end of the six-year follow-up. The 'Sub-bac.' ",
+    "credential denotes an associate's degree or undergraduate certificate,",
+    "in any field, earned without a bachelor's degree; Still Enrolled and Left",
+    "with No Degree split the remaining students by enrollment status at",
+    "follow-up.",
     change_col_label(FALSE), "is the",
     change_phrase(change_type),
     "from the 2003/04 cohort to the 2011/12 cohort"
@@ -460,7 +461,7 @@ tab_016 <- build_bookend_table(
     "reported change reflects reclassification as well as any real shift."
   ),
   footnote = end_sentence(
-    "Share of U.S. study-abroad students by field of study.",
+    "Share of US study-abroad students by field of study.",
     change_col_label(FALSE), "is the", change_phrase(change_type),
     "from 2005 to 2024"
   )
@@ -483,7 +484,7 @@ tab_017 <- build_bookend_table(
   recode_cats = c("Africa, Sub-Saharan"   = "Sub-Saharan Africa",
                   "Multiple Destinations" = "Multiple destinations"),
   footnote = end_sentence(
-    "Share of U.S. study-abroad students by host region.",
+    "Share of US study-abroad students by host region.",
     change_col_label(FALSE), "is the", change_phrase(change_type),
     "from 2005 to 2024.",
     if (change_type == "relative")
@@ -714,7 +715,9 @@ tab_022 <- build_rd_type_level_table(
     "relative change from the first to the last shown year. Sectors denote",
     "where R&D is performed. China reports no private non-profit R&D; it is",
     "shown as $0, and its change cell is undefined from a zero base and appears",
-    "as 0%. Totals may not sum exactly because of rounding"
+    "as 0%. China's 1994 total is given as $17.8 billion, the sum of the sector",
+    "values shown; OECD reports $18.2 billion for that year, as in Table 5.03.",
+    "Totals may not sum exactly because of rounding"
   )
 )
 

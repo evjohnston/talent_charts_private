@@ -58,6 +58,7 @@ INFOGRAPHIC_COLUMNS[["measure"]] <- INFOGRAPHIC_COLUMNS[["measure"]] +
 INFOGRAPHIC_PALETTE <- list(
   red = tpa_colors[[1]],
   gray = "#887E6F",
+  background = "white",  # infographic background
   rule = "#D8D3CB",
   tint = "#F7F4EF",
   pink = TPA_RED_LIGHT,
@@ -1360,8 +1361,8 @@ build_infographic_table <- function(
       heading.align = "left",
       source_notes.font.size = gt::px(sizes$source),
       source_notes.padding = gt::px(INFOGRAPHIC_FIXED_LAYOUT$source_padding_px),
-      table.background.color = "white",
-      row.striping.background_color = "white",
+      table.background.color = INFOGRAPHIC_PALETTE$background,
+      row.striping.background_color = INFOGRAPHIC_PALETTE$background,
       table_body.hlines.color = INFOGRAPHIC_PALETTE$rule,
       table_body.hlines.width = gt::px(1),
       row_group.border.top.color = INFOGRAPHIC_PALETTE$rule,
@@ -1714,7 +1715,7 @@ export_infographic_page <- function(
       INFOGRAPHIC_SPEC$output_height_px
     ),
     gravity = "northwest",
-    color = "white"
+    color = INFOGRAPHIC_PALETTE$background
   )
   
   magick::image_write(

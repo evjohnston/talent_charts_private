@@ -1001,9 +1001,11 @@ meta <- get_meta("FIG301")
 
 df_102 <- read_fig("FIG301") %>%
   rename(
+    `Bachelor's`     = Bachelors,
+    `Master's`       = Masters,
     `Graduate Other` = `Graduate - Unspecified`,
-    `Non-degree`             = `Non-Degree`,
-    OPT                      = `Optional Practical Training (OPT)`
+    `Non-degree`     = `Non-Degree`,
+    OPT              = `Optional Practical Training (OPT)`
   ) %>%
   mutate(across(-Year, as.numeric)) %>%
   pivot_longer(-Year, names_to = "Level", values_to = "Count") %>%
@@ -2664,11 +2666,11 @@ mobility <- read_fig("FIG410") %>%
 # rivals. Luxembourg excluded: ratio > 100% (no full domestic system).
 oecd_plus <- c(
   "Australia", "Austria", "Belgium", "Canada", "Chile", "Colombia",
-  "Costa Rica", "Czechia", "Denmark", "Estonia", "Finland", "France",
+  "Costa Rica", "Czech Republic", "Denmark", "Estonia", "Finland", "France",
   "Germany", "Greece", "Hungary", "Iceland", "Ireland", "Israel", "Italy",
   "Japan", "South Korea", "Latvia", "Lithuania", "Mexico", "Netherlands",
-  "New Zealand", "Norway", "Poland", "Portugal", "Slovakia", "Slovenia",
-  "Spain", "Sweden", "Switzerland", "Turkey", "United Kingdom",
+  "New Zealand", "Norway", "Poland", "Portugal", "Slovak Republic", "Slovenia",
+  "Spain", "Sweden", "Switzerland", "Türkiye", "United Kingdom",
   "United States", "China", "India"
 )
 

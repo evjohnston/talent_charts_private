@@ -427,9 +427,40 @@ rss,rss,2024,China,75,0.08169934640522876
 rss,rss,2024,United States,306,0.3333333333333333
 rss,rss,2025,China,145,0.14933058702368693
 rss,rss,2025,United States,391,0.40267765190525234
-siggraphasia,siggraphasia,2020,United States,1,1.0
+siggraphasia,siggraphasia,2008,China,60,.222
+siggraphasia,siggraphasia,2008,United States,105,.427
+siggraphasia,siggraphasia,2009,China,32,0.11187943262411348
+siggraphasia,siggraphasia,2009,United States,105,0.3719858156028369
+siggraphasia,siggraphasia,2010,China,10,0.051607445008460234
+siggraphasia,siggraphasia,2010,United States,62,0.31683587140439934
+siggraphasia,siggraphasia,2011,China,30,0.10434272300469484
+siggraphasia,siggraphasia,2011,United States,96,0.33791079812206576
+siggraphasia,siggraphasia,2012,China,44,0.11751792114695339
+siggraphasia,siggraphasia,2012,United States,88,0.23790322580645157
+siggraphasia,siggraphasia,2013,China,56,0.15737089201877935
+siggraphasia,siggraphasia,2013,United States,88,0.2470892018779343
+siggraphasia,siggraphasia,2014,China,45,0.15409556313993175
+siggraphasia,siggraphasia,2014,United States,68,0.2329351535836177
+siggraphasia,siggraphasia,2015,China,57,0.1403292181069959
+siggraphasia,siggraphasia,2015,United States,122,0.30016460905349795
+siggraphasia,siggraphasia,2016,China,68,0.1653690186536902
+siggraphasia,siggraphasia,2016,United States,98,0.2373479318734793
+siggraphasia,siggraphasia,2017,China,38,0.1071563088512241
+siggraphasia,siggraphasia,2017,United States,86,0.24209039548022598
+siggraphasia,siggraphasia,2018,United States,88,.16974358974358974
+siggraphasia,siggraphasia,2018,China,70,.13512820512820511
+siggraphasia,siggraphasia,2019,United States,95,.20427442528735632
+siggraphasia,siggraphasia,2019,China,61,.13211206896551724
+siggraphasia,siggraphasia,2020,United States,175,.30054410080183274
+siggraphasia,siggraphasia,2020,China,42,.07216494845360824
+siggraphasia,siggraphasia,2021,China,47,.10680272108843539
+siggraphasia,siggraphasia,2021,United States,95,.21557067271352984
 siggraphasia,siggraphasia,2022,China,9,0.14754098360655737
 siggraphasia,siggraphasia,2022,United States,2,0.03278688524590164
+siggraphasia,siggraphasia,2023,United States,218,.1859294442414647
+siggraphasia,siggraphasia,2023,China,269,.22954370153858644
+siggraphasia,siggraphasia,2024,United States,261,.17047089601046434
+siggraphasia,siggraphasia,2024,China,383,.25030988196455823
 uai,uai,2019,China,14,0.030634573304157548
 uai,uai,2019,United States,182,0.3982494529540481
 uai,uai,2020,China,39,0.08227848101265822

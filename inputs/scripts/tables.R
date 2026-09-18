@@ -1889,8 +1889,7 @@ prepare_tab101_data <- function(name = "TAB101") {
       Degree = recode(
         .data$Degree,
         "Bachelor's" = "Bachelors",
-        "Master's"   = "Masters",
-        "Doctorate"  = "Doctorate"
+        "Master's"   = "Masters"
       ),
       
       Field = recode(
@@ -1911,11 +1910,7 @@ prepare_tab101_data <- function(name = "TAB101") {
     
     filter(
       is.finite(.data$Year),
-      .data$Degree %in% c(
-        "Bachelors",
-        "Masters",
-        "Doctorate"
-      )
+      .data$Degree %in% c("Bachelors", "Masters", "Doctorate")
     ) %>%
     
     group_by(
@@ -1994,6 +1989,12 @@ build_change_table_wide <- function(
     "Bachelors",
     "Masters",
     "Doctorate"
+  )
+  
+  degree_labels <- c(
+    Bachelors = "Bachelor's",
+    Masters   = "Master's",
+    Doctorate = "Doctorate"
   )
   
   keep_fields <- c(
@@ -2162,7 +2163,8 @@ build_change_table_wide <- function(
     
     tbl <- tbl %>%
       tab_spanner(
-        label = deg,
+        label = degree_labels[[deg]],
+        id    = deg,
         columns = all_of(
           c(
             paste0(deg, "_", earlier_year),
@@ -3115,13 +3117,15 @@ build_conference_summary_table <- function(name, meta, conf_names,
               locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
       footnote = end_sentence(
-        "Each row gives the U.S. and Chinese share of accepted author",
+        "Each row gives the US and Chinese share of accepted author",
         "affiliations at the first and last year both countries are observed;",
         "that window is shown under Coverage and differs by venue.",
         change_col_label(FALSE), "is the", paste0(change_phrase(change_type), "."),
         "\u201CChina overtook\u201D is the first such year China's share",
         "exceeded the U.S. share; \u201CNot yet\u201D means the U.S. share still",
-        "led in the latest observed year"
+        "led in the latest observed year.",
+        "The NeurIPS shares here differ slightly from Figure 5.01, which",
+        "counts oral presentations only; this table counts all accepted papers"
       ),
       locations = cells_column_labels(columns = cross_yr)
     ) %>%
@@ -3535,6 +3539,13 @@ build_patent_company_delta_table <- function(df, name, meta,
       change_type = change_type,
       pattern_relative = "{x}%",
       pattern_ppt = "{x}"
+    ) %>%
+    fmt_number(
+      columns    = all_of(all_chg_cols),
+      decimals   = 0,
+      use_seps   = TRUE,
+      force_sign = TRUE,
+      pattern    = if (change_type == "relative") "{x}%" else "{x}"
     )
   
   # flag icon merged into the Company stub, ahead of the name

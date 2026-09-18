@@ -1,9 +1,9 @@
 {
-    "path": "~/Downloads/Talent/talent_charts/inputs/scripts",
+    "path": "~/Downloads/Hoover/Talent/talent_charts/inputs/data",
     "sortOrder": [
         {
             "columnIndex": 2,
-            "ascending": false
+            "ascending": true
         },
         {
             "columnIndex": 4,
