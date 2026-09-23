@@ -515,18 +515,21 @@ labels_008 <- last_by_group(df_008, Year, Country) %>%
   ) %>%
   prepare_right_labels(df_008$Year)
 
-# Reserve the same right gutter as 1.08 so both panels end at the same x.
-SHARED_PROJ_RIGHT_LIMIT <- attr(
-  prepare_right_labels(
-    last_by_group(
-      read_fig("FIG108") %>% pivot_observed_projected() %>% order_by_latest(Country, value),
-      Year, Country
-    ) %>% mutate(.label = paste0(Country, ": ", fmt_sig3(value))),
-    (read_fig("FIG108") %>% pivot_observed_projected())$Year
-  ),
-  "tpa_right_limit"
+# Build the 1.08 labels here too so the shared gutter accounts for both panels.
+df_007 <- read_fig("FIG108") %>%
+  pivot_observed_projected() %>%
+  order_by_latest(Country, value)
+labels_007 <- last_by_group(df_007, Year, Country) %>%
+  mutate(.label = paste0(Country, ": ", fmt_sig3(value))) %>%
+  prepare_right_labels(df_007$Year)
+
+# Use whichever panel needs more room so both end at the same x.
+SHARED_PROJ_RIGHT_LIMIT <- max(
+  attr(labels_008, "tpa_right_limit"),
+  attr(labels_007, "tpa_right_limit")
 )
 labels_008 <- set_right_limit(labels_008, SHARED_PROJ_RIGHT_LIMIT)
+labels_007 <- set_right_limit(labels_007, SHARED_PROJ_RIGHT_LIMIT)
 
 proj_start <- proj_start_year(df_008)
 y_top      <- 150000                       # fixed ceiling; breaks and band key off this
@@ -572,20 +575,12 @@ FIG107
 ### Figure 1.08 - Projected STEM PhD Production, per Capita, by Country
 ```{r figure 007}
 meta <- get_meta("FIG108")
-df_007 <- read_fig("FIG108") %>%
-  pivot_observed_projected() %>%
-  order_by_latest(Country, value)
-labels_007 <- last_by_group(df_007, Year, Country) %>%
-  mutate(
-    .label = paste0(Country, ": ", fmt_sig3(value))
-  ) %>%
-  prepare_right_labels(df_007$Year)
-labels_007 <- set_right_limit(labels_007, SHARED_PROJ_RIGHT_LIMIT)
 proj_start <- proj_start_year(df_007)
-y_top      <- 500                          # fixed ceiling; breaks and band key off this
+y_top      <- 500
+
 FIG108 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
   annotate_projected(proj_start, max(df_007$Year),
-                     label_y = 466.75, ymin = 0, ymax = 500) +   # bound band to plot range
+                     label_y = 926.75, ymin = 0, ymax = 1000) +   # bound band to plot range
   geom_op_lines(df_007) +
   geom_label_repel_tpa(
     data    = labels_007,
@@ -596,15 +591,16 @@ FIG108 <- ggplot(df_007, aes(Year, value, color = Country, group = Country)) +
   ) +
   scale_x_years(df_007$Year, right_labels = labels_007) +
   scale_y_continuous(labels = fmt_sig3,
-                     breaks = seq(0, 500, by = 100),
-                     limits = c(0, 500),
+                     breaks = seq(0, 1000, by = 250),
+                     limits = c(0, 1000),
                      expand = expansion(mult = c(0, 0))) +
   scale_color_tpa() +
   guides(color = "none") +
-  labs_meta(meta, y = "STEM PhDs per year") +
+  labs_meta(meta, y = "STEM PhDs per year per million residents") +
   coord_cartesian(clip = "off") +
   theme_op() +
   theme_right_labels(labels_007)
+
 save_chart_aligned(FIG108, "fig_1_08")
 FIG108
 ```
@@ -1089,7 +1085,7 @@ FIG302
 meta <- get_meta("FIG303")
 df_021 <- read_fig("FIG303") %>%
   rename(Year = 1,
-         `U.S. citizens and permanent residents` = 2,
+         `US citizens and permanent residents` = 2,
          `Temporary visa holders`                = 3) %>%
   mutate(across(everything(), as.numeric)) %>%
   pivot_longer(-Year, names_to = "Status", values_to = "Count") %>%

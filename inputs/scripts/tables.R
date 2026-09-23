@@ -3122,7 +3122,7 @@ build_conference_summary_table <- function(name, meta, conf_names,
         "that window is shown under Coverage and differs by venue.",
         change_col_label(FALSE), "is the", paste0(change_phrase(change_type), "."),
         "\u201CChina overtook\u201D is the first such year China's share",
-        "exceeded the U.S. share; \u201CNot yet\u201D means the U.S. share still",
+        "exceeded the US share; \u201CNot yet\u201D means the US share still",
         "led in the latest observed year.",
         "The NeurIPS shares here differ slightly from Figure 5.01, which",
         "counts oral presentations only; this table counts all accepted papers"
@@ -3139,13 +3139,13 @@ build_conference_summary_table <- function(name, meta, conf_names,
 # country. No interior delta columns; only the Net Change column is shaded.
 # Data are current-PPP dollars (not inflation-adjusted), so the footnote says so.
 build_rd_type_level_table <- function(df, name, meta, level_cols,
-                                      spanner_label = "GERD (USD billions, current PPP)",
+                                      spanner_label = "GERD (USD billions, constant 2020 PPP)",
                                       footnote = NULL) {
   
   if (is.null(footnote)) {
     footnote <- end_sentence(
-      "Spending levels in billions of US dollars, PPP converted, at current",
-      "prices (not adjusted for inflation).", change_col_label(FALSE), "is the",
+      "Spending levels in billions of constant 2020 US dollars, PPP converted",
+      "(adjusted for inflation).", change_col_label(FALSE), "is the",
       "relative change from the first to the last shown year. Basic research is",
       "investment in future capability; applied research and experimental",
       "development are nearer-term. Totals may not sum exactly because of",
@@ -3704,12 +3704,12 @@ build_conference_summary_table_split <- function(name, meta, conf_names,
               locations = cells_stub(rows = TRUE)) %>%
     tab_footnote(
       footnote = end_sentence(
-        "Each row gives the U.S. and Chinese share of accepted author",
+        "Each row gives the US and Chinese share of accepted author",
         "affiliations at the first and last year both countries are observed;",
         "that window is shown under Coverage and differs by venue.",
         change_col_label(FALSE), "is the", paste0(change_phrase(change_type), "."),
         "\u201CChina overtook\u201D is the first such year China's share",
-        "exceeded the U.S. share; \u201CNot yet\u201D means the U.S. share still",
+        "exceeded the US share; \u201CNot yet\u201D means the US share still",
         "led in the latest observed year"
       ),
       locations = cells_column_labels(columns = cross_yr)

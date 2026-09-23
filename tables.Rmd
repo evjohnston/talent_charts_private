@@ -190,7 +190,7 @@ tab_202 <- mat %>%
   tab_footnote(
             footnote = end_sentence(
       "Cells show the change, in percentage points, in the share of each",
-      "country's U.S.-bound international students enrolled in the field, from",
+      "country's US-bound international students enrolled in the field, from",
       "the earliest to the latest year available: 2010 to 2025 for most",
       "countries, 2012 to 2025 for Iran, and 2018 to 2025 for Bangladesh. Red",
       "means the field gained share, blue that it lost. Column headings are",
@@ -434,7 +434,7 @@ TAB402 <- build_bookend_table(
   footnote = end_sentence(
     "Share of STEM entrants by number of major switches.",
     change_col_label(FALSE), "is the", change_phrase(change_type),
-    "from the 2004/2009 to the 2012/2017 cohort"
+    "from the 2004/2009 to the 2011/2012 cohort"
   )
 )
 save_table(TAB402, "tab_4_02", profile = "standard", stub_width_px = 250)
@@ -598,7 +598,7 @@ TAB502 <- build_occupation_share_table(
   change_type   = change_type,
   value_type    = "count",
   footnote = end_sentence(
-    "Counts are U.S. universities in the global top 100 in each field, shown",
+    "Counts are US universities in the global top 100 in each field, shown",
     "for 2014, 2018, 2022, and 2026.", change_col_label(FALSE), "is the",
     change_phrase(change_type, "count"), "from 2014 to 2026.",
     "Computer science was first ranked in 2017; its 2017 count is shown in the",
@@ -710,8 +710,7 @@ tab_022 <- build_rd_type_level_table(
   df_022, "tab_5_04", meta,
   level_cols = c("Y1994", "Y2004", "Y2014", "Y2024"),
   footnote = end_sentence(
-    "Spending levels in billions of US dollars, PPP converted, at current",
-    "prices (not adjusted for inflation).", change_col_label(FALSE), "is the",
+    "Spending levels in billions of constant 2020 US dollars, PPP converted (adjusted for inflation).", change_col_label(FALSE), "is the",
     "relative change from the first to the last shown year. Sectors denote",
     "where R&D is performed. China reports no private non-profit R&D; it is",
     "shown as $0, and its change cell is undefined from a zero base and appears",
@@ -832,7 +831,7 @@ change_type <- "ppt"  # choose "relative" or "ppt"
 tab_025 <- build_bookend_table(
   "TAB602", meta,
   first = 2021, last = 2024,
-  spanner_label = "Share with U.S. plans",
+  spanner_label = "Share with US plans",
   sort_by = "change",
   scale = 100,
   change_type = change_type

@@ -5295,8 +5295,9 @@ build_ch2_page <- function(
         CH2_BASELINE_YEAR,
         " and ",
         CH2_TARGET_YEAR,
-        " observations. Superscript years mark rows with an earlier latest ",
-        "endpoint than ",
+        " observations. Superscript years mark rows with a later earliest start point than ",
+        CH2_BASELINE_YEAR,
+        " or earlier latest endpoint than ",
         CH2_TARGET_YEAR,
         ". Arrow colors indicate direction of change only."
       ),
@@ -8455,8 +8456,7 @@ build_ch3_page <- function(
 
       paste0(
         "**Note:** Historical comparisons use 2000 and 2025",
-        " observations. Superscript years mark rows with an earlier latest ",
-        "endpoint than 2025. Average rows are population-weighted across",
+        " observations. Superscript years mark rows with a later start points or earlier endpoints. Average rows are population-weighted across",
         " degree levels. Arrow colors indicate direction of change only."
       ),
 
@@ -15619,9 +15619,9 @@ build_ch5_page <- function(
       ),
 
       paste0(
-        "**Note:** Historical comparisons use 2014 and 2025",
-        " observations. Superscript years mark rows with an earlier latest ",
-        "endpoint than 2025. NeurIPS = Conference on Neural Information ",
+       "**Note:** Historical comparisons use 2014 and 2025",
+        " observations. Superscript years mark rows with alternative ",
+        "endpoints. NeurIPS = Conference on Neural Information ",
         "Processing Systems. Arrow colors indicate direction of change only."
       ),
 

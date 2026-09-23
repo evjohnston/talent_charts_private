@@ -192,6 +192,7 @@ citizenship_colors <- c(
 # Navy = citizens, red = TVH; same names, swapped colors.
 citizenship_colors_alt <- c(
   "U.S. citizens and permanent residents" = tpa_colors[2],
+  "US citizens and permanent residents" = tpa_colors[2],
   "Temporary visa holders"                = tpa_colors[1]
 )
 
